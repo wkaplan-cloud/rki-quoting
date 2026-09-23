@@ -58,20 +58,27 @@ const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:b
 // Makes a text field hug its content so the image button sits right after the
 // last word instead of out at the column edge. field-sizing is Chrome 123+ /
 // Firefox 140+ / Safari 26+; older browsers fall back to the field's default
-// intrinsic width, which in this 200px column looks the same as before.
-const FIT_WIDTH = 'field-sizing-content w-auto min-w-[3rem] max-w-full'
+// intrinsic width, which in this narrow column looks the same as before.
+
+// A field-sized name refuses to shrink past FIT_MIN_W. CSS resolves min-width
+// over max-width, so when flex squeezes the name's wrapper below this floor the
+// field spills out of it and the image thumbnail gets painted straight over the
+// text — on a linked fabric row that ate the word "Fabric" entirely. Giving the
+// wrapper the same floor stops flex there and shrinks the colour field instead.
+const FIT_MIN_W = 'min-w-[3rem]'
+const FIT_WIDTH = `field-sizing-content w-auto ${FIT_MIN_W} max-w-full`
 const INPUT_FIT = INPUT.replace('w-full', FIT_WIDTH)
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
-// The Item column is declared w-[200px], but `table-layout: auto` treats a
+// The Item column is declared w-[280px], but `table-layout: auto` treats a
 // declared width as a hint and sizes to max-content instead — so the column
-// stretched well past 200px and shoved Description off screen. Both of the
-// cell's rows push it wide: the field-sized name (FIT_WIDTH) reports its whole
+// stretched well past its declared width and shoved Description off screen.
+// Both of the cell's rows push it wide: the field-sized name reports its whole
 // one-line value, and the dimensions/colour inputs report their default
-// intrinsic width. Pinning the cell's contents to a real width makes the 200px
-// binding and gives `max-w-full` something to resolve against, so the name
-// wraps and clamps to three lines the way Description already does.
-const ITEM_CELL_W = 'w-[184px]' // 200px column less COL's px-2 on both sides
+// intrinsic width. Pinning the cell's contents to a real width makes the
+// declared width binding and gives `max-w-full` something to resolve against,
+// so the name wraps and clamps to three lines the way Description already does.
+const ITEM_CELL_W = 'w-[264px]' // 280px column less COL's px-2 on both sides
 
 // leading-snug = 1.375, text-sm = 14px → 3 lines ≈ 57.75px
 const DESC_CLAMP_PX = 14 * 1.375 * 3
@@ -624,12 +631,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       </div>
 
       <div className="bg-[#FDFCFB] rounded-xl overflow-x-auto overflow-y-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_24px_rgba(0,0,0,0.06)]">
-        <table className="w-full text-sm min-w-[1120px]">
+        <table className="w-full text-sm min-w-[1200px]">
           <thead>
             <tr className="border-b border-[#E8E4DC] bg-[#F7F4EF] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2 sticky left-0 z-10 bg-[#F7F4EF]" />
               <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />
-              <th className="text-left px-2 py-2 w-[200px] min-w-[200px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
+              <th className="text-left px-2 py-2 w-[280px] min-w-[280px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px] border-r border-[#EDEBE6]">Description</th>
               <th className="text-right px-2 py-2 w-[86px] min-w-[86px] max-w-[86px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
@@ -756,13 +763,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL + ` w-[200px] min-w-[200px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
+                  <td className={COL + ` w-[280px] min-w-[280px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
                     <div className={ITEM_CELL_W + (isLinked ? ' pl-4' : '')}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
-                        <div className={imagesEnabled ? 'min-w-0' : 'flex-1 min-w-0'}>
+                        <div className={imagesEnabled ? FIT_MIN_W : 'flex-1 min-w-0'}>
                           {(() => {
                             const supplier = suppliers.find(s => s.id === item.supplier_id)
                             const hasAccess = supplier?.is_platform && supplier.price_list_id ? activePriceListIds.includes(supplier.price_list_id) : false
