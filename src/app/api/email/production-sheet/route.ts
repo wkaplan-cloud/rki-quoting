@@ -4,6 +4,7 @@ import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductionPDF } from '@/lib/pdf/ProductionPDF'
+import { fetchLineItemImages } from '@/lib/pdf/lineItemImages'
 import { apiError } from '@/lib/api-error'
 import type { Supplier } from '@/lib/types'
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     const [{ data: project }, { data: lineItems }, { data: settings }, { data: suppliers }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
-      supabase.from('settings').select('business_name, email_from, vat_rate').maybeSingle(),
+      supabase.from('settings').select('business_name, email_from, vat_rate, line_item_images_enabled, show_images_on_documents').maybeSingle(),
       supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
     ])
 
@@ -33,6 +34,11 @@ export async function POST(req: NextRequest) {
     const replyToEmail = settings?.email_from?.trim() || user.email || ''
     const printDate = new Date().toISOString()
 
+    const images = await fetchLineItemImages(
+      lineItems ?? [],
+      (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true),
+    )
+
     const buffer = await renderPdfToBuffer(
       createElement(ProductionPDF, {
         project,
@@ -41,6 +47,7 @@ export async function POST(req: NextRequest) {
         businessName,
         vatRate,
         printDate,
+        images,
       })
     )
 

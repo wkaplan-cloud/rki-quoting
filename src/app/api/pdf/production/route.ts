@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ProductionPDF } from '@/lib/pdf/ProductionPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
+import { fetchLineItemImages } from '@/lib/pdf/lineItemImages'
 import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
       supabase.from('projects').select('*, client:clients(client_name)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
       supabase.from('suppliers').select('*'),
-      supabase.from('settings').select('logo_url, business_name, vat_rate').maybeSingle(),
+      supabase.from('settings').select('logo_url, business_name, vat_rate, line_item_images_enabled, show_images_on_documents').maybeSingle(),
     ])
 
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -39,10 +40,13 @@ export async function GET(req: NextRequest) {
       if (member) assignedToName = member.full_name ?? member.invited_email?.split('@')[0] ?? null
     }
 
-    const logoUrl = await fetchLogoBase64(settings?.logo_url)
+    const [logoUrl, images] = await Promise.all([
+      fetchLogoBase64(settings?.logo_url),
+      fetchLineItemImages(lineItems ?? [], (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true)),
+    ])
 
     const buffer = await renderPdfToBuffer(
-      createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString(), assignedTo: assignedToName })
+      createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString(), assignedTo: assignedToName, images })
     )
 
     return new NextResponse(new Uint8Array(buffer), {

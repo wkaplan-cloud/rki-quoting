@@ -1,4 +1,4 @@
-import { Document, Page, Text, View } from '@react-pdf/renderer'
+import { Document, Image, Page, Text, View } from '@react-pdf/renderer'
 import { StyleSheet } from '@react-pdf/renderer'
 import { computeLineItem, computeLineItems, formatZAR, computeTotals } from '../quoting'
 import type { Project, LineItem, Supplier } from '../types'
@@ -38,6 +38,7 @@ const s = StyleSheet.create({
 // Monetary columns widened so "R 50 000,00" never wraps
 const W = {
   num:      20,
+  img:      0,
   item:     112,
   desc:     138,
   qty:      36,
@@ -53,6 +54,15 @@ const W = {
 }
 // Total: 20+112+138+36+56+56+32+62+34+62+60+62+64 = 794 — fits A4 landscape (842-32*2=778 usable)
 // (react-pdf auto-clamps overflow in flex layout)
+
+// Same sheet with a thumbnail column. The 46pt it needs comes out of the text
+// columns only — the monetary ones keep their width so "R 50 000,00" still
+// never wraps. Used only when the project actually has images to show, so a
+// sheet without them is laid out exactly as before.
+const W_WITH_IMAGES = { ...W, img: 46, item: 96, desc: 108, supplier: 50, deliver: 50, lead: 28 }
+
+/** 1.5 cm, matching the quote and invoice thumbnails (react-pdf units are pt). */
+const THUMB = 42.5
 
 function cap(s: string | null | undefined): string {
   if (!s) return ''
@@ -74,9 +84,13 @@ interface Props {
   vatRate?: number
   printDate?: string | null
   assignedTo?: string | null
+  /** Line item id → base64 image, from fetchLineItemImages. Empty when off. */
+  images?: Record<string, string>
 }
 
-export function ProductionPDF({ project, lineItems, suppliers, businessName, vatRate = 15, printDate, assignedTo }: Props) {
+export function ProductionPDF({ project, lineItems, suppliers, businessName, vatRate = 15, printDate, assignedTo, images = {} }: Props) {
+  const showImages = Object.keys(images).length > 0
+  const w = showImages ? W_WITH_IMAGES : W
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
   const grossProfit = computeLineItems(lineItems).reduce((sum, i) => sum + i.profit, 0) + totals.design_fee
@@ -109,19 +123,20 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
 
         {/* Table header */}
         <View style={s.tableHeader}>
-          <Text style={[s.th, { width: W.num, textAlign: 'right', paddingRight: 4 }]}>#</Text>
-          <Text style={[s.th, { width: W.item, paddingRight: 3 }]}>Item</Text>
-          <Text style={[s.th, { width: W.desc, paddingRight: 3 }]}>Description</Text>
-          <Text style={[s.th, { width: W.qty, textAlign: 'right', paddingRight: 4 }]}>Qty</Text>
-          <Text style={[s.th, { width: W.supplier, paddingRight: 3 }]}>Supplier</Text>
-          <Text style={[s.th, { width: W.deliver, paddingRight: 3 }]}>Del. To</Text>
-          <Text style={[s.th, { width: W.lead, textAlign: 'right', paddingRight: 4 }]}>Lead</Text>
-          <Text style={[s.th, { width: W.cost, textAlign: 'right', paddingRight: 4 }]}>Cost</Text>
-          <Text style={[s.th, { width: W.mkup, textAlign: 'right', paddingRight: 4 }]}>Markup</Text>
-          <Text style={[s.th, { width: W.sale, textAlign: 'right', paddingRight: 4 }]}>Sale</Text>
-          <Text style={[s.th, { width: W.profit, textAlign: 'right', paddingRight: 4 }]}>Profit</Text>
-          <Text style={[s.th, { width: W.totCost, textAlign: 'right', paddingRight: 4 }]}>Tot. Cost</Text>
-          <Text style={[s.th, { width: W.totPrice, textAlign: 'right' }]}>Tot. Price</Text>
+          <Text style={[s.th, { width: w.num, textAlign: 'right', paddingRight: 4 }]}>#</Text>
+          {showImages && <Text style={[s.th, { width: w.img, paddingLeft: 3, paddingRight: 3 }]}>Image</Text>}
+          <Text style={[s.th, { width: w.item, paddingRight: 3 }]}>Item</Text>
+          <Text style={[s.th, { width: w.desc, paddingRight: 3 }]}>Description</Text>
+          <Text style={[s.th, { width: w.qty, textAlign: 'right', paddingRight: 4 }]}>Qty</Text>
+          <Text style={[s.th, { width: w.supplier, paddingRight: 3 }]}>Supplier</Text>
+          <Text style={[s.th, { width: w.deliver, paddingRight: 3 }]}>Del. To</Text>
+          <Text style={[s.th, { width: w.lead, textAlign: 'right', paddingRight: 4 }]}>Lead</Text>
+          <Text style={[s.th, { width: w.cost, textAlign: 'right', paddingRight: 4 }]}>Cost</Text>
+          <Text style={[s.th, { width: w.mkup, textAlign: 'right', paddingRight: 4 }]}>Markup</Text>
+          <Text style={[s.th, { width: w.sale, textAlign: 'right', paddingRight: 4 }]}>Sale</Text>
+          <Text style={[s.th, { width: w.profit, textAlign: 'right', paddingRight: 4 }]}>Profit</Text>
+          <Text style={[s.th, { width: w.totCost, textAlign: 'right', paddingRight: 4 }]}>Tot. Cost</Text>
+          <Text style={[s.th, { width: w.totPrice, textAlign: 'right' }]}>Tot. Price</Text>
         </View>
 
         {/* Rows */}
@@ -139,8 +154,15 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
           const isLinked = !!item.parent_item_id
           return (
             <View key={item.id} style={[s.row, isLinked ? s.rowLinked : {}]}>
-              <Text style={[s.td, s.tdMuted, { width: W.num, textAlign: 'right', paddingRight: 4, fontSize: 6.5 }]}>{itemNum}.</Text>
-              <View style={{ width: W.item, paddingRight: 3, paddingLeft: isLinked ? 4 : 0 }}>
+              <Text style={[s.td, s.tdMuted, { width: w.num, textAlign: 'right', paddingRight: 4, fontSize: 6.5 }]}>{itemNum}.</Text>
+              {showImages && (
+                <View style={{ width: w.img, paddingLeft: 3, paddingRight: 3 }}>
+                  {images[item.id]
+                    ? <Image src={images[item.id]} style={{ width: THUMB, height: THUMB, borderRadius: 2, objectFit: 'cover' }} />
+                    : null}
+                </View>
+              )}
+              <View style={{ width: w.item, paddingRight: 3, paddingLeft: isLinked ? 4 : 0 }}>
                 <Text style={s.td}>{cap(item.item_name)}</Text>
                 {(item.dimensions || item.colour_finish) ? (
                   <Text style={[s.td, s.tdMuted, { fontSize: 7, marginTop: 1 }]}>
@@ -148,17 +170,17 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
                   </Text>
                 ) : null}
               </View>
-              <Text style={[s.td, s.tdMuted, { width: W.desc, paddingRight: 3 }]}>{item.description ?? ''}</Text>
-              <Text style={[s.td, { width: W.qty, textAlign: 'right', paddingRight: 4 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.supplier, paddingRight: 3 }]}>{supplierMap[item.supplier_id ?? ''] ?? ''}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.deliver, paddingRight: 3 }]}>{deliverToName(item.delivery_address)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.lead, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_days != null ? `${item.lead_time_days}d` : item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
-              <Text style={[s.td, { width: W.cost, textAlign: 'right', paddingRight: 4 }]}>{formatZAR(item.cost_price)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.mkup, textAlign: 'right', paddingRight: 4 }]}>{item.markup_percentage}%</Text>
-              <Text style={[s.td, { width: W.sale, textAlign: 'right', paddingRight: 4 }]}>{formatZAR(c.sale_price)}</Text>
-              <Text style={[s.td, { width: W.profit, textAlign: 'right', paddingRight: 4, color: c.profit >= 0 ? '#15803d' : '#dc2626' }]}>{formatZAR(c.profit)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.totCost, textAlign: 'right', paddingRight: 4 }]}>{formatZAR(c.total_cost)}</Text>
-              <Text style={[s.td, { width: W.totPrice, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: w.desc, paddingRight: 3 }]}>{item.description ?? ''}</Text>
+              <Text style={[s.td, { width: w.qty, textAlign: 'right', paddingRight: 4 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
+              <Text style={[s.td, s.tdMuted, { width: w.supplier, paddingRight: 3 }]}>{supplierMap[item.supplier_id ?? ''] ?? ''}</Text>
+              <Text style={[s.td, s.tdMuted, { width: w.deliver, paddingRight: 3 }]}>{deliverToName(item.delivery_address)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: w.lead, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_days != null ? `${item.lead_time_days}d` : item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
+              <Text style={[s.td, { width: w.cost, textAlign: 'right', paddingRight: 4 }]}>{formatZAR(item.cost_price)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: w.mkup, textAlign: 'right', paddingRight: 4 }]}>{item.markup_percentage}%</Text>
+              <Text style={[s.td, { width: w.sale, textAlign: 'right', paddingRight: 4 }]}>{formatZAR(c.sale_price)}</Text>
+              <Text style={[s.td, { width: w.profit, textAlign: 'right', paddingRight: 4, color: c.profit >= 0 ? '#15803d' : '#dc2626' }]}>{formatZAR(c.profit)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: w.totCost, textAlign: 'right', paddingRight: 4 }]}>{formatZAR(c.total_cost)}</Text>
+              <Text style={[s.td, { width: w.totPrice, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
             </View>
           )
         })}
