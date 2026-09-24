@@ -72,6 +72,8 @@ function newItem(quoteId: string, sectionId: string | null, sortOrder: number): 
 // the same, so every column lines up — including on a locked quote, where the
 // buttons are gone but their slot stays.
 const rowActionsWidth = (installer: boolean) => (installer ? 54 : 28)
+// Cost and Rate are 104px (Mat. Total 100px) so six-figure amounts with cents show in full;
+// Description is the flexible column and gives up the space.
 
 function newSection(quoteId: string, sortOrder: number): SectionState {
   return { id: crypto.randomUUID(), quote_id: quoteId, title: '', sort_order: sortOrder, option_group: null, option_chosen: false, items: [] }
@@ -313,7 +315,7 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
         {field('Cost', numInput(item.cost_unit_rate, v => {
           const sell = v * (1 + (item.markup_percentage ?? 0) / 100)
           set({ cost_unit_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
-        }, 'Cost', 82, true))}
+        }, 'Cost', 104, true))}
         {field('Markup %', numInput(item.markup_percentage, v => {
           // With no cost captured there is nothing to mark up — leave a hand-typed
           // sell rate alone rather than zeroing it.
@@ -327,10 +329,10 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
             ? Math.round(((v / item.cost_unit_rate - 1) * 100) * 10) / 10
             : item.markup_percentage
           set({ quoted_unit_rate: v, markup_percentage: newMarkup ?? item.markup_percentage })
-        }, 'Rate', 72, true))}
+        }, 'Rate', 104, true))}
         {/* Material subtotal = qty × sell rate. The two subtotals are desktop
             columns only; on a phone the line total below carries the sum. */}
-        <div className="hidden md:block text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
+        <div className="hidden md:block text-sm text-right flex-shrink-0 whitespace-nowrap" style={{ color: S.muted, width: 100 }}>
           {fmtR((item.quoted_quantity ?? 0) * computeSellRate(item))}
         </div>
         {field('Labour/Unit', numInput(item.labour_rate, v => {
@@ -492,10 +494,10 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
               <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
               {colHdr('Unit', 60, 'center')}
               {colHdr('Qty', 72, 'right')}
-              {colHdr('Cost', 82, 'right')}
+              {colHdr('Cost', 104, 'right')}
               {colHdr('Mkup', 65, 'right')}
-              {colHdr('Rate', 72, 'right')}
-              {colHdr('Mat. Total', 82, 'right')}
+              {colHdr('Rate', 104, 'right')}
+              {colHdr('Mat. Total', 100, 'right')}
               {colHdr('Labour/Unit', 82, 'right')}
               {colHdr('Lab. Total', 82, 'right')}
               {colHdr('Line Total', 92, 'right')}
@@ -1737,10 +1739,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                 <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-center" style={{ color: S.muted, width: 60 }}>Unit</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Qty</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Cost</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 104 }}>Cost</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 65 }}>Mkup</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Rate</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Mat. Total</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 104 }}>Rate</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 100 }}>Mat. Total</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Labour/Unit</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Lab. Total</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 92 }}>Line Total</div>
