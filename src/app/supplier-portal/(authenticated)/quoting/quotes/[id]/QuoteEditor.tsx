@@ -969,6 +969,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     setSections(ss => ss.map(s => s.option_group === from ? { ...s, option_group: to } : s))
   }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
+  // The Add item under the list adds where the user is looking: the end of the
+  // last section. Loose lines render above every section, so adding one there
+  // would put the new row back at the top of the quote.
+  function addItemAtEnd() {
+    if (sections.length === 0) { addFreeItem(); return }
+    const lastId = sections[sections.length - 1].id
+    setSections(ss => ss.map(s => s.id === lastId ? { ...s, items: [...s.items, newItem(q.id, s.id, s.items.length)] } : s))
+  }
   function insertFreeItemAt(index: number) {
     setFreeItems(items => {
       const next = [...items]
@@ -1833,7 +1841,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
         {allItems.length > 0 && !locked && (
           <div className="mt-2 flex items-center gap-2">
-            <button onClick={addFreeItem} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            <button onClick={addItemAtEnd} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
               style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
               onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
