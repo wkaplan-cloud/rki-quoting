@@ -1,7 +1,7 @@
 import React from 'react'
 import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import { BLUE_PALETTE, PdfPaletteProvider, recolorStyles, usePdfStyles, type PdfPalette } from './palette'
+import { BLUE_PALETTE, recolorStyles, type PdfPalette } from './palette'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -62,8 +62,8 @@ export interface ElecReconPDFProps {
 
 // Declared at module scope: defined inside the component it was a new
 // component type on every render, remounting everything it drew.
-function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
-  const s = usePdfStyles(baseStyles)
+function ItemRows({ list, indent = false, pal }: { list: ElecQuoteLineItem[]; indent?: boolean; pal: PdfPalette }) {
+  const s = recolorStyles(baseStyles, pal)
   return (
     <>
       {list.map((item, i) => (
@@ -95,100 +95,98 @@ export function ElecReconPDF({ quote, client, sections, items, settings, company
 
 
   return (
-    <PdfPaletteProvider value={palette}>
-      <Document>
-        <Page size="A4" style={s.page}>
+    <Document>
+      <Page size="A4" style={s.page}>
 
-          {/* Header */}
-          <View style={s.header}>
-            <View style={{ flex: 1, paddingRight: 16 }}>
-              {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
-              <Text style={s.company}>{companyName}</Text>
-              {companyEmail ? <Text style={s.meta}>{companyEmail}</Text> : null}
-              {metaParts ? <Text style={s.meta}>{metaParts}</Text> : null}
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.title}>INSPECTION / RECON SHEET</Text>
-              <Text style={s.docNum}>{quote.quote_number}</Text>
-              <Text style={[s.docNum, { marginTop: 2 }]}>Date: {fmtDate(quote.quoted_date ?? todaySA())}</Text>
-            </View>
+        {/* Header */}
+        <View style={s.header}>
+          <View style={{ flex: 1, paddingRight: 16 }}>
+            {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail ? <Text style={s.meta}>{companyEmail}</Text> : null}
+            {metaParts ? <Text style={s.meta}>{metaParts}</Text> : null}
           </View>
-
-          {/* Info grid */}
-          <View style={s.infoGrid}>
-            <View style={s.infoBox}>
-              <Text style={s.infoHd}>CLIENT</Text>
-              {client ? (
-                <>
-                  <Text style={s.infoBold}>{client.client_name}</Text>
-                  {client.company && <Text style={s.infoRow}>{client.company}</Text>}
-                  {client.email && <Text style={s.infoRow}>{client.email}</Text>}
-                </>
-              ) : <Text style={s.infoRow}>—</Text>}
-            </View>
-            <View style={s.infoBox}>
-              <Text style={s.infoHd}>PROJECT</Text>
-              <Text style={s.infoBold}>{quote.project_name}</Text>
-              {quote.project_address && <Text style={s.infoRow}>{quote.project_address}</Text>}
-              {quote.drawing_reference && <Text style={s.infoRow}>Drawing REF: {quote.drawing_reference}</Text>}
-            </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.title}>INSPECTION / RECON SHEET</Text>
+            <Text style={s.docNum}>{quote.quote_number}</Text>
+            <Text style={[s.docNum, { marginTop: 2 }]}>Date: {fmtDate(quote.quoted_date ?? todaySA())}</Text>
           </View>
+        </View>
 
-          {/* Table header */}
-          <View style={s.tableHead}>
-            <Text style={[s.th, { flex: 1 }]}>Description</Text>
-            <Text style={[s.th, { width: 45, textAlign: 'center' }]}>Unit</Text>
-            <Text style={[s.th, { width: 55, textAlign: 'right' }]}>Qty</Text>
-            <Text style={[s.th, { width: 60, textAlign: 'center' }]}>Sign Off</Text>
+        {/* Info grid */}
+        <View style={s.infoGrid}>
+          <View style={s.infoBox}>
+            <Text style={s.infoHd}>CLIENT</Text>
+            {client ? (
+              <>
+                <Text style={s.infoBold}>{client.client_name}</Text>
+                {client.company && <Text style={s.infoRow}>{client.company}</Text>}
+                {client.email && <Text style={s.infoRow}>{client.email}</Text>}
+              </>
+            ) : <Text style={s.infoRow}>—</Text>}
           </View>
+          <View style={s.infoBox}>
+            <Text style={s.infoHd}>PROJECT</Text>
+            <Text style={s.infoBold}>{quote.project_name}</Text>
+            {quote.project_address && <Text style={s.infoRow}>{quote.project_address}</Text>}
+            {quote.drawing_reference && <Text style={s.infoRow}>Drawing REF: {quote.drawing_reference}</Text>}
+          </View>
+        </View>
 
-          <ItemRows list={freeItems} />
+        {/* Table header */}
+        <View style={s.tableHead}>
+          <Text style={[s.th, { flex: 1 }]}>Description</Text>
+          <Text style={[s.th, { width: 45, textAlign: 'center' }]}>Unit</Text>
+          <Text style={[s.th, { width: 55, textAlign: 'right' }]}>Qty</Text>
+          <Text style={[s.th, { width: 60, textAlign: 'center' }]}>Sign Off</Text>
+        </View>
 
-          {sections.map(sec => {
-            const secItems = quoteItems.filter(i => i.section_id === sec.id)
-            if (secItems.length === 0) return null
-            return (
-              <View key={sec.id}>
-                <View style={s.secRow} wrap={false}>
-                  <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
-                </View>
-                <ItemRows list={secItems} indent />
+        <ItemRows pal={palette} list={freeItems} />
+
+        {sections.map(sec => {
+          const secItems = quoteItems.filter(i => i.section_id === sec.id)
+          if (secItems.length === 0) return null
+          return (
+            <View key={sec.id}>
+              <View style={s.secRow} wrap={false}>
+                <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
               </View>
-            )
-          })}
+              <ItemRows pal={palette} list={secItems} indent />
+            </View>
+          )
+        })}
 
-          {/* ── Variation Orders ── */}
-          {voItems.length > 0 && (
-            <View>
-              <View style={s.voSecRow} wrap={false}>
-                <Text style={[s.voSecLabel, { flex: 1 }]}>VARIATION ORDERS</Text>
-              </View>
-              <ItemRows list={voItems} indent />
+        {/* ── Variation Orders ── */}
+        {voItems.length > 0 && (
+          <View>
+            <View style={s.voSecRow} wrap={false}>
+              <Text style={[s.voSecLabel, { flex: 1 }]}>VARIATION ORDERS</Text>
             </View>
-          )}
-
-          {/* Sign-off boxes */}
-          <View style={s.signBox}>
-            <View style={s.signLine}>
-              <Text style={s.signLabel}>Inspector / Technician signature</Text>
-            </View>
-            <View style={s.signLine}>
-              <Text style={s.signLabel}>Client / Site agent signature</Text>
-            </View>
-            <View style={s.signLine}>
-              <Text style={s.signLabel}>Date</Text>
-            </View>
+            <ItemRows pal={palette} list={voItems} indent />
           </View>
+        )}
 
-          {/* Footer */}
-          <View style={s.footer} fixed>
-            <Text style={s.footerText}>{companyName}</Text>
-            <Text style={s.footerText}>{quote.quote_number} — {quote.project_name}</Text>
-            <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+        {/* Sign-off boxes */}
+        <View style={s.signBox}>
+          <View style={s.signLine}>
+            <Text style={s.signLabel}>Inspector / Technician signature</Text>
           </View>
+          <View style={s.signLine}>
+            <Text style={s.signLabel}>Client / Site agent signature</Text>
+          </View>
+          <View style={s.signLine}>
+            <Text style={s.signLabel}>Date</Text>
+          </View>
+        </View>
 
-        </Page>
-      </Document>
-    </PdfPaletteProvider>
+        {/* Footer */}
+        <View style={s.footer} fixed>
+          <Text style={s.footerText}>{companyName}</Text>
+          <Text style={s.footerText}>{quote.quote_number} — {quote.project_name}</Text>
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+        </View>
+
+      </Page>
+    </Document>
   )
 }

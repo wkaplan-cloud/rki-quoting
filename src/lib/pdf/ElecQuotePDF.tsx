@@ -1,7 +1,7 @@
 import React from 'react'
 import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import { BLUE_PALETTE, PdfPaletteProvider, recolorStyles, usePdfStyles, type PdfPalette } from './palette'
+import { BLUE_PALETTE, recolorStyles, type PdfPalette } from './palette'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 import { excludedSectionIds, isOpenOptional, lineCounts } from '@/lib/quote-options'
 
@@ -81,8 +81,8 @@ function lineTotal(i: ElecQuoteLineItem): number {
 
 // Declared at module scope: defined inside the component it was a new
 // component type on every render, remounting everything it drew.
-function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
-  const s = usePdfStyles(baseStyles)
+function ItemRows({ list, indent = false, pal }: { list: ElecQuoteLineItem[]; indent?: boolean; pal: PdfPalette }) {
+  const s = recolorStyles(baseStyles, pal)
   return (
     <>
       {list.map((item, i) => (
@@ -135,182 +135,180 @@ export function ElecQuotePDF({ quote, client, sections, items: allItems, setting
   ].filter(Boolean).join('  ·  ')
 
   return (
-    <PdfPaletteProvider value={palette}>
-      <Document>
-        <Page size="A4" style={s.page}>
+    <Document>
+      <Page size="A4" style={s.page}>
 
-          {/* Header */}
-          <View style={s.header}>
-            <View style={{ flex: 1, paddingRight: 16 }}>
-              {logoUrl && <Image src={logoUrl} style={{ maxWidth: 190, maxHeight: 56, objectFit: 'contain', marginBottom: 4 }} />}
-              <Text style={s.company}>{companyName}</Text>
-              {companyEmail && <Text style={s.companyMeta}>{companyEmail}</Text>}
-              {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.docTitle}>QUOTATION</Text>
-              <Text style={s.docNum}>{quote.quote_number}</Text>
-              <Text style={s.docMeta}>Date: {fmtDate(quote.quoted_date ?? todaySA())}</Text>
-              {quote.payment_terms_days > 0 && (
-                <Text style={s.docMeta}>Payment terms: {quote.payment_terms_days} days</Text>
-              )}
-            </View>
+        {/* Header */}
+        <View style={s.header}>
+          <View style={{ flex: 1, paddingRight: 16 }}>
+            {logoUrl && <Image src={logoUrl} style={{ maxWidth: 190, maxHeight: 56, objectFit: 'contain', marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail && <Text style={s.companyMeta}>{companyEmail}</Text>}
+            {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
-
-          {/* Bill To / Project */}
-          <View style={s.infoGrid}>
-            <View style={s.infoBox}>
-              <Text style={s.infoBoxHd}>BILL TO</Text>
-              {client ? (
-                <>
-                  <Text style={s.infoBold}>{client.client_name}</Text>
-                  {client.company       && <Text style={s.infoRow}>{client.company}</Text>}
-                  {client.email         && <Text style={s.infoRow}>{client.email}</Text>}
-                  {client.contact_number && <Text style={s.infoRow}>{client.contact_number}</Text>}
-                  {client.address       && <Text style={s.infoRow}>{client.address}</Text>}
-                </>
-              ) : (
-                <Text style={s.infoRow}>—</Text>
-              )}
-            </View>
-            <View style={s.infoBox}>
-              <Text style={s.infoBoxHd}>PROJECT</Text>
-              <Text style={s.infoBold}>{quote.project_name}</Text>
-              {quote.project_address && <Text style={s.infoRow}>{quote.project_address}</Text>}
-              <Text style={s.infoRow}>{CONTRACT_TYPE[quote.contract_type] ?? quote.contract_type}</Text>
-              {quote.expected_completion_date && (
-                <Text style={s.infoRow}>Est. completion: {fmtDate(quote.expected_completion_date)}</Text>
-              )}
-              {quote.drawing_reference && (
-                <Text style={s.infoRow}>Drawing REF: {quote.drawing_reference}</Text>
-              )}
-            </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.docTitle}>QUOTATION</Text>
+            <Text style={s.docNum}>{quote.quote_number}</Text>
+            <Text style={s.docMeta}>Date: {fmtDate(quote.quoted_date ?? todaySA())}</Text>
+            {quote.payment_terms_days > 0 && (
+              <Text style={s.docMeta}>Payment terms: {quote.payment_terms_days} days</Text>
+            )}
           </View>
+        </View>
 
-          {/* Table */}
-          <View style={s.tableHead}>
-            <Text style={[s.th, { flex: 1 }]}>Description</Text>
-            <Text style={[s.th, { width: 45, textAlign: 'right' }]}>Qty</Text>
-            <Text style={[s.th, { width: 36, textAlign: 'center' }]}>Unit</Text>
-            <Text style={[s.th, { width: 72, textAlign: 'right' }]}>Unit Rate</Text>
-            <Text style={[s.th, { width: 60, textAlign: 'right' }]}>+Labour</Text>
-            <Text style={[s.th, { width: 72, textAlign: 'right' }]}>Total</Text>
+        {/* Bill To / Project */}
+        <View style={s.infoGrid}>
+          <View style={s.infoBox}>
+            <Text style={s.infoBoxHd}>BILL TO</Text>
+            {client ? (
+              <>
+                <Text style={s.infoBold}>{client.client_name}</Text>
+                {client.company       && <Text style={s.infoRow}>{client.company}</Text>}
+                {client.email         && <Text style={s.infoRow}>{client.email}</Text>}
+                {client.contact_number && <Text style={s.infoRow}>{client.contact_number}</Text>}
+                {client.address       && <Text style={s.infoRow}>{client.address}</Text>}
+              </>
+            ) : (
+              <Text style={s.infoRow}>—</Text>
+            )}
           </View>
+          <View style={s.infoBox}>
+            <Text style={s.infoBoxHd}>PROJECT</Text>
+            <Text style={s.infoBold}>{quote.project_name}</Text>
+            {quote.project_address && <Text style={s.infoRow}>{quote.project_address}</Text>}
+            <Text style={s.infoRow}>{CONTRACT_TYPE[quote.contract_type] ?? quote.contract_type}</Text>
+            {quote.expected_completion_date && (
+              <Text style={s.infoRow}>Est. completion: {fmtDate(quote.expected_completion_date)}</Text>
+            )}
+            {quote.drawing_reference && (
+              <Text style={s.infoRow}>Drawing REF: {quote.drawing_reference}</Text>
+            )}
+          </View>
+        </View>
 
-          <ItemRows list={freeItems} />
+        {/* Table */}
+        <View style={s.tableHead}>
+          <Text style={[s.th, { flex: 1 }]}>Description</Text>
+          <Text style={[s.th, { width: 45, textAlign: 'right' }]}>Qty</Text>
+          <Text style={[s.th, { width: 36, textAlign: 'center' }]}>Unit</Text>
+          <Text style={[s.th, { width: 72, textAlign: 'right' }]}>Unit Rate</Text>
+          <Text style={[s.th, { width: 60, textAlign: 'right' }]}>+Labour</Text>
+          <Text style={[s.th, { width: 72, textAlign: 'right' }]}>Total</Text>
+        </View>
 
-          {sections.map(sec => {
-            const isAlternative = !!sec.option_group
-            const inTotal = !excluded.has(sec.id)
-            const secItems = isAlternative
-              ? allItems.filter(i => i.section_id === sec.id && !isOpenOptional(i))
-              : items.filter(i => i.section_id === sec.id)
-            if (secItems.length === 0) return null
-            const secTotal = secItems.reduce((sum, i) => sum + lineTotal(i), 0)
-            return (
-              <View key={sec.id}>
-                <View style={s.secRow} wrap={false}>
-                  <View style={{ flex: 1 }}>
-                    {isAlternative && (
-                      <Text style={{ fontSize: 6.5, color: MUTED, marginBottom: 1 }}>
-                        OPTION — CHOOSE ONE: {sec.option_group!.toUpperCase()} · {inTotal ? 'IN THE TOTAL' : 'NOT IN THE TOTAL'}
-                      </Text>
-                    )}
-                    <Text style={s.secLabel}>{sec.title || 'Untitled Section'}</Text>
-                  </View>
-                  <Text style={[s.secLabel, { width: 72, textAlign: 'right' }]}>{fmtR(secTotal)}</Text>
-                </View>
-                <ItemRows list={secItems} indent />
-              </View>
-            )
-          })}
+        <ItemRows pal={palette} list={freeItems} />
 
-          {optionals.length > 0 && (
-            <View style={{ marginTop: 12 }}>
+        {sections.map(sec => {
+          const isAlternative = !!sec.option_group
+          const inTotal = !excluded.has(sec.id)
+          const secItems = isAlternative
+            ? allItems.filter(i => i.section_id === sec.id && !isOpenOptional(i))
+            : items.filter(i => i.section_id === sec.id)
+          if (secItems.length === 0) return null
+          const secTotal = secItems.reduce((sum, i) => sum + lineTotal(i), 0)
+          return (
+            <View key={sec.id}>
               <View style={s.secRow} wrap={false}>
-                <Text style={[s.secLabel, { flex: 1 }]}>OPTIONAL EXTRAS — not included in the total</Text>
-                <Text style={[s.secLabel, { width: 72, textAlign: 'right' }]}>{fmtR(optionals.reduce((sum, i) => sum + lineTotal(i), 0))}</Text>
+                <View style={{ flex: 1 }}>
+                  {isAlternative && (
+                    <Text style={{ fontSize: 6.5, color: MUTED, marginBottom: 1 }}>
+                      OPTION — CHOOSE ONE: {sec.option_group!.toUpperCase()} · {inTotal ? 'IN THE TOTAL' : 'NOT IN THE TOTAL'}
+                    </Text>
+                  )}
+                  <Text style={s.secLabel}>{sec.title || 'Untitled Section'}</Text>
+                </View>
+                <Text style={[s.secLabel, { width: 72, textAlign: 'right' }]}>{fmtR(secTotal)}</Text>
               </View>
-              <ItemRows indent list={optionals.map(i => {
-                const room = i.section_id ? sectionTitle.get(i.section_id) : null
-                return room ? { ...i, description: `${room} — ${i.description}` } : i
-              })} />
+              <ItemRows pal={palette} list={secItems} indent />
             </View>
-          )}
+          )
+        })}
 
-          {/* Totals */}
-          <View style={s.totalsWrap}>
-            <View style={s.totalsBox}>
-              <View style={s.tRow}>
-                <Text style={s.tLabel}>Subtotal (excl. VAT)</Text>
-                <Text style={s.tVal}>{fmtR(contractTotal)}</Text>
-              </View>
-              <View style={s.tRow}>
-                <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
-                <Text style={s.tVal}>{fmtR(vatAmount)}</Text>
-              </View>
-              <View style={s.tDivider} />
-              <View style={s.tBig}>
-                <Text style={s.tBigLabel}>TOTAL</Text>
-                <Text style={s.tBigVal}>{fmtR(grandTotal)}</Text>
-              </View>
-              {depositPct > 0 && (
-                <>
-                  <View style={s.tDivider} />
-                  <View style={s.tRow}>
-                    <Text style={s.tLabel}>Deposit on acceptance ({depositPct}%)</Text>
-                    <Text style={s.tVal}>{fmtR(grandTotal * depositPct / 100)}</Text>
-                  </View>
-                </>
-              )}
-              {(quote.retention_percentage ?? 0) > 0 && (
-                <>
-                  <View style={s.tDivider} />
-                  <View style={s.tRow}>
-                    <Text style={s.tLabel}>Retention ({quote.retention_percentage}%)</Text>
-                    <Text style={s.tVal}>{fmtR(contractTotal * (quote.retention_percentage / 100))}</Text>
-                  </View>
-                </>
-              )}
+        {optionals.length > 0 && (
+          <View style={{ marginTop: 12 }}>
+            <View style={s.secRow} wrap={false}>
+              <Text style={[s.secLabel, { flex: 1 }]}>OPTIONAL EXTRAS — not included in the total</Text>
+              <Text style={[s.secLabel, { width: 72, textAlign: 'right' }]}>{fmtR(optionals.reduce((sum, i) => sum + lineTotal(i), 0))}</Text>
+            </View>
+            <ItemRows pal={palette} indent list={optionals.map(i => {
+              const room = i.section_id ? sectionTitle.get(i.section_id) : null
+              return room ? { ...i, description: `${room} — ${i.description}` } : i
+            })} />
+          </View>
+        )}
+
+        {/* Totals */}
+        <View style={s.totalsWrap}>
+          <View style={s.totalsBox}>
+            <View style={s.tRow}>
+              <Text style={s.tLabel}>Subtotal (excl. VAT)</Text>
+              <Text style={s.tVal}>{fmtR(contractTotal)}</Text>
+            </View>
+            <View style={s.tRow}>
+              <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
+              <Text style={s.tVal}>{fmtR(vatAmount)}</Text>
+            </View>
+            <View style={s.tDivider} />
+            <View style={s.tBig}>
+              <Text style={s.tBigLabel}>TOTAL</Text>
+              <Text style={s.tBigVal}>{fmtR(grandTotal)}</Text>
+            </View>
+            {depositPct > 0 && (
+              <>
+                <View style={s.tDivider} />
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Deposit on acceptance ({depositPct}%)</Text>
+                  <Text style={s.tVal}>{fmtR(grandTotal * depositPct / 100)}</Text>
+                </View>
+              </>
+            )}
+            {(quote.retention_percentage ?? 0) > 0 && (
+              <>
+                <View style={s.tDivider} />
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Retention ({quote.retention_percentage}%)</Text>
+                  <Text style={s.tVal}>{fmtR(contractTotal * (quote.retention_percentage / 100))}</Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Bank details */}
+        {(settings?.bank_name || settings?.bank_account_number) && (
+          <View style={s.section}>
+            <Text style={s.secTitle}>BANKING DETAILS</Text>
+            <View style={s.bankRow}>
+              {settings?.bank_name           && <View><Text style={s.bankKey}>Bank</Text><Text style={s.bankVal}>{settings.bank_name}</Text></View>}
+              {settings?.bank_account_number && <View><Text style={s.bankKey}>Account</Text><Text style={s.bankVal}>{settings.bank_account_number}</Text></View>}
+              {settings?.bank_branch_code    && <View><Text style={s.bankKey}>Branch Code</Text><Text style={s.bankVal}>{settings.bank_branch_code}</Text></View>}
+              {settings?.bank_account_type   && <View><Text style={s.bankKey}>Account Type</Text><Text style={s.bankVal}>{settings.bank_account_type}</Text></View>}
             </View>
           </View>
+        )}
 
-          {/* Bank details */}
-          {(settings?.bank_name || settings?.bank_account_number) && (
-            <View style={s.section}>
-              <Text style={s.secTitle}>BANKING DETAILS</Text>
-              <View style={s.bankRow}>
-                {settings?.bank_name           && <View><Text style={s.bankKey}>Bank</Text><Text style={s.bankVal}>{settings.bank_name}</Text></View>}
-                {settings?.bank_account_number && <View><Text style={s.bankKey}>Account</Text><Text style={s.bankVal}>{settings.bank_account_number}</Text></View>}
-                {settings?.bank_branch_code    && <View><Text style={s.bankKey}>Branch Code</Text><Text style={s.bankVal}>{settings.bank_branch_code}</Text></View>}
-                {settings?.bank_account_type   && <View><Text style={s.bankKey}>Account Type</Text><Text style={s.bankVal}>{settings.bank_account_type}</Text></View>}
-              </View>
-            </View>
-          )}
-
-          {/* Notes */}
-          {quote.notes && (
-            <View style={s.section}>
-              <Text style={s.secTitle}>NOTES</Text>
-              <Text style={s.secBody}>{quote.notes}</Text>
-            </View>
-          )}
-
-          {settings?.email_footer_text && (
-            <View style={s.section}>
-              <Text style={s.secBody}>{settings.email_footer_text}</Text>
-            </View>
-          )}
-
-          {/* Footer */}
-          <View style={s.footer} fixed>
-            <Text style={s.footerText}>{companyName}</Text>
-            <Text style={s.footerText}>{quote.quote_number} — {quote.project_name}</Text>
-            <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+        {/* Notes */}
+        {quote.notes && (
+          <View style={s.section}>
+            <Text style={s.secTitle}>NOTES</Text>
+            <Text style={s.secBody}>{quote.notes}</Text>
           </View>
+        )}
 
-        </Page>
-      </Document>
-    </PdfPaletteProvider>
+        {settings?.email_footer_text && (
+          <View style={s.section}>
+            <Text style={s.secBody}>{settings.email_footer_text}</Text>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={s.footer} fixed>
+          <Text style={s.footerText}>{companyName}</Text>
+          <Text style={s.footerText}>{quote.quote_number} — {quote.project_name}</Text>
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+        </View>
+
+      </Page>
+    </Document>
   )
 }

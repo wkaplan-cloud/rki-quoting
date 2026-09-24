@@ -1,4 +1,3 @@
-import { createContext, useContext } from 'react'
 import type { TradeType } from '@/lib/portal-theme'
 
 /**
@@ -8,7 +7,8 @@ import type { TradeType } from '@/lib/portal-theme'
  *
  * Each PDF keeps its stylesheet written in blue and recolours it through
  * recolorStyles(), so the blue files stay readable and unchanged for
- * electricians. Sub-components read the palette from context.
+ * electricians. The palette is passed down as a prop — never React context:
+ * these render on the server, where createContext does not exist.
  */
 export interface PdfPalette {
   accent: string
@@ -59,16 +59,4 @@ export function recolorStyles<T extends object>(styles: T, palette: PdfPalette):
   const out = walk(styles) as T
   byPalette.set(palette, out)
   return out
-}
-
-const PaletteContext = createContext<PdfPalette>(BLUE_PALETTE)
-export const PdfPaletteProvider = PaletteContext.Provider
-
-export function usePdfPalette(): PdfPalette {
-  return useContext(PaletteContext)
-}
-
-/** For a PDF's sub-components: its stylesheet in the document's palette. */
-export function usePdfStyles<T extends object>(styles: T): T {
-  return recolorStyles(styles, useContext(PaletteContext))
 }

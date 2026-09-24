@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import { BLUE_PALETTE, PdfPaletteProvider, recolorStyles, type PdfPalette } from './palette'
+import { BLUE_PALETTE, recolorStyles, type PdfPalette } from './palette'
 import { jobCardTotals } from '@/lib/job-card-totals'
 import type { ElecJobCard, ElecSettings } from '@/lib/elec-types'
 
@@ -129,221 +129,219 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
   const hasCharges = calloutFee > 0 || labourCharge > 0
 
   return (
-    <PdfPaletteProvider value={palette}>
-      <Document>
-        <Page size="A4" style={s.page}>
-          {/* Header */}
-          <View style={s.header}>
-            <View style={{ flex: 1 }}>
-              {logoBase64 ? (
-                <Image src={logoBase64} style={{ width: 120, marginBottom: 6 }} />
-              ) : null}
-              <Text style={s.company}>{companyName}</Text>
-              {settings?.cidb_registration_number && (
-                <Text style={s.companyMeta}>License: {settings.cidb_registration_number}</Text>
+    <Document>
+      <Page size="A4" style={s.page}>
+        {/* Header */}
+        <View style={s.header}>
+          <View style={{ flex: 1 }}>
+            {logoBase64 ? (
+              <Image src={logoBase64} style={{ width: 120, marginBottom: 6 }} />
+            ) : null}
+            <Text style={s.company}>{companyName}</Text>
+            {settings?.cidb_registration_number && (
+              <Text style={s.companyMeta}>License: {settings.cidb_registration_number}</Text>
+            )}
+            {settings?.vat_registration_number && (
+              <Text style={s.companyMeta}>VAT: {settings.vat_registration_number}</Text>
+            )}
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={s.docTitle}>{asInvoice ? 'INVOICE' : 'JOB CARD'}</Text>
+            <Text style={s.docNum}>{jobCard.job_number}</Text>
+            <Text style={[s.statusBadge, { color: statusColor, marginTop: 5 }]}>
+              {jobCard.status.replace('_', ' ').toUpperCase()}
+            </Text>
+            <Text style={s.docMeta}>{TYPE_LABEL[jobCard.job_type] ?? jobCard.job_type}</Text>
+            <Text style={s.docMeta}>Issued: {fmtDate(jobCard.created_at)}</Text>
+          </View>
+        </View>
+
+        <View style={s.divider} />
+
+        {/* Info grid */}
+        <View style={s.infoGrid}>
+          <View style={s.infoBox}>
+            <Text style={s.infoHd}>JOB DETAILS</Text>
+            <Text style={s.infoVal}>{jobCard.title}</Text>
+            {jobCard.location && <Text style={s.infoRow}>{jobCard.location}</Text>}
+            {jobCard.scheduled_at && (
+              <Text style={s.infoRow}>Scheduled: {fmtDate(jobCard.scheduled_at)} at {fmtTime(jobCard.scheduled_at)}</Text>
+            )}
+            {jobCard.started_at && <Text style={s.infoRow}>Started: {fmtDate(jobCard.started_at)}</Text>}
+            {jobCard.completed_at && <Text style={s.infoRow}>Completed: {fmtDate(jobCard.completed_at)}</Text>}
+          </View>
+          <View style={s.infoBox}>
+            <Text style={s.infoHd}>CLIENT</Text>
+            <Text style={s.infoVal}>{clientName ?? '—'}</Text>
+            {clientEmail && <Text style={s.infoRow}>{clientEmail}</Text>}
+          </View>
+          <View style={s.infoBox}>
+            <Text style={s.infoHd}>ASSIGNED TECHNICIAN</Text>
+            <Text style={s.infoVal}>{staffName ?? '—'}</Text>
+            {!Array.isArray(jobCard.staff) && jobCard.staff?.role && (
+              <Text style={s.infoRow}>{jobCard.staff.role.replace('_', ' ')}</Text>
+            )}
+            {!Array.isArray(jobCard.staff) && jobCard.staff?.phone && (
+              <Text style={s.infoRow}>{jobCard.staff.phone}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Work description, with its reference image if one was attached */}
+        {(jobCard.work_description || jobCard.work_description_image_url) && (
+          <View style={{ marginBottom: 12 }} wrap={false}>
+            <Text style={s.secLabel}>Work Description</Text>
+            {jobCard.work_description && (
+              <View style={s.textBox}><Text style={s.textContent}>{jobCard.work_description}</Text></View>
+            )}
+            {jobCard.work_description_image_url && (
+              <View style={{ marginTop: 6, width: '46%' }}>
+                <Image src={jobCard.work_description_image_url} style={s.photoImg} />
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Findings + Work Done + Resolution */}
+        {(jobCard.work_found || jobCard.work_done || jobCard.resolution) && (
+          <View>
+            <Text style={s.secLabel}>Field Report</Text>
+            <View style={s.infoGrid}>
+              {jobCard.work_found && (
+                <View style={s.infoBox}>
+                  <Text style={s.infoHd}>WHAT WAS FOUND</Text>
+                  <Text style={s.textContent}>{jobCard.work_found}</Text>
+                </View>
               )}
-              {settings?.vat_registration_number && (
-                <Text style={s.companyMeta}>VAT: {settings.vat_registration_number}</Text>
+              {jobCard.work_done && (
+                <View style={s.infoBox}>
+                  <Text style={s.infoHd}>WORK COMPLETED</Text>
+                  <Text style={s.textContent}>{jobCard.work_done}</Text>
+                </View>
               )}
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.docTitle}>{asInvoice ? 'INVOICE' : 'JOB CARD'}</Text>
-              <Text style={s.docNum}>{jobCard.job_number}</Text>
-              <Text style={[s.statusBadge, { color: statusColor, marginTop: 5 }]}>
-                {jobCard.status.replace('_', ' ').toUpperCase()}
-              </Text>
-              <Text style={s.docMeta}>{TYPE_LABEL[jobCard.job_type] ?? jobCard.job_type}</Text>
-              <Text style={s.docMeta}>Issued: {fmtDate(jobCard.created_at)}</Text>
+              {jobCard.resolution && (
+                <View style={s.infoBox}>
+                  <Text style={s.infoHd}>RESOLUTION</Text>
+                  <Text style={s.textContent}>{jobCard.resolution}</Text>
+                </View>
+              )}
             </View>
           </View>
+        )}
 
-          <View style={s.divider} />
-
-          {/* Info grid */}
-          <View style={s.infoGrid}>
-            <View style={s.infoBox}>
-              <Text style={s.infoHd}>JOB DETAILS</Text>
-              <Text style={s.infoVal}>{jobCard.title}</Text>
-              {jobCard.location && <Text style={s.infoRow}>{jobCard.location}</Text>}
-              {jobCard.scheduled_at && (
-                <Text style={s.infoRow}>Scheduled: {fmtDate(jobCard.scheduled_at)} at {fmtTime(jobCard.scheduled_at)}</Text>
-              )}
-              {jobCard.started_at && <Text style={s.infoRow}>Started: {fmtDate(jobCard.started_at)}</Text>}
-              {jobCard.completed_at && <Text style={s.infoRow}>Completed: {fmtDate(jobCard.completed_at)}</Text>}
+        {/* Materials + Charges. No bottom margin: react-pdf counts a block's
+            bottom margin as part of its height when deciding whether it fits the
+            page, so a long items table would be pushed whole onto the next page
+            instead of splitting at a row. The sections below carry the gap. */}
+        {!hideItems && (materials.length > 0 || hasCharges) && (
+          <View>
+            <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials & Charges'}</Text>
+            <View style={s.tableHead}>
+              <Text style={[s.tableHdTxt, { flex: 3 }]}>Description</Text>
+              <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Qty</Text>
+              <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Unit Price</Text>
+              <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Amount</Text>
             </View>
-            <View style={s.infoBox}>
-              <Text style={s.infoHd}>CLIENT</Text>
-              <Text style={s.infoVal}>{clientName ?? '—'}</Text>
-              {clientEmail && <Text style={s.infoRow}>{clientEmail}</Text>}
-            </View>
-            <View style={s.infoBox}>
-              <Text style={s.infoHd}>ASSIGNED TECHNICIAN</Text>
-              <Text style={s.infoVal}>{staffName ?? '—'}</Text>
-              {!Array.isArray(jobCard.staff) && jobCard.staff?.role && (
-                <Text style={s.infoRow}>{jobCard.staff.role.replace('_', ' ')}</Text>
-              )}
-              {!Array.isArray(jobCard.staff) && jobCard.staff?.phone && (
-                <Text style={s.infoRow}>{jobCard.staff.phone}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Work description, with its reference image if one was attached */}
-          {(jobCard.work_description || jobCard.work_description_image_url) && (
-            <View style={{ marginBottom: 12 }} wrap={false}>
-              <Text style={s.secLabel}>Work Description</Text>
-              {jobCard.work_description && (
-                <View style={s.textBox}><Text style={s.textContent}>{jobCard.work_description}</Text></View>
-              )}
-              {jobCard.work_description_image_url && (
-                <View style={{ marginTop: 6, width: '46%' }}>
-                  <Image src={jobCard.work_description_image_url} style={s.photoImg} />
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Findings + Work Done + Resolution */}
-          {(jobCard.work_found || jobCard.work_done || jobCard.resolution) && (
-            <View>
-              <Text style={s.secLabel}>Field Report</Text>
-              <View style={s.infoGrid}>
-                {jobCard.work_found && (
-                  <View style={s.infoBox}>
-                    <Text style={s.infoHd}>WHAT WAS FOUND</Text>
-                    <Text style={s.textContent}>{jobCard.work_found}</Text>
-                  </View>
-                )}
-                {jobCard.work_done && (
-                  <View style={s.infoBox}>
-                    <Text style={s.infoHd}>WORK COMPLETED</Text>
-                    <Text style={s.textContent}>{jobCard.work_done}</Text>
-                  </View>
-                )}
-                {jobCard.resolution && (
-                  <View style={s.infoBox}>
-                    <Text style={s.infoHd}>RESOLUTION</Text>
-                    <Text style={s.textContent}>{jobCard.resolution}</Text>
-                  </View>
-                )}
+            {/* Call-out fee */}
+            {calloutFee > 0 && (
+              <View style={s.tableRow}>
+                <Text style={[s.tableCell, { flex: 3 }]}>Call-out Fee</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>1</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(calloutFee)}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(calloutFee)}</Text>
               </View>
-            </View>
-          )}
-
-          {/* Materials + Charges. No bottom margin: react-pdf counts a block's
-              bottom margin as part of its height when deciding whether it fits the
-              page, so a long items table would be pushed whole onto the next page
-              instead of splitting at a row. The sections below carry the gap. */}
-          {!hideItems && (materials.length > 0 || hasCharges) && (
-            <View>
-              <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials & Charges'}</Text>
-              <View style={s.tableHead}>
-                <Text style={[s.tableHdTxt, { flex: 3 }]}>Description</Text>
-                <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Qty</Text>
-                <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Unit Price</Text>
-                <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Amount</Text>
-              </View>
-              {/* Call-out fee */}
-              {calloutFee > 0 && (
-                <View style={s.tableRow}>
-                  <Text style={[s.tableCell, { flex: 3 }]}>Call-out Fee</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>1</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(calloutFee)}</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(calloutFee)}</Text>
-                </View>
-              )}
-              {/* Labour */}
-              {labourCharge > 0 && (
-                <View style={s.tableRow}>
-                  <Text style={[s.tableCell, { flex: 3 }]}>
-                    Labour{jobCard.labour_hours != null && jobCard.labour_rate != null
-                      ? ` (${jobCard.labour_hours}h × R${jobCard.labour_rate}/hr)`
-                      : ''}
-                  </Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{jobCard.labour_hours ?? 1}</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(jobCard.labour_rate)}</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(labourCharge)}</Text>
-                </View>
-              )}
-              {/* Materials */}
-              {materials.map(m => (
-                <View key={m.id} style={s.tableRow}>
-                  <Text style={[s.tableCell, { flex: 3 }]}>{m.description}</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{m.qty}</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price)}</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price != null ? m.qty * m.unit_price : null)}</Text>
-                </View>
-              ))}
-              {/* Staff capture materials without pricing — don't show the client a R 0,00 total */}
-              {totalExclVat > 0 && (
-              <View>
-                <View style={[s.totalRow, { marginTop: 2 }]}>
-                  <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>Subtotal (excl. VAT)</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(totalExclVat)}</Text>
-                </View>
-                <View style={[s.totalRow, { marginTop: 1 }]}>
-                  <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>VAT ({vatRate}%)</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(vatAmt)}</Text>
-                </View>
-                <View style={[s.totalRow, { marginTop: 1, backgroundColor: palette.accent }]}>
-                  <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>TOTAL (incl. VAT)</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>{fmtCurrency(totalInclVat)}</Text>
-                </View>
-              </View>
-              )}
-            </View>
-          )}
-
-          {/* Photos */}
-          {photos.length > 0 && (
-            <View style={{ marginTop: 14 }} wrap={false}>
-              <Text style={s.secLabel}>Site Photos</Text>
-              <View style={s.photoGrid}>
-                {photos.slice(0, 9).map(p => (
-                  <View key={p.id} style={s.photoBox}>
-                    <Image src={p.url} style={s.photoImg} />
-                    {p.caption && <Text style={s.photoCaption}>{p.caption}</Text>}
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Quote approved — the client agreeing to the work before it started */}
-          {jobCard.approved_at && (
-            <View style={{ marginTop: 14 }} wrap={false}>
-              <Text style={s.secLabel}>Quote Approved</Text>
-              <View style={s.sigBox}>
-                {jobCard.approval_signature_url && <Image src={jobCard.approval_signature_url} style={s.sigImg} />}
-                <Text style={s.sigLabel}>
-                  {jobCard.approved_by ?? clientName ?? 'Client'} — {fmtDate(jobCard.approved_at)}
-                  {jobCard.approval_method && jobCard.approval_method !== 'signature'
-                    ? ` — approved ${APPROVAL_METHOD[jobCard.approval_method] ?? jobCard.approval_method}`
+            )}
+            {/* Labour */}
+            {labourCharge > 0 && (
+              <View style={s.tableRow}>
+                <Text style={[s.tableCell, { flex: 3 }]}>
+                  Labour{jobCard.labour_hours != null && jobCard.labour_rate != null
+                    ? ` (${jobCard.labour_hours}h × R${jobCard.labour_rate}/hr)`
                     : ''}
                 </Text>
-                {jobCard.approval_note ? <Text style={s.sigLabel}>{jobCard.approval_note}</Text> : null}
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{jobCard.labour_hours ?? 1}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(jobCard.labour_rate)}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(labourCharge)}</Text>
+              </View>
+            )}
+            {/* Materials */}
+            {materials.map(m => (
+              <View key={m.id} style={s.tableRow}>
+                <Text style={[s.tableCell, { flex: 3 }]}>{m.description}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{m.qty}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price)}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price != null ? m.qty * m.unit_price : null)}</Text>
+              </View>
+            ))}
+            {/* Staff capture materials without pricing — don't show the client a R 0,00 total */}
+            {totalExclVat > 0 && (
+            <View>
+              <View style={[s.totalRow, { marginTop: 2 }]}>
+                <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>Subtotal (excl. VAT)</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(totalExclVat)}</Text>
+              </View>
+              <View style={[s.totalRow, { marginTop: 1 }]}>
+                <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>VAT ({vatRate}%)</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(vatAmt)}</Text>
+              </View>
+              <View style={[s.totalRow, { marginTop: 1, backgroundColor: palette.accent }]}>
+                <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>TOTAL (incl. VAT)</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>{fmtCurrency(totalInclVat)}</Text>
               </View>
             </View>
-          )}
-
-          {/* Work signed off — the client confirming it was done */}
-          {jobCard.client_signature_url && (
-            <View style={{ marginTop: 14 }} wrap={false}>
-              <Text style={s.secLabel}>Work Signed Off</Text>
-              <View style={s.sigBox}>
-                <Image src={jobCard.client_signature_url} style={s.sigImg} />
-                <Text style={s.sigLabel}>{signatureName ?? clientName ?? 'Client'} — {fmtDate(jobCard.completed_at ?? jobCard.created_at)}</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Footer */}
-          <View style={s.footer} fixed>
-            <Text style={s.footerTxt}>{companyName} · {jobCard.job_number}</Text>
-            <Text style={s.footerTxt}>Generated via QuotingHub</Text>
+            )}
           </View>
-        </Page>
-      </Document>
-    </PdfPaletteProvider>
+        )}
+
+        {/* Photos */}
+        {photos.length > 0 && (
+          <View style={{ marginTop: 14 }} wrap={false}>
+            <Text style={s.secLabel}>Site Photos</Text>
+            <View style={s.photoGrid}>
+              {photos.slice(0, 9).map(p => (
+                <View key={p.id} style={s.photoBox}>
+                  <Image src={p.url} style={s.photoImg} />
+                  {p.caption && <Text style={s.photoCaption}>{p.caption}</Text>}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Quote approved — the client agreeing to the work before it started */}
+        {jobCard.approved_at && (
+          <View style={{ marginTop: 14 }} wrap={false}>
+            <Text style={s.secLabel}>Quote Approved</Text>
+            <View style={s.sigBox}>
+              {jobCard.approval_signature_url && <Image src={jobCard.approval_signature_url} style={s.sigImg} />}
+              <Text style={s.sigLabel}>
+                {jobCard.approved_by ?? clientName ?? 'Client'} — {fmtDate(jobCard.approved_at)}
+                {jobCard.approval_method && jobCard.approval_method !== 'signature'
+                  ? ` — approved ${APPROVAL_METHOD[jobCard.approval_method] ?? jobCard.approval_method}`
+                  : ''}
+              </Text>
+              {jobCard.approval_note ? <Text style={s.sigLabel}>{jobCard.approval_note}</Text> : null}
+            </View>
+          </View>
+        )}
+
+        {/* Work signed off — the client confirming it was done */}
+        {jobCard.client_signature_url && (
+          <View style={{ marginTop: 14 }} wrap={false}>
+            <Text style={s.secLabel}>Work Signed Off</Text>
+            <View style={s.sigBox}>
+              <Image src={jobCard.client_signature_url} style={s.sigImg} />
+              <Text style={s.sigLabel}>{signatureName ?? clientName ?? 'Client'} — {fmtDate(jobCard.completed_at ?? jobCard.created_at)}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={s.footer} fixed>
+          <Text style={s.footerTxt}>{companyName} · {jobCard.job_number}</Text>
+          <Text style={s.footerTxt}>Generated via QuotingHub</Text>
+        </View>
+      </Page>
+    </Document>
   )
 }
