@@ -22,6 +22,7 @@ export interface ElecSettings {
   default_retention_percentage: number
   default_payment_terms_days: number
   default_defects_liability_days: number
+  default_deposit_percentage?: number | null
   company_code: string | null
   quote_prefix: string
   claim_prefix: string
@@ -172,6 +173,10 @@ export interface ElecItemLibrary {
   default_material_rate: number | null
   default_markup_percent: number | null
   category: string | null
+  /** Distributor code — the match key when a price list is re-imported. */
+  sku?: string | null
+  brand?: string | null
+  supplier_name?: string | null
   usage_count: number
   created_at: string
   updated_at: string
@@ -224,6 +229,8 @@ export interface ElecQuote {
   practical_completion_date: string | null
   archived_at: string | null
   invoiced: boolean | null
+  /** % of the contract invoiced as a deposit when the quote is accepted. */
+  deposit_percentage?: number | null
   is_quick_job: boolean | null
   source_job_card_id: string | null
   share_token: string | null
@@ -292,6 +299,10 @@ export interface ElecQuoteLineItem {
   // Variation
   variation_order_id: string | null
   is_variation: boolean
+  /** Priced on the quote but outside its total until the client takes it. */
+  is_optional?: boolean
+  /** Whether the client (or the office, on their behalf) has taken this optional line. */
+  optional_selected?: boolean
   sort_order: number
   created_at: string
 }
@@ -559,7 +570,10 @@ export interface ElecSnagItem {
 
 // ─── Staff ────────────────────────────────────────────────────────────────────
 
-export type ElecStaffRole = 'electrician' | 'apprentice' | 'site_foreman' | 'helper' | 'admin'
+export type ElecStaffRole =
+  | 'electrician' | 'apprentice' | 'site_foreman' | 'helper' | 'admin'
+  // installer trades
+  | 'technician' | 'programmer' | 'installer' | 'project_manager'
 
 export interface ElecStaff {
   id: string
@@ -788,4 +802,29 @@ export interface ElecMaterialRequest {
   job_card?: { id: string; job_number: string; title: string } | null
   quote?: { id: string; quote_number: string; project_name: string } | null
   line_item?: { id: string; description: string } | null
+}
+
+// ─── Kits (installer trades) ─────────────────────────────────────────────────
+
+export interface ElecKitItem {
+  id: string
+  kit_id: string
+  description: string
+  unit: string
+  quantity: number
+  cost_unit_rate: number | null
+  markup_percentage: number | null
+  quoted_unit_rate: number
+  labour_rate: number | null
+  sort_order: number
+}
+
+export interface ElecKit {
+  id: string
+  portal_account_id: string
+  name: string
+  description: string | null
+  created_at: string
+  updated_at: string
+  items: ElecKitItem[]
 }

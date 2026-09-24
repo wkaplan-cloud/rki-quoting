@@ -21,7 +21,7 @@ function fmtElapsed(seconds: number) {
 }
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -587,7 +587,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
           {/* What the office sent him to do. Read-only — his own report is below. */}
           {(card.work_description || scopeLines.length > 0) && (
             <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <div className="px-4 py-3 flex items-center gap-2" style={{ background: 'rgba(58,124,165,0.05)', borderBottom: `1px solid ${S.border}` }}>
+              <div className="px-4 py-3 flex items-center gap-2" style={{ background: 'rgba(var(--qh-accent-rgb),0.05)', borderBottom: `1px solid ${S.border}` }}>
                 <ClipboardList size={14} style={{ color: S.accent }} />
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.accent }}>The Job</span>
               </div>
@@ -653,13 +653,13 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                   <ShoppingCart size={14} style={{ color: S.accent }} />
                   <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.accent }}>Need to Order</span>
                   {matOrders.length > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(58,124,165,0.12)', color: S.accent }}>{matOrders.length}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(var(--qh-accent-rgb),0.12)', color: S.accent }}>{matOrders.length}</span>
                   )}
                 </div>
                 {!showAddOrder && (
                   <button onClick={() => setShowAddOrder(true)}
                     className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
-                    style={{ color: S.accent, border: `1px solid rgba(58,124,165,0.3)` }}>
+                    style={{ color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.3)` }}>
                     <Plus size={11} /> Request
                   </button>
                 )}
@@ -672,7 +672,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
               )}
 
               {matOrders.map((o, i) => {
-                const statusColor = o.status === 'received' ? S.green : o.status === 'ordered' ? S.accent : S.gold
+                const statusColor = o.status === 'received' ? S.green : o.status === 'ordered' ? '#3A7CA5' : S.gold
                 const statusLabel = o.status === 'received' ? 'Received' : o.status === 'ordered' ? 'Ordered' : 'Pending'
                 return (
                   <div key={o.id} className="flex items-start gap-3 px-4 py-3"

@@ -2,7 +2,8 @@ import Image from 'next/image'
 
 const THEMES = {
   studio: { bg: '#F5F2EC', text: '#9A7B4F', spinner: '#9A7B4F' },
-  elec:   { bg: '#F5F7F9', text: '#3A7CA5', spinner: '#3A7CA5' },
+  // The trades portal shell sets --qh-accent per trade (blue, or green for installers).
+  elec:   { bg: '#F5F7F9', text: 'var(--qh-accent)', spinner: 'var(--qh-accent)' },
 }
 
 export function LoadingScreen({ variant = 'studio' }: { variant?: 'studio' | 'elec' }) {

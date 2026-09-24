@@ -9,13 +9,14 @@ import {
 } from 'lucide-react'
 import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecJob } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
+import { useStaffTrade } from './StaffTradeContext'
 import { OfflineSyncBanner } from './OfflineSyncBanner'
 import { ClientPicker, type ClientItem } from './ClientPicker'
 import { enqueue, pendingCount } from '@/lib/offline-punch-queue'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', sidebar: '#1E2A38',
-  accent: '#3A7CA5', gold: '#D9A441',
+  accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -73,6 +74,8 @@ interface Props {
 export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects, scheduledToday = [], recentlyCompleted = [], initialTab = 'home' }: Props) {
   const router = useRouter()
   const supabase = createClient()
+  const isInstaller = useStaffTrade() === 'installer'
+  const jobTypes = isInstaller ? JOB_TYPES.filter(t => t.value !== 'coc') : JOB_TYPES
 
   const [tab, setTab] = useState<Tab>(initialTab)
   const [punches, setPunches] = useState<ElecTimePunch[]>(initialPunches)
@@ -488,7 +491,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
             {/* GPS permission banners */}
             {gpsPermState === 'unknown' && (
               <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ background: 'rgba(58,124,165,0.06)', border: `1px solid rgba(58,124,165,0.2)` }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.06)', border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
                 <MapPin size={16} className="flex-shrink-0" style={{ color: S.accent }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold" style={{ color: S.text }}>Enable GPS location</p>
@@ -573,7 +576,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
             {/* Enable notifications banner — shown once until granted */}
             {notifState === 'unknown' && (
               <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ background: 'rgba(58,124,165,0.06)', border: `1px solid rgba(58,124,165,0.2)` }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.06)', border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
                 <Bell size={16} className="flex-shrink-0" style={{ color: S.accent }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold" style={{ color: S.text }}>Enable clock-in reminders</p>
@@ -670,7 +673,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                     const body = (
                       <>
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'rgba(58,124,165,0.1)' }}>
+                          style={{ background: 'rgba(var(--qh-accent-rgb),0.1)' }}>
                           <Calendar size={16} style={{ color: S.accent }} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -811,7 +814,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                       className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
                       style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative"
-                        style={{ background: isClockedIn ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.1)' }}>
+                        style={{ background: isClockedIn ? 'rgba(22,163,74,0.1)' : 'rgba(var(--qh-accent-rgb),0.1)' }}>
                         <FolderOpen size={16} style={{ color: isClockedIn ? S.green : S.accent }} />
                         {isClockedIn && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: S.green }} />}
                       </div>
@@ -882,7 +885,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         )}
 
         {/* ── INSPECT TAB ── */}
-        {tab === 'inspect' && (
+        {tab === 'inspect' && !isInstaller && (
           <div className="px-4 pt-4">
             {(() => {
               const inspections = jobCards.filter(j => j.job_type === 'coc')
@@ -966,7 +969,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Type</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {JOB_TYPES.map(t => (
+                  {jobTypes.map(t => (
                     <button key={t.value} onClick={() => setNewType(t.value)}
                       className="py-2.5 rounded-xl text-sm font-semibold"
                       style={{

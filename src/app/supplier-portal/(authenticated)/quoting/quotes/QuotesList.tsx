@@ -6,13 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 import type { ElecQuote, ElecClient, ElecQuoteStatus } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
 }
 
 const STATUS_CONFIG: Record<ElecQuoteStatus, { label: string; bg: string; color: string }> = {
   draft:       { label: 'Draft',       bg: '#F4F4F5',              color: '#71717A' },
-  quoted:      { label: 'Quoted',      bg: 'rgba(58,124,165,0.1)', color: '#3A7CA5' },
+  quoted:      { label: 'Quoted',      bg: 'rgba(var(--qh-accent-rgb),0.1)', color: '#3A7CA5' },
   approved:    { label: 'Approved',    bg: 'rgba(22,163,74,0.1)',  color: '#16A34A' },
   in_progress: { label: 'In Progress', bg: 'rgba(217,164,65,0.1)', color: '#D9A441' },
   completed:   { label: 'Completed',   bg: 'rgba(22,101,52,0.1)',  color: '#166534' },
@@ -99,7 +99,7 @@ function ClientCombobox({ clients, value, onChange }: {
               onMouseEnter={e => e.currentTarget.style.background = S.bg}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                 {c.client_name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
@@ -530,7 +530,7 @@ export function QuotesList({ initialQuotes, initialArchivedQuotes, clients }: Pr
                       onClick={() => unarchive(q.id)}
                       disabled={unarchiving === q.id || deletingId === q.id}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-opacity hover:opacity-75"
-                      style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                      style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent }}>
                       <RotateCcw size={11} />
                       {unarchiving === q.id ? 'Restoring…' : 'Unarchive'}
                     </button>

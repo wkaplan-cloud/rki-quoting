@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
 import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2, ChevronRight, Zap, Receipt } from 'lucide-react'
 import type { PortalOrgMember, ElecSettings } from '@/lib/elec-types'
+import type { TradeType } from '@/lib/portal-theme'
 import { SettingsClient } from '../quoting/settings/SettingsClient'
 import { PLANS, planRank } from '@/lib/plan-features'
 
@@ -31,6 +32,7 @@ interface Props {
     logo_url: string | null
   }
   elecSettings: ElecSettings | null
+  tradeType?: TradeType
   categoryOptions: string[]
   orgMembers: PortalOrgMember[] | null
 }
@@ -51,7 +53,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufacturer = false, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufacturer = false, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers, tradeType = 'electrician' }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'settings'>(initialTab)
@@ -296,7 +298,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufactu
       </div>
 
       {tab === 'settings' && !isManufacturer ? (
-        <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} justUpgraded={justUpgraded} />
+        <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} justUpgraded={justUpgraded} tradeType={tradeType} />
       ) : (
       <>
 

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { SupplierPortalNav } from './SupplierPortalNav'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
 import { useNow } from '@/lib/useNow'
+import { themeVars, type TradeType } from '@/lib/portal-theme'
 
 interface Props {
   children: React.ReactNode
@@ -16,9 +17,11 @@ interface Props {
   receivePriceRequests?: boolean
   /** Off when this org does not use the Projects section. */
   projectsEnabled?: boolean
+  /** Picks the portal colours and trade-specific sections. */
+  tradeType?: TradeType
 }
 
-export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0, accountCreatedAt, receivePriceRequests = false, projectsEnabled = true }: Props) {
+export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0, accountCreatedAt, receivePriceRequests = false, projectsEnabled = true, tradeType = 'electrician' }: Props) {
   const now = useNow()
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [notificationCount, setNotificationCount] = useState(0)
@@ -74,7 +77,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
   }, 30_000)
 
   return (
-    <div className="supplier-portal-root flex min-h-screen" style={{ background: '#F5F7F9' }}>
+    <div className="supplier-portal-root flex min-h-screen" style={{ background: '#F5F7F9', ...themeVars(tradeType) }}>
       {/* Hidden notification sound */}
       <audio ref={audioRef} preload="auto" playsInline>
         <source src="/notification.wav" type="audio/wav" />
@@ -90,6 +93,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
         desktopExpanded={desktopExpanded}
         receivePriceRequests={receivePriceRequests}
         projectsEnabled={projectsEnabled}
+        tradeType={tradeType}
         onDesktopToggle={() => setDesktopExpanded(e => {
           const next = !e
           localStorage.setItem('supplier-sidebar-expanded', String(next))

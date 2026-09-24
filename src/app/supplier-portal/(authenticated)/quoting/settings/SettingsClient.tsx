@@ -3,11 +3,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Zap, Link2, Link2Off, ArrowUpRight, Loader2 } from 'lucide-react'
 import type { ElecSettings } from '@/lib/elec-types'
+import type { TradeType } from '@/lib/portal-theme'
 
 const S = {
   bg:     '#F0F2F5',
   card:   '#FFFFFF',
-  accent: '#3A7CA5',
+  accent: 'var(--qh-accent)',
   text:   '#18181B',
   muted:  '#71717A',
   border: '#E4E4E7',
@@ -23,6 +24,7 @@ interface Props {
   companyName: string
   settings: ElecSettings | null
   justUpgraded?: boolean
+  tradeType?: TradeType
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -79,7 +81,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export function SettingsClient({ portalAccountId: _portalAccountId, companyName, settings, justUpgraded = false }: Props) {
+export function SettingsClient({ portalAccountId: _portalAccountId, companyName, settings, justUpgraded = false, tradeType = 'electrician' }: Props) {
+  const isInstaller = tradeType === 'installer'
   const supabase = createClient() // still used for Sage connect/disconnect
 
   // Defaults
@@ -87,6 +90,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
   const [retention, setRetention]           = useState(String(settings?.default_retention_percentage ?? 0))
   const [paymentTerms, setPaymentTerms]     = useState(String(settings?.default_payment_terms_days ?? 30))
   const [defectsLiability, setDefectsLiability] = useState(String(settings?.default_defects_liability_days ?? 90))
+  const [deposit, setDeposit]               = useState(String(settings?.default_deposit_percentage ?? 0))
 
   // Company code + prefixes
   const [companyCodeVal, setCompanyCodeVal] = useState(settings?.company_code ?? '')
@@ -168,6 +172,8 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
         default_retention_percentage:   retention.trim() !== '' ? parseFloat(retention) : 0,
         default_payment_terms_days:     paymentTerms.trim() !== '' ? parseInt(paymentTerms) : 30,
         default_defects_liability_days: defectsLiability.trim() !== '' ? parseInt(defectsLiability) : 90,
+        // Installer-only column; never named for an electrician's save.
+        ...(isInstaller ? { default_deposit_percentage: deposit.trim() !== '' ? parseFloat(deposit) : 0 } : {}),
         quote_prefix:                   quotePrefix.trim() || 'QU',
         claim_prefix:                   claimPrefix.trim() || 'CLM',
         vo_prefix:                      voPrefix.trim() || 'VO',
@@ -183,7 +189,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     setSaving(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled])
+  }, [companyName, isInstaller, vatRate, retention, paymentTerms, defectsLiability, deposit, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled])
 
   // Auto-save on any field change — 1.5s debounce, skip on first render
   useEffect(() => {
@@ -191,14 +197,14 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled, handleSave])
+  }, [vatRate, retention, paymentTerms, defectsLiability, deposit, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled, handleSave])
 
   return (
     <div className="space-y-6">
 
         {/* Upgrade success banner */}
         {justUpgraded && (
-          <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: 'rgba(58,124,165,0.1)', border: `1px solid rgba(58,124,165,0.25)` }}>
+          <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', border: `1px solid rgba(var(--qh-accent-rgb),0.25)` }}>
             <Zap size={16} style={{ color: S.accent, flexShrink: 0 }} />
             <div>
               <p className="text-sm font-semibold" style={{ color: S.accent }}>You&apos;re now on the Quoting plan</p>
@@ -223,6 +229,11 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
             <Field label="Defects Liability (days)" hint="Standard = 90 days after practical completion">
               <NumberInput value={defectsLiability} onChange={setDefectsLiability} placeholder="90" min={1} />
             </Field>
+            {isInstaller && (
+              <Field label="Deposit on Acceptance (%)" hint="Raised as a draft claim when the client accepts. 0 = no deposit">
+                <NumberInput value={deposit} onChange={setDeposit} min={0} />
+              </Field>
+            )}
           </div>
         </Section>
 
@@ -251,7 +262,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-4">
+                <div className={`grid ${isInstaller ? 'grid-cols-3' : 'grid-cols-4'} gap-4`}>
                   <Field label="Quotes">
                     <Input value={quotePrefix} onChange={setQuotePrefix} placeholder="EQ" />
                   </Field>
@@ -261,9 +272,11 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
                   <Field label="Var. Orders">
                     <Input value={voPrefix} onChange={setVoPrefix} placeholder="VO" />
                   </Field>
-                  <Field label="COC">
-                    <Input value={cocPrefix} onChange={setCocPrefix} placeholder="COC" />
-                  </Field>
+                  {!isInstaller && (
+                    <Field label="COC">
+                      <Input value={cocPrefix} onChange={setCocPrefix} placeholder="COC" />
+                    </Field>
+                  )}
                 </div>
               </>
             )

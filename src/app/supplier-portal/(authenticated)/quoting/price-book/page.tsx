@@ -5,6 +5,8 @@ import { resolvePortalAccount } from '@/lib/portal-account'
 import { isActivePlan, planRank } from '@/lib/plan-features'
 import { PriceBookClient } from './PriceBookClient'
 import type { ElecItemLibrary } from '@/lib/elec-types'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
+import { getTradeType } from '@/lib/trade-type'
 
 export default async function PriceBookPage() {
   const supabase = await createClient()
@@ -19,17 +21,25 @@ export default async function PriceBookPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  const { data: items } = await supabaseAdmin
-    .from('elec_item_library')
-    .select('*')
-    .eq('portal_account_id', account.id)
-    .order('category', { ascending: true, nullsFirst: false })
-    .order('description', { ascending: true })
+  // Paged: an imported distributor list easily runs past PostgREST's
+  // silent 1000-row cap.
+  const [{ rows: items }, tradeType] = await Promise.all([
+    fetchAllRows<ElecItemLibrary>((from, to) => supabaseAdmin
+      .from('elec_item_library')
+      .select('*')
+      .eq('portal_account_id', account.id)
+      .order('category', { ascending: true, nullsFirst: false })
+      .order('description', { ascending: true })
+      .order('id')
+      .range(from, to)),
+    getTradeType(account.id),
+  ])
 
   return (
     <PriceBookClient
       portalAccountId={account.id}
-      initialItems={(items ?? []) as ElecItemLibrary[]}
+      initialItems={items}
+      tradeType={tradeType}
     />
   )
 }

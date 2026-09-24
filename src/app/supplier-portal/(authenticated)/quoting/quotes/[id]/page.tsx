@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { QuoteEditor } from './QuoteEditor'
+import { getTradeType } from '@/lib/trade-type'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem, ElecStaff } from '@/lib/elec-types'
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,6 +27,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
     { data: claims },
     { data: settings },
     { data: staff },
+    tradeType,
   ] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
@@ -81,6 +83,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .eq('portal_account_id', account.id)
       .eq('is_active', true)
       .order('name'),
+    getTradeType(account.id),
   ])
 
   const autoCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
@@ -135,6 +138,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       companyCode={companyCode}
       sageConnected={!!(settings?.sage_company_id)}
       extrasContext={extrasContext}
+      tradeType={tradeType}
     />
   )
 }

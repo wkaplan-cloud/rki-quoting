@@ -5,7 +5,7 @@ import { Upload, FileText, Loader2, X, Download } from 'lucide-react'
 import { uniqueUploadPathNamed } from '@/lib/upload-path'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }

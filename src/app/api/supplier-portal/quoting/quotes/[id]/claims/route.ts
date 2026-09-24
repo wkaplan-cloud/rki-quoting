@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { nextClaimNumber } from '@/lib/elec-claim-number'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -40,25 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       variation_order_id?: string | null
     }
 
-    // Auto-number: count all claims for this account
-    const { data: settings } = await supabaseAdmin
-      .from('elec_settings')
-      .select('company_code, claim_prefix')
-      .eq('portal_account_id', account.id)
-      .maybeSingle()
-
-    const autoCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
-    const companyCode = (settings?.company_code ?? '').trim() || autoCode
-    const prefix = settings?.claim_prefix ?? 'CLM'
-    const year = new Date().getFullYear()
-
-    const { count } = await supabaseAdmin
-      .from('elec_claims')
-      .select('id', { count: 'exact', head: true })
-      .eq('portal_account_id', account.id)
-
-    const num = String((count ?? 0) + 1).padStart(3, '0')
-    const claimNumber = companyCode ? `${companyCode}-${prefix}-${year}-${num}` : `${prefix}-${year}-${num}`
+    const claimNumber = await nextClaimNumber(account.id, account.company_name)
 
     const totalClaimed = body.claim_type === 'retention'
       ? (body.retention_amount ?? 0)

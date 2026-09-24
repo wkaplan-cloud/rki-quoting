@@ -6,11 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
-  MoreHorizontal, Archive, Lock, Printer, Copy, Wrench,
+  MoreHorizontal, Archive, Lock, Printer, Copy, Wrench, Package, ListPlus,
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem, ElecStaff } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem, ElecStaff, ElecKit } from '@/lib/elec-types'
+import { tradeUnits, type TradeType } from '@/lib/portal-theme'
+import { countsInQuoteTotal, isOpenOptional } from '@/lib/quote-options'
+import { AddKitModal } from './AddKitModal'
 import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
 import { SnagTab } from './SnagTab'
@@ -22,14 +25,14 @@ import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
 
 const STATUS_CONFIG: Record<ElecQuoteStatus, { label: string; color: string; bg: string }> = {
   draft:       { label: 'Draft',       color: '#71717A', bg: '#F4F4F5' },
-  quoted:      { label: 'Quoted',      color: '#3A7CA5', bg: 'rgba(58,124,165,0.1)' },
+  quoted:      { label: 'Quoted',      color: '#3A7CA5', bg: 'rgba(var(--qh-accent-rgb),0.1)' },
   approved:    { label: 'Approved',    color: '#16A34A', bg: 'rgba(22,163,74,0.1)' },
   in_progress: { label: 'In Progress', color: '#D9A441', bg: 'rgba(217,164,65,0.1)' },
   completed:   { label: 'Completed',   color: '#166534', bg: 'rgba(22,101,52,0.1)' },
@@ -50,8 +53,6 @@ const CONTRACT_TYPES = [
   { value: 'cost_plus',      label: 'Cost Plus' },
 ]
 
-const UNITS = ['nr', 'm']
-
 type ItemState  = Omit<ElecQuoteLineItem, 'created_at'> & { _expanded?: boolean }
 type SectionState = Omit<ElecQuoteSection, 'created_at' | 'line_items'> & { items: ItemState[] }
 
@@ -62,6 +63,7 @@ function newItem(quoteId: string, sectionId: string | null, sortOrder: number): 
     subcontractor_name: null, quoted_quantity: 1, quoted_unit_rate: 0,
     labour_rate: null, material_rate: null, cost_unit_rate: null, markup_percentage: null,
     as_built_quantity: null, as_built_unit_rate: null, variation_order_id: null, is_variation: false,
+    is_optional: false, optional_selected: false,
     sort_order: sortOrder, _expanded: false,
   }
 }
@@ -91,9 +93,11 @@ function fmtR(n: number) {
 // ─── Description autocomplete ─────────────────────────────────────────────────
 interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_cost_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null; category: string | null; default_markup_percent: number | null }
 
-function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }: {
+function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked, installer = false }: {
   value: string; onChange: (v: string) => void
   onSelect: (s: Suggestion) => void; portalAccountId: string; locked?: boolean
+  /** Installer catalogues are searched by SKU and brand as well as description. */
+  installer?: boolean
 }) {
   const supabase = createClient()
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
@@ -106,11 +110,14 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (value.length < 2 || locked) { setSuggestions([]); setOpen(false); return }
     const t = setTimeout(async () => {
-      const { data } = await supabase
+      const safe = value.replace(/[,()%]/g, ' ')
+      const base = supabase
         .from('elec_item_library')
         .select('description, unit, item_type, default_unit_rate, default_cost_rate, default_labour_rate, default_material_rate, category, default_markup_percent')
         .eq('portal_account_id', portalAccountId)
-        .ilike('description', `%${value}%`)
+      const { data } = await (installer
+        ? base.or(`description.ilike.%${safe}%,sku.ilike.%${safe}%,brand.ilike.%${safe}%`)
+        : base.ilike('description', `%${value}%`))
         .order('usage_count', { ascending: false })
         .limit(10)
       const results = (data ?? []) as Suggestion[]
@@ -118,7 +125,7 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
       if (focused) setOpen(results.length > 0)
     }, 200)
     return () => clearTimeout(t)
-  }, [value, portalAccountId, locked]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [value, portalAccountId, locked, installer]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
@@ -216,10 +223,13 @@ function RateInput({ value, onChange, placeholder = '0', width = 90, locked, dec
 }
 
 // ─── Line item row ────────────────────────────────────────────────────────────
-function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId, locked, dragHandleProps }: {
+function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId, locked, dragHandleProps, units, installer = false }: {
   item: ItemState; onChange: (u: ItemState) => void
   onDelete: () => void; onInsertBelow?: () => void; portalAccountId: string; locked?: boolean
   dragHandleProps?: DraggableProvidedDragHandleProps | null
+  units: string[]
+  /** Installer quotes pull cost from the catalogue and can have optional lines. */
+  installer?: boolean
 }) {
   function set(patch: Partial<ItemState>) { onChange({ ...item, ...patch }) }
 
@@ -228,7 +238,8 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
   )
 
   return (
-    <div className="rounded-xl mb-1.5 group" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+    <div className="rounded-xl mb-1.5 group"
+      style={{ background: S.bg, border: item.is_optional ? `1px dashed rgba(var(--qh-accent-rgb),0.55)` : `1px solid ${S.border}` }}>
       <div className="flex items-center gap-2 p-2">
         {/* The grip and the insert button each get their own slot. Stacking the
             button over the grip made the grip unclickable: opacity-0 still takes
@@ -254,17 +265,28 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
         </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => {
+            const markup = s.default_markup_percent ?? item.markup_percentage
+            // An installer's catalogue carries cost from the distributor price
+            // list, so picking an item prices the line too.
+            const costFill = installer && s.default_cost_rate != null
+              ? {
+                  cost_unit_rate: s.default_cost_rate,
+                  quoted_unit_rate: s.default_unit_rate
+                    ?? Math.round(s.default_cost_rate * (1 + (markup ?? 0) / 100) * 100) / 100,
+                }
+              : {}
             set({
               description: s.description,
               unit: s.unit ?? item.unit,
-              markup_percentage: s.default_markup_percent ?? item.markup_percentage,
+              markup_percentage: markup,
+              ...costFill,
             })
           }}
-          portalAccountId={portalAccountId} locked={locked} />
+          portalAccountId={portalAccountId} locked={locked} installer={installer} />
         <select value={item.unit ?? 'nr'} onChange={e => set({ unit: e.target.value })} disabled={locked}
           className="px-2 py-1.5 text-sm rounded-lg outline-none"
           style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width: 60 }}>
-          {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          {[...units, ...(item.unit && !units.includes(item.unit) ? [item.unit] : [])].map(u => <option key={u} value={u}>{u}</option>)}
         </select>
         {numInput(item.quoted_quantity, v => {
           set({ quoted_quantity: v })
@@ -297,9 +319,19 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
         <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {(item.labour_rate ?? 0) > 0 ? fmtR((item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)) : '—'}
         </div>
-        <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 92 }}>
+        <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: isOpenOptional(item) ? S.muted : S.text, width: 92 }}>
           {fmtR(itemTotal(item))}
         </div>
+        {installer && !locked && (
+          <button type="button" onClick={() => set({ is_optional: !item.is_optional, optional_selected: false })}
+            title={item.is_optional ? 'Make this a standard line' : 'Make this an optional extra'}
+            aria-label={item.is_optional ? 'Make this a standard line' : 'Make this an optional extra'}
+            aria-pressed={!!item.is_optional}
+            className="p-1.5 rounded-lg flex-shrink-0"
+            style={{ color: item.is_optional ? S.accent : S.muted, background: item.is_optional ? 'rgba(var(--qh-accent-rgb),0.1)' : 'transparent' }}>
+            <ListPlus size={13} />
+          </button>
+        )}
         {!locked && (
           <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
             onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
@@ -308,21 +340,35 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
           </button>
         )}
       </div>
+      {item.is_optional && (
+        <div className="flex items-center gap-4 pb-2 pr-3 text-xs" style={{ paddingLeft: 38 }}>
+          <span className="font-semibold uppercase tracking-wider text-[10px]" style={{ color: S.accent }}>Optional extra</span>
+          <span style={{ color: S.muted }}>The client can add it when they accept — it stays out of the total until then.</span>
+          <label className="flex items-center gap-1.5 ml-auto flex-shrink-0 cursor-pointer" style={{ color: S.text }}>
+            <input type="checkbox" checked={!!item.optional_selected} disabled={locked}
+              onChange={e => set({ optional_selected: e.target.checked })} />
+            Client is taking it
+          </label>
+        </div>
+      )}
     </div>
   )
 }
 
 // ─── Section block ────────────────────────────────────────────────────────────
-function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, onDeleteItem, portalAccountId, locked, dragHandleProps }: {
+function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, onDeleteItem, portalAccountId, locked, dragHandleProps, units, installer = false }: {
   section: SectionState; onChange: (s: SectionState) => void
   onDelete: () => void; onAddItem: () => void; onInsertItemAt: (index: number) => void
   onDeleteItem: (id: string) => void; portalAccountId: string; locked?: boolean
   dragHandleProps?: DraggableProvidedDragHandleProps | null
+  units: string[]
+  installer?: boolean
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const subtotal = section.items.reduce((s, i) => s + itemTotal(i), 0)
-  const sectionCostTotal = section.items.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
-  const hasCosting = section.items.length > 0 && section.items.every(i => i.cost_unit_rate != null)
+  const counted = section.items.filter(countsInQuoteTotal)
+  const subtotal = counted.reduce((s, i) => s + itemTotal(i), 0)
+  const sectionCostTotal = counted.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
+  const hasCosting = counted.length > 0 && counted.every(i => i.cost_unit_rate != null)
   const sectionMarginPct = hasCosting && subtotal > 0 ? ((subtotal - sectionCostTotal) / subtotal * 100) : null
   const colHdr = (label: string, w: number, align: 'left' | 'right' | 'center' = 'left') => (
     <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: w, textAlign: align, flexShrink: 0 }}>{label}</div>
@@ -330,7 +376,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
 
   return (
     <div className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
-      <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(58,124,165,0.04)', borderBottom: collapsed ? 'none' : `1px solid ${S.border}` }}>
+      <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: collapsed ? 'none' : `1px solid ${S.border}` }}>
         {/* As on line items: no grip on a locked quote, but keep its width so
             the header row does not shift. */}
         <div {...(locked ? {} : (dragHandleProps ?? {}))}
@@ -341,7 +387,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
           {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
         </button>
         <input value={section.title} onChange={e => onChange({ ...section, title: e.target.value })}
-          disabled={locked} placeholder="Section title (e.g. DB Board)"
+          disabled={locked} aria-label="Section title" placeholder={installer ? undefined : 'Section title (e.g. DB Board)'}
           className="flex-1 bg-transparent text-sm font-semibold outline-none" style={{ color: S.text }} />
         <span className="text-sm font-semibold flex-shrink-0" style={{ color: S.accent }}>{fmtR(subtotal)}</span>
         {sectionMarginPct !== null && (
@@ -390,7 +436,8 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
                           onDelete={() => onDeleteItem(item.id)}
                           onInsertBelow={() => onInsertItemAt(idx)}
                           portalAccountId={portalAccountId} locked={locked}
-                          dragHandleProps={dragProvided.dragHandleProps} />
+                          dragHandleProps={dragProvided.dragHandleProps}
+                          units={units} installer={installer} />
                       </div>
                     )}
                   </Draggable>
@@ -403,7 +450,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
             <button onClick={onAddItem}
               className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{ color: S.accent }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <Plus size={12} /> Add item
             </button>
@@ -435,14 +482,19 @@ interface Props {
     sourceJobNumber: string
     jobCard: { id: string; job_number: string } | null
   } | null
+  /** Installers get kits, optional lines and a deposit, and no COC. */
+  tradeType?: TradeType
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false, extrasContext = null }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false, extrasContext = null, tradeType = 'electrician' }: Props) {
   const router = useRouter()
   const supabase = createClient()
+  const isInstaller = tradeType === 'installer'
+  const units = tradeUnits(tradeType)
+  const [showKitModal, setShowKitModal] = useState(false)
 
   const [q, setQ] = useState(initialQuote)
   const [clientDisplay, setClientDisplay] = useState(initialQuote.client?.client_name ?? '')
@@ -491,7 +543,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     claims:     started && !isJobCardQuote,
     materials:  started && !isJobCardQuote,
     snag:       started && !isJobCardQuote,
-    coc:        started && !isJobCardQuote,
+    coc:        started && !isJobCardQuote && !isInstaller,
     as_built:   started && !isJobCardQuote,
     reporting:  started && !isJobCardQuote,
   }
@@ -553,7 +605,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     ...initItems.filter(i => !(i.is_variation && i.variation_order_id && replacedVOIds.includes(i.variation_order_id))),
     ...sessionVOItems,
   ] as ElecQuoteLineItem[]
-  const subtotal  = allItems.reduce((s, i) => s + itemTotal(i), 0)
+  // Optional extras the client hasn't taken sit outside every total.
+  const billable  = allItems.filter(countsInQuoteTotal)
+  const optionalExtrasTotal = allItems.filter(isOpenOptional).reduce((s, i) => s + itemTotal(i), 0)
+  const subtotal  = billable.reduce((s, i) => s + itemTotal(i), 0)
   const vatAmt    = subtotal * ((q.vat_rate ?? 15) / 100)
   const total     = subtotal + vatAmt
   const retention = subtotal * ((q.retention_percentage ?? 0) / 100)
@@ -584,6 +639,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         defects_liability_period_days: q.defects_liability_period_days,
         drawing_reference: q.drawing_reference,
         notes: q.notes, quoted_date: q.quoted_date, expected_completion_date: q.expected_completion_date,
+        ...(isInstaller ? { deposit_percentage: q.deposit_percentage ?? 0 } : {}),
       }).eq('id', q.id)
 
       // Sync client fields via server route (supabaseAdmin bypasses RLS)
@@ -626,6 +682,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
             material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
             markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
+            ...(isInstaller ? { is_optional: !!item.is_optional, optional_selected: !!item.optional_selected } : {}),
           }))),
           ...freeItems.map((item, ii) => ({
             id: item.id, quote_id: q.id, section_id: null, description: item.description,
@@ -634,6 +691,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
             material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
             markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
+            ...(isInstaller ? { is_optional: !!item.is_optional, optional_selected: !!item.optional_selected } : {}),
           })),
         ]
         if (allItemRows.length > 0) {
@@ -686,6 +744,23 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [extrasJobCard, setExtrasJobCard] = useState<{ id: string; job_number: string } | null>(null)
 
   // ── Status transitions ───────────────────────────────────────────────────────
+  // Approving an installer quote settles its optional lines and raises the
+  // deposit claim on the server, exactly as the client's approval link does.
+  // The page reloads after, because lines were removed and a claim was added
+  // underneath the editor's state.
+  async function acceptOnServer() {
+    await handleSave()
+    setTransitioning(true)
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/quotes/${q.id}/accept`, { method: 'POST' })
+      const d = await res.json() as { ok?: boolean; error?: string }
+      if (!res.ok || !d.ok) { alert(d.error ?? 'Could not approve the quote'); return }
+      window.location.reload()
+    } finally {
+      setTransitioning(false)
+    }
+  }
+
   async function transition(newStatus: ElecQuoteStatus, extra?: Partial<typeof q>) {
     setTransitioning(true)
     const update = { status: newStatus, ...extra }
@@ -731,6 +806,29 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   }
 
   function addSection() { setSections(ss => [...ss, newSection(q.id, ss.length)]) }
+
+  function addKit(kit: ElecKit, target: { sectionId: string } | { newSectionTitle: string }) {
+    const toItems = (sectionId: string, start: number): ItemState[] => kit.items.map((k, i) => ({
+      ...newItem(q.id, sectionId, start + i),
+      description: k.description,
+      unit: k.unit,
+      quoted_quantity: k.quantity,
+      cost_unit_rate: k.cost_unit_rate,
+      markup_percentage: k.markup_percentage,
+      quoted_unit_rate: k.quoted_unit_rate,
+      labour_rate: k.labour_rate,
+    }))
+    if ('sectionId' in target) {
+      setSections(ss => ss.map(s => s.id === target.sectionId
+        ? { ...s, items: [...s.items, ...toItems(s.id, s.items.length)] } : s))
+    } else {
+      setSections(ss => {
+        const section = { ...newSection(q.id, ss.length), title: target.newSectionTitle }
+        return [...ss, { ...section, items: toItems(section.id, 0) }]
+      })
+    }
+    setShowKitModal(false)
+  }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
   function insertFreeItemAt(index: number) {
     setFreeItems(items => {
@@ -843,16 +941,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     { id: 'as_built',   label: 'As-Built' },
   ]
 
-  const contractTotal = allItems.reduce((s, i) => s + itemTotal(i), 0)
+  const contractTotal = billable.reduce((s, i) => s + itemTotal(i), 0)
   const approvedVOs = liveVOs.filter(v => v.status === 'approved')
   const approvedVOTotal = approvedVOs.reduce((s, v) => s + v.value, 0)
   const approvedVOCostTotal = approvedVOs.reduce((s, v) => s + (v.cost_value ?? 0), 0)
-  const itemCostTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
+  const itemCostTotal = billable.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
   const costTotal = itemCostTotal + approvedVOCostTotal
-  const labourTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.labour_rate ?? 0), 0)
+  const labourTotal = billable.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.labour_rate ?? 0), 0)
   const materialProfit = subtotal - labourTotal - itemCostTotal
   const grossProfit = materialProfit + labourTotal  // material profit + labour (all labour is profit — no labour cost tracked)
-  const hasCostData = (allItems.length > 0 && allItems.every(i => i.cost_unit_rate != null)) || approvedVOs.some(v => v.cost_value != null)
+  const hasCostData = (billable.length > 0 && billable.every(i => i.cost_unit_rate != null)) || approvedVOs.some(v => v.cost_value != null)
   const revisedTotal = contractTotal + approvedVOTotal
   const revisedGrossProfit = revisedTotal - costTotal
 
@@ -872,7 +970,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {saveStatus === 'saved'  && <span className="text-xs" style={{ color: S.green }}>Saved</span>}
           {saveStatus === 'error'  && <span className="text-xs" style={{ color: S.danger }}>{saveError}</span>}
           {q.status === 'quoted' && (
-            <button onClick={() => void transition('in_progress', { approved_date: todaySA() })}
+            <button onClick={() => void (isInstaller ? acceptOnServer() : transition('in_progress', { approved_date: todaySA() }))}
               disabled={transitioning}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
               style={{ background: S.green, color: '#fff' }}>
@@ -987,7 +1085,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               : (() => {
                   const statusCfg: Record<string, { label: string; color: string; bg: string }> = {
                     draft:       { label: 'Draft',       color: S.muted,   bg: S.bg            },
-                    quoted:      { label: 'Quoted',      color: S.accent,  bg: 'rgba(58,124,165,0.08)' },
+                    quoted:      { label: 'Quoted',      color: S.accent,  bg: 'rgba(var(--qh-accent-rgb),0.08)' },
                     approved:    { label: 'Approved',    color: S.green,   bg: 'rgba(22,163,74,0.08)'  },
                     in_progress: { label: 'In Progress', color: '#166534', bg: 'rgba(22,101,52,0.08)'  },
                     completed:   { label: 'Completed',   color: '#166534', bg: 'rgba(22,101,52,0.08)'  },
@@ -1017,9 +1115,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                       <button onClick={() => setActiveTab('coc')}
                         className="text-[9px] font-semibold px-2 py-0.5 rounded mb-0.5"
                         style={{
-                          background: activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.08)',
+                          background: activeTab === 'coc' ? S.accent : 'rgba(var(--qh-accent-rgb),0.08)',
                           color: activeTab === 'coc' ? '#fff' : S.accent,
-                          border: `1px solid ${activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.2)'}`,
+                          border: `1px solid ${activeTab === 'coc' ? S.accent : 'rgba(var(--qh-accent-rgb),0.2)'}`,
                         }}>
                         COC
                       </button>
@@ -1232,6 +1330,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               { label: 'Est. Completion',   value: q.expected_completion_date ?? null },
               { label: 'VAT Rate',          value: q.vat_rate != null ? `${q.vat_rate}%` : null },
               { label: 'Retention',         value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
+              { label: 'Deposit',           value: (q.deposit_percentage ?? 0) > 0 ? `${q.deposit_percentage}% on acceptance` : null },
               { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
               { label: 'Drawing REF',       value: q.drawing_reference ?? null },
               { label: 'Technicians',       value: (() => { const ids = [...(q.staff_id ? [q.staff_id] : []), ...(q.additional_staff_ids ?? [])]; const names = ids.map(id => staff.find(s => s.id === id)?.name).filter(Boolean); return names.length > 0 ? names.join(', ') : null })() },
@@ -1411,6 +1510,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
 
+          {isInstaller && (
+            <div>
+              <label htmlFor="quote-deposit" className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Deposit on Acceptance (%)</label>
+              <input id="quote-deposit" type="number" min={0} max={100} value={q.deposit_percentage ?? 0}
+                onChange={e => setQ(p => ({ ...p, deposit_percentage: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) }))}
+                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+            </div>
+          )}
+
           {/* Defects liability */}
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Defects Liability (days)</label>
@@ -1446,17 +1555,25 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {!locked && (
             <div className="flex items-center gap-2">
               <button onClick={addFreeItem} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+                style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
                 <Plus size={12} /> Add item
               </button>
               <button onClick={addSection} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+                style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
                 <FolderPlus size={12} /> Add section
               </button>
+              {isInstaller && (
+                <button onClick={() => setShowKitModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                  style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
+                  <Package size={12} /> Add kit
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1491,7 +1608,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                               onDelete={() => deleteFreeItem(item.id)}
                               onInsertBelow={() => insertFreeItemAt(idx)}
                               portalAccountId={portalAccountId} locked={locked}
-                              dragHandleProps={dragProvided.dragHandleProps} />
+                              dragHandleProps={dragProvided.dragHandleProps}
+                              units={units} installer={isInstaller} />
                           </div>
                         )}
                       </Draggable>
@@ -1518,7 +1636,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                           onInsertItemAt={index => insertSectionItemAt(section.id, index)}
                           onDeleteItem={itemId => deleteSectionItem(section.id, itemId)}
                           portalAccountId={portalAccountId} locked={locked}
-                          dragHandleProps={dragProvided.dragHandleProps} />
+                          dragHandleProps={dragProvided.dragHandleProps}
+                          units={units} installer={isInstaller} />
                       </div>
                     )}
                   </Draggable>
@@ -1534,13 +1653,19 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <p className="text-sm mb-3" style={{ color: S.muted }}>No line items yet</p>
             <div className="flex items-center justify-center gap-3">
               <button onClick={addFreeItem} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                 <Plus size={13} /> Add item
               </button>
               <button onClick={addSection} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                 <FolderPlus size={13} /> Add section
               </button>
+              {isInstaller && (
+                <button onClick={() => setShowKitModal(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
+                  style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
+                  <Package size={13} /> Add kit
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1548,17 +1673,25 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         {allItems.length > 0 && !locked && (
           <div className="mt-2 flex items-center gap-2">
             <button onClick={addFreeItem} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+              style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
               <Plus size={12} /> Add item
             </button>
             <button onClick={addSection} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+              style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
               <FolderPlus size={12} /> Add section
             </button>
+            {isInstaller && (
+              <button onClick={() => setShowKitModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
+                <Package size={12} /> Add kit
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1612,6 +1745,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <span style={{ color: S.text }}>Total incl. VAT</span>
             <span style={{ color: S.accent }}>{fmtR(total)}</span>
           </div>
+          {(q.deposit_percentage ?? 0) > 0 && (
+            <div className="flex justify-between text-sm pt-1">
+              <span style={{ color: S.muted }}>Deposit on acceptance ({q.deposit_percentage}%, incl. VAT)</span>
+              <span className="font-semibold" style={{ color: S.text }}>{fmtR(total * (q.deposit_percentage ?? 0) / 100)}</span>
+            </div>
+          )}
+          {optionalExtrasTotal > 0 && (
+            <div className="flex justify-between text-sm pt-1">
+              <span style={{ color: S.muted }}>Optional extras on offer (not in total, ex VAT)</span>
+              <span className="font-medium" style={{ color: S.accent }}>{fmtR(optionalExtrasTotal)}</span>
+            </div>
+          )}
           {(q.retention_percentage ?? 0) > 0 && (
             <div className="flex justify-between text-sm pt-1">
               <span style={{ color: S.muted }}>Retention ({q.retention_percentage}%)</span>
@@ -1647,7 +1792,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
           <button onClick={openSendModal}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-            style={{ background: 'rgba(58,124,165,0.1)', color: S.accent, border: `1px solid rgba(58,124,165,0.25)` }}>
+            style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.25)` }}>
             <Send size={13} /> Send Again
           </button>
         </div>
@@ -1765,7 +1910,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                       onClick={() => setSendMethod('link')}
                       className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left transition-all"
                       style={{
-                        background: sendMethod === 'link' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        background: sendMethod === 'link' ? 'rgba(var(--qh-accent-rgb),0.08)' : S.bg,
                         border: `1.5px solid ${sendMethod === 'link' ? S.accent : S.border}`,
                       }}>
                       <div className="flex items-center gap-1.5">
@@ -1782,7 +1927,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                       onClick={() => setSendMethod('pdf')}
                       className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left transition-all"
                       style={{
-                        background: sendMethod === 'pdf' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        background: sendMethod === 'pdf' ? 'rgba(var(--qh-accent-rgb),0.08)' : S.bg,
                         border: `1.5px solid ${sendMethod === 'pdf' ? S.accent : S.border}`,
                       }}>
                       <div className="flex items-center gap-1.5">
@@ -1833,6 +1978,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       )}
 
+
+      {showKitModal && (
+        <AddKitModal
+          sections={sections.map(s => ({ id: s.id, title: s.title }))}
+          onAdd={addKit}
+          onClose={() => setShowKitModal(false)}
+        />
+      )}
 
       {/* ── Recon / Sign-off Modal ── */}
       {showReconModal && (

@@ -6,6 +6,7 @@ import { JobCardDetail, type JobCardBooking } from './JobCardDetail'
 import type { ElecJobCard, ElecStaff, ElecClient, ElecCOC } from '@/lib/elec-types'
 import { normalizeExtras } from '@/lib/job-card-extras'
 import { one, type Embedded } from '@/lib/supabase/embed'
+import { getTradeType } from '@/lib/trade-type'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -43,7 +44,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }, { data: extras }, { data: extrasSettings }, { data: clientSendSettings }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }, { data: extras }, { data: extrasSettings }, { data: clientSendSettings }, tradeType] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
@@ -82,6 +83,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       .eq('portal_account_id', accountId!)
       .maybeSingle()
       .then(res => res.error ? { data: null } : res),
+    getTradeType(accountId!),
   ])
 
   // An extra-work card is created unassigned — the office decides who goes back.
@@ -124,6 +126,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       initialCOC={(existingCOC ?? null) as ElecCOC | null}
       bookings={(bookings ?? []) as unknown as JobCardBooking[]}
       suggestedStaff={suggestedStaff}
+      hideCoc={tradeType === 'installer'}
       extrasEnabled={extras !== null && (extrasSettings as { job_card_extras_enabled?: boolean } | null)?.job_card_extras_enabled !== false}
     />
   )

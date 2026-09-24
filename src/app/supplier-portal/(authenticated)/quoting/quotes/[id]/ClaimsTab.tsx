@@ -8,14 +8,14 @@ import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection,
 type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
 
 const CLAIM_STATUS: Record<ElecClaimStatus, { label: string; color: string; bg: string }> = {
   draft:     { label: 'Draft',     color: '#71717A', bg: '#F4F4F5' },
-  submitted: { label: 'Submitted', color: '#3A7CA5', bg: 'rgba(58,124,165,0.1)' },
+  submitted: { label: 'Submitted', color: '#3A7CA5', bg: 'rgba(var(--qh-accent-rgb),0.1)' },
   certified: { label: 'Certified', color: '#D9A441', bg: 'rgba(217,164,65,0.1)' },
   invoiced:  { label: 'Invoiced',  color: '#16A34A', bg: 'rgba(22,163,74,0.1)' },
   paid:      { label: 'Paid',      color: '#166534', bg: 'rgba(22,101,52,0.1)' },
@@ -209,7 +209,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
       <div key={title ?? 'free'} className="mb-4">
         {title && (
           <div className="px-3 py-2 rounded-t-lg text-xs font-semibold uppercase tracking-wider"
-            style={{ background: 'rgba(58,124,165,0.06)', color: S.accent, borderBottom: `1px solid ${S.border}` }}>
+            style={{ background: 'rgba(var(--qh-accent-rgb),0.06)', color: S.accent, borderBottom: `1px solid ${S.border}` }}>
             {title}
           </div>
         )}
@@ -261,7 +261,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         {contractType === 're_measurement' && (
           <button onClick={fillFromAsBuilt}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+            style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
             Fill from As-Built
           </button>
         )}
@@ -287,7 +287,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         {/* Recipient cards */}
         <div className="grid grid-cols-2 gap-3">
           {/* Client */}
-          <div className="rounded-xl p-3" style={{ border: `1px solid ${sendToClient ? S.accent : S.border}`, background: sendToClient ? 'rgba(58,124,165,0.03)' : S.bg }}>
+          <div className="rounded-xl p-3" style={{ border: `1px solid ${sendToClient ? S.accent : S.border}`, background: sendToClient ? 'rgba(var(--qh-accent-rgb),0.03)' : S.bg }}>
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Client</span>
               <button
@@ -458,7 +458,7 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
       </div>
 
       <div className="px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
-        <div className="rounded-xl p-4" style={{ background: 'rgba(58,124,165,0.04)', border: `1px solid ${S.border}` }}>
+        <div className="rounded-xl p-4" style={{ background: 'rgba(var(--qh-accent-rgb),0.04)', border: `1px solid ${S.border}` }}>
           <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Retention Amount to Claim</p>
           <p className="text-2xl font-bold" style={{ color: S.accent }}>{fmtR(retentionHeld)}</p>
           <p className="text-xs mt-1" style={{ color: S.muted }}>Based on certified amounts × retention %</p>
@@ -910,14 +910,14 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
         {sageConnected && (claim.status === 'submitted' || claim.status === 'certified' || claim.status === 'invoiced') && !claim.sage_invoice_id && (
           <button onClick={() => onSagePush?.(claim.id)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
-            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+            style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
             ↑ Push to Sage
           </button>
         )}
         {sageConnected && claim.sage_invoice_id && (
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
-              style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+              style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent }}>
               Sage {claim.sage_invoice_status ?? 'Linked'}
             </span>
             <button onClick={() => onSageSync?.(claim.id)} disabled={sageSyncing === claim.id}
@@ -1022,7 +1022,7 @@ function Breadcrumb({ label, onBack }: { label: string; onBack: () => void }) {
     <div className="flex items-center gap-2 mb-5">
       <button onClick={onBack}
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-75"
-        style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+        style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent }}>
         <ChevronLeft size={14} /> Claims
       </button>
       <span style={{ color: S.border, fontSize: 18, lineHeight: 1, userSelect: 'none' }}>/</span>
@@ -1228,9 +1228,9 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
             disabled={hasDraft}
             title={hasDraft ? 'Finish or delete the existing draft claim first' : undefined}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-            onMouseEnter={e => { if (!hasDraft) e.currentTarget.style.background = 'rgba(58,124,165,0.15)' }}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+            style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+            onMouseEnter={e => { if (!hasDraft) e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)' }}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)'}>
             <Plus size={12} /> New Claim
           </button>
         </div>

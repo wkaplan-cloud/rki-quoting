@@ -1,11 +1,13 @@
 'use client'
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Search, Pencil, Trash2, X, Check, AlertCircle, BookOpen } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, X, Check, AlertCircle, BookOpen, Upload } from 'lucide-react'
 import type { ElecItemLibrary } from '@/lib/elec-types'
+import { tradeUnits, type TradeType } from '@/lib/portal-theme'
+import { CatalogueImport } from './CatalogueImport'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -22,7 +24,19 @@ export const PRICE_BOOK_CATEGORIES = [
   'Other',
 ]
 
-const UNITS = ['nr', 'm']
+// Starting categories for an installer's catalogue. Imports can bring their
+// own; those sort after these, alphabetically.
+export const INSTALLER_CATEGORIES = [
+  'Control & Automation',
+  'Audio',
+  'Video & Displays',
+  'Networking & Wi-Fi',
+  'CCTV & Security',
+  'Racks & Power',
+  'Cabling & Accessories',
+  'Labour & Programming',
+  'Other',
+]
 
 function fmtR(n: number | null | undefined) {
   if (n == null) return '—'
@@ -30,17 +44,22 @@ function fmtR(n: number | null | undefined) {
 }
 
 function emptyForm() {
-  return { description: '', category: '', unit: 'nr', default_markup_percent: '' }
+  return { description: '', category: '', unit: 'nr', default_markup_percent: '', sku: '', brand: '', cost: '' }
 }
 
 interface Props {
   portalAccountId: string
   initialItems: ElecItemLibrary[]
+  tradeType?: TradeType
 }
 
-export function PriceBookClient({ portalAccountId, initialItems }: Props) {
+export function PriceBookClient({ portalAccountId, initialItems, tradeType = 'electrician' }: Props) {
   const supabase = createClient()
+  const isInstaller = tradeType === 'installer'
+  const CATEGORIES = isInstaller ? INSTALLER_CATEGORIES : PRICE_BOOK_CATEGORIES
+  const UNITS = tradeUnits(tradeType)
   const [items, setItems] = useState<ElecItemLibrary[]>(initialItems)
+  const [showImport, setShowImport] = useState(false)
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState<string>('All')
   const [showModal, setShowModal] = useState(false)
@@ -55,6 +74,7 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
     const q = search.toLowerCase()
     return items.filter(i => {
       const matchesSearch = !q || i.description.toLowerCase().includes(q)
+        || !!i.sku?.toLowerCase().includes(q) || !!i.brand?.toLowerCase().includes(q)
       const matchesCat = catFilter === 'All' || (catFilter === 'Uncategorized' ? !i.category : i.category === catFilter)
       return matchesSearch && matchesCat
     })
@@ -68,7 +88,7 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
       map.get(key)!.push(item)
     }
     // Sort groups: known categories first in order, then Uncategorized last
-    const order = [...PRICE_BOOK_CATEGORIES, 'Uncategorized']
+    const order = [...CATEGORIES, 'Uncategorized']
     return [...map.entries()].sort(([a], [b]) => {
       const ai = order.indexOf(a), bi = order.indexOf(b)
       if (ai === -1 && bi === -1) return a.localeCompare(b)
@@ -76,13 +96,28 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
       if (bi === -1) return -1
       return ai - bi
     })
-  }, [filtered])
+  }, [filtered]) // eslint-disable-line react-hooks/exhaustive-deps -- CATEGORIES is fixed per trade
 
   const allCats = useMemo(() => {
     const used = new Set(items.map(i => i.category || 'Uncategorized'))
-    const order = [...PRICE_BOOK_CATEGORIES, 'Uncategorized']
-    return order.filter(c => used.has(c))
-  }, [items])
+    const known = [...CATEGORIES, 'Uncategorized']
+    const extra = [...used].filter(c => !known.includes(c)).sort()
+    return [...known.filter(c => used.has(c)), ...extra]
+  }, [items]) // eslint-disable-line react-hooks/exhaustive-deps -- CATEGORIES is fixed per trade
+
+  // Imports write server-side, so read the whole catalogue back afterwards.
+  // Paged, because PostgREST stops at 1000 rows without saying so.
+  async function reloadItems() {
+    const all: ElecItemLibrary[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from('elec_item_library').select('*')
+        .eq('portal_account_id', portalAccountId).order('id').range(from, from + 999)
+      if (error || !data) break
+      all.push(...(data as ElecItemLibrary[]))
+      if (data.length < 1000) break
+    }
+    setItems(all)
+  }
 
   function openAdd() {
     setEditingItem(null)
@@ -98,6 +133,9 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
       category: item.category ?? '',
       unit: item.unit ?? 'nr',
       default_markup_percent: item.default_markup_percent != null ? String(item.default_markup_percent) : '',
+      sku: item.sku ?? '',
+      brand: item.brand ?? '',
+      cost: item.default_cost_rate != null ? String(item.default_cost_rate) : '',
     })
     setSaveError('')
     setShowModal(true)
@@ -112,12 +150,21 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
   async function handleSave() {
     if (!form.description.trim()) { setSaveError('Description is required'); return }
     setSaving(true); setSaveError('')
+    const markupPct = form.default_markup_percent ? parseFloat(form.default_markup_percent) : null
+    const cost = form.cost.trim() ? parseFloat(form.cost) : null
     const payload = {
       portal_account_id: portalAccountId,
       description: form.description.trim(),
       category: form.category || null,
       unit: form.unit || null,
-      default_markup_percent: form.default_markup_percent ? parseFloat(form.default_markup_percent) : null,
+      default_markup_percent: markupPct,
+      // Installer catalogue items carry a cost, so the sell price follows from it.
+      ...(isInstaller ? {
+        sku: form.sku.trim() || null,
+        brand: form.brand.trim() || null,
+        default_cost_rate: cost,
+        default_unit_rate: cost != null ? Math.round(cost * (1 + (markupPct ?? 0) / 100) * 100) / 100 : null,
+      } : {}),
     }
     try {
       if (editingItem) {
@@ -152,6 +199,8 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
     setDeleteId(null)
   }
 
+  const gridCols = isInstaller ? '1fr 50px 90px 70px 100px 72px' : '1fr 60px 90px 72px'
+
   return (
     <div className="min-h-screen" style={{ background: S.bg }}>
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -159,19 +208,28 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(58,124,165,0.1)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(var(--qh-accent-rgb),0.1)' }}>
               <BookOpen size={18} style={{ color: S.accent }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: S.text }}>Line Items</h1>
+              <h1 className="text-xl font-bold" style={{ color: S.text }}>{isInstaller ? 'Catalogue' : 'Line Items'}</h1>
               <p className="text-xs" style={{ color: S.muted }}>{items.length} item{items.length !== 1 ? 's' : ''} · select when adding line items to projects &amp; VOs</p>
             </div>
           </div>
-          <button onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: S.accent }}>
-            <Plus size={15} /> Add Item
-          </button>
+          <div className="flex items-center gap-2">
+            {isInstaller && (
+              <button onClick={() => setShowImport(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
+                <Upload size={15} /> Import price list
+              </button>
+            )}
+            <button onClick={openAdd}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+              style={{ background: S.accent }}>
+              <Plus size={15} /> Add Item
+            </button>
+          </div>
         </div>
 
         {/* Search + category filter */}
@@ -230,10 +288,12 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
 
                 {/* Column headers */}
                 <div className="grid px-5 py-2 text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ gridTemplateColumns: '1fr 60px 90px 72px', color: S.muted, borderBottom: `1px solid ${S.border}` }}>
+                  style={{ gridTemplateColumns: gridCols, color: S.muted, borderBottom: `1px solid ${S.border}` }}>
                   <span>Description</span>
                   <span>Unit</span>
-                  <span className="text-right">Default Markup</span>
+                  {isInstaller && <span className="text-right">Cost</span>}
+                  <span className="text-right">{isInstaller ? 'Markup' : 'Default Markup'}</span>
+                  {isInstaller && <span className="text-right">Sell</span>}
                   <span />
                 </div>
 
@@ -242,14 +302,27 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
                   <div key={item.id}
                     className="grid items-center px-5 py-3"
                     style={{
-                      gridTemplateColumns: '1fr 60px 90px 72px',
+                      gridTemplateColumns: gridCols,
                       borderTop: idx > 0 ? `1px solid ${S.border}` : undefined,
                     }}>
-                    <span className="text-sm font-medium pr-4" style={{ color: S.text }}>{item.description}</span>
+                    <span className="pr-4 min-w-0">
+                      <span className="block text-sm font-medium" style={{ color: S.text }}>{item.description}</span>
+                      {isInstaller && (item.brand || item.sku) && (
+                        <span className="block text-[11px] mt-0.5" style={{ color: S.muted }}>
+                          {[item.brand, item.sku].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </span>
                     <span className="text-sm" style={{ color: S.muted }}>{item.unit ?? '—'}</span>
+                    {isInstaller && (
+                      <span className="text-sm text-right" style={{ color: S.muted }}>{fmtR(item.default_cost_rate)}</span>
+                    )}
                     <span className="text-sm text-right font-medium" style={{ color: item.default_markup_percent != null ? S.accent : S.border }}>
                       {item.default_markup_percent != null ? `${item.default_markup_percent}%` : '—'}
                     </span>
+                    {isInstaller && (
+                      <span className="text-sm text-right font-semibold" style={{ color: S.text }}>{fmtR(item.default_unit_rate)}</span>
+                    )}
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(item)}
                         className="p-1.5 rounded-lg transition-colors"
@@ -300,7 +373,8 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: form.category ? S.text : S.muted }}>
                     <option value="">Uncategorized</option>
-                    {PRICE_BOOK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {[...CATEGORIES, ...(form.category && !CATEGORIES.includes(form.category) ? [form.category] : [])]
+                      .map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -312,6 +386,31 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
                   </select>
                 </div>
               </div>
+
+              {isInstaller && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="item-brand" className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Brand</label>
+                      <input id="item-brand" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                    </div>
+                    <div>
+                      <label htmlFor="item-sku" className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>SKU / Code</label>
+                      <input id="item-sku" value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="item-cost" className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Cost Price (R, ex VAT)</label>
+                    <input id="item-cost" type="number" min="0" step="0.01" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                      style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Default Markup %</label>
@@ -341,6 +440,10 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {showImport && (
+        <CatalogueImport onClose={() => setShowImport(false)} onImported={() => void reloadItems()} />
       )}
 
       {/* Delete confirm */}

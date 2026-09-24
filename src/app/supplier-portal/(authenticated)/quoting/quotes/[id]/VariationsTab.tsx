@@ -6,7 +6,7 @@ import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, L
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -552,7 +552,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
               return (
                 <div key={sec.id} className="mb-2">
                   <p className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 mb-1 rounded"
-                    style={{ color: S.muted, background: 'rgba(58,124,165,0.04)' }}>
+                    style={{ color: S.muted, background: 'rgba(var(--qh-accent-rgb),0.04)' }}>
                     {sec.title || 'Untitled Section'}
                   </p>
                   {secItems.map(renderQuoteItemRow)}
@@ -608,7 +608,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
               <label className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Line Items</label>
               <button onClick={() => setFormLineItems(prev => [...prev, newFormItem()])}
                 className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded"
-                style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}>
+                style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}>
                 <Plus size={11} /> Add Item
               </button>
             </div>
@@ -678,7 +678,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {formVOValue > 0 && (
               <div className="flex items-center justify-between flex-wrap gap-3 px-3 py-2.5 mt-1 rounded-lg"
-                style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(var(--qh-accent-rgb),0.03)' }}>
                 <div className="flex items-center gap-4 text-xs flex-wrap">
                   <span style={{ color: S.muted }}>Cost <strong style={{ color: S.text }}>{fmtR(formVOCost)}</strong></span>
                   <span style={{ color: S.muted }}>Profit <strong style={{ color: formVOProfit >= 0 ? S.green : S.danger }}>{fmtR(formVOProfit)}</strong></span>
@@ -717,17 +717,17 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           </button>
           <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/variations-pdf`} target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-            style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
+            style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)', border: '1px solid rgba(var(--qh-accent-rgb),0.2)', textDecoration: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)')}>
             <Download size={11} /> Download PDF
           </a>
           {!showAdd && (
             <button onClick={() => setShowAdd(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
+              style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)')}>
               <Plus size={12} /> Add VO
             </button>
           )}
@@ -760,7 +760,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         style={{ background: st.bg, color: st.color }}>{st.label}</span>
                       {vo.sent_at && (
                         <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                          style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent }}>
                           <Mail size={10} /> Sent to {vo.sent_to_email}
                         </span>
                       )}
@@ -783,7 +783,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         <>
                           <button onClick={() => { setSendModalVO(vo); setSendEmail(vo.sent_to_email || client?.email || ''); setSendDone(false) }}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+                            style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
                             <Send size={11} /> Send to Client
                           </button>
                           <button onClick={() => updateStatus(vo.id, 'approved')}
@@ -801,7 +801,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       {vo.status === 'approved' && !linkedClaim && !isInvoicing && !isEditing && (
                         <button onClick={() => { setInvoicingVoId(vo.id); setVOError('') }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                          style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+                          style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
                           <FileText size={11} /> Invoice VO
                         </button>
                       )}
@@ -824,7 +824,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       <div className="mt-3 rounded-xl overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
                         {/* Header */}
                         <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
-                          style={{ gridTemplateColumns: `1fr 40px 45px${hasCost ? ' 75px 52px 75px' : ''} 85px${hasCost ? ' 75px' : ''}`, gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.05)', borderBottom: `1px solid ${S.border}` }}>
+                          style={{ gridTemplateColumns: `1fr 40px 45px${hasCost ? ' 75px 52px 75px' : ''} 85px${hasCost ? ' 75px' : ''}`, gap: '6px', color: S.muted, background: 'rgba(var(--qh-accent-rgb),0.05)', borderBottom: `1px solid ${S.border}` }}>
                           <span>Item</span>
                           <span className="text-center">Unit</span>
                           <span className="text-right">Qty</span>
@@ -871,7 +871,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         {/* Summary row */}
                         {hasCost && (
                           <div className="px-3 py-2.5 flex items-center justify-between flex-wrap gap-3"
-                            style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                            style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(var(--qh-accent-rgb),0.03)' }}>
                             <div className="flex items-center gap-4 text-xs flex-wrap">
                               <span style={{ color: S.muted }}>Cost <strong style={{ color: S.text }}>{fmtR(totalCost)}</strong></span>
                               <span style={{ color: S.muted }}>Profit <strong style={{ color: totalSell - totalCost >= 0 ? S.green : S.danger }}>{fmtR(totalSell - totalCost)}</strong></span>
@@ -886,7 +886,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         )}
                         {!hasCost && (
                           <div className="px-3 py-2.5 flex justify-end gap-4 text-xs"
-                            style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                            style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(var(--qh-accent-rgb),0.03)' }}>
                             <span style={{ color: S.muted }}>ex VAT <strong style={{ color: S.text }}>{fmtR(totalSell)}</strong></span>
                             <span style={{ color: S.muted }}>VAT <strong style={{ color: S.text }}>{fmtR(totalSell * vatRate / 100)}</strong></span>
                             <span className="text-sm font-bold" style={{ color: S.accent }}>Total {fmtR(totalSell * (1 + vatRate / 100))}</span>
@@ -990,7 +990,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         <label className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Line Items</label>
                         <button onClick={() => setEditLineItems(prev => [...prev, newFormItem()])}
                           className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded"
-                          style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}>
+                          style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}>
                           <Plus size={11} /> Add Item
                         </button>
                       </div>

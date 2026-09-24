@@ -5,7 +5,7 @@ import { Check, Loader2, AlertCircle, Download, Printer, Send, X } from 'lucide-
 import type { ElecQuoteLineItem, ElecQuoteSection, ElecMaterialRequest } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -128,7 +128,7 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
       <div key={key} className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
         {title && (
           <div className="flex items-center justify-between px-4 py-3"
-            style={{ background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+            style={{ background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: `1px solid ${S.border}` }}>
             <span className="text-sm font-semibold" style={{ color: S.text }}>{title}</span>
             <div className="flex items-center gap-4 text-xs">
               <span style={{ color: S.muted }}>Contract: <strong style={{ color: S.text }}>{fmtR(contractGroup)}</strong></span>
@@ -207,7 +207,7 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
   const freeItems  = quoteItems.filter(i => i.section_id === null)
 
   const MAT_STATUS_COLOR: Record<string, string> = {
-    pending: S.gold, ordered: S.accent, received: S.green,
+    pending: S.gold, ordered: '#3A7CA5', received: S.green,
   }
 
   return (
@@ -270,9 +270,9 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
             </button>
             <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/as-built-pdf`} target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
+              style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)', border: '1px solid rgba(var(--qh-accent-rgb),0.2)', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.08)')}>
               <Download size={11} /> Download PDF
             </a>
             <button onClick={openSendModal}
@@ -309,7 +309,7 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: S.muted }}>Materials</p>
           <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card }}>
             <div className="grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 60px 60px 90px', gap: '8px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+              style={{ gridTemplateColumns: '1fr 60px 60px 90px', gap: '8px', color: S.muted, background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: `1px solid ${S.border}` }}>
               <span>Description</span>
               <span className="text-center">Unit</span>
               <span className="text-right">Qty</span>

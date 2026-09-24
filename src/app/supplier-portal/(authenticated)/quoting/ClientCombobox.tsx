@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { ElecClient } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
 }
 
@@ -98,7 +98,7 @@ export function ClientCombobox({ clientId: _clientId, displayName, onChange, onN
               onMouseEnter={e => e.currentTarget.style.background = S.bg}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                 {c.client_name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">

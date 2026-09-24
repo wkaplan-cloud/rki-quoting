@@ -4,13 +4,13 @@ import { ShoppingCart, CheckCircle2, PackageCheck, Loader2, X } from 'lucide-rea
 import type { ElecMaterialRequest, ElecMaterialRequestStatus } from '@/lib/elec-types'
 
 const S = {
-  card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A', bg: '#F0F2F5',
 }
 
 const STATUS_COLORS: Record<ElecMaterialRequestStatus, string> = {
-  pending: S.gold, ordered: S.accent, received: S.green, cancelled: S.muted,
+  pending: S.gold, ordered: '#3A7CA5', received: S.green, cancelled: S.muted,
 }
 const STATUS_LABELS: Record<ElecMaterialRequestStatus, string> = {
   pending: 'Pending', ordered: 'Ordered', received: 'Received', cancelled: 'Cancelled',

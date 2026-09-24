@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 
 const S = {
-  card: '#FFFFFF', bg: '#F0F2F5', accent: '#3A7CA5',
+  card: '#FFFFFF', bg: '#F0F2F5', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
 }
 

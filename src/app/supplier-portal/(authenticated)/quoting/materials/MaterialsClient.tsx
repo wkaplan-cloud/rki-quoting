@@ -4,14 +4,14 @@ import { ShoppingCart, CheckCircle2, PackageCheck, X, ChevronDown, Filter, Refre
 import type { ElecMaterialRequest, ElecMaterialRequestStatus } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
 
 const STATUS_CONFIG: Record<ElecMaterialRequestStatus, { label: string; color: string; bg: string }> = {
   pending:   { label: 'Pending',   color: '#D9A441', bg: 'rgba(217,164,65,0.1)'  },
-  ordered:   { label: 'Ordered',   color: '#3A7CA5', bg: 'rgba(58,124,165,0.1)'  },
+  ordered:   { label: 'Ordered',   color: '#3A7CA5', bg: 'rgba(var(--qh-accent-rgb),0.1)'  },
   received:  { label: 'Received',  color: '#16A34A', bg: 'rgba(22,163,74,0.1)'   },
   cancelled: { label: 'Cancelled', color: '#71717A', bg: 'rgba(113,113,122,0.1)' },
 }
@@ -197,7 +197,7 @@ export function MaterialsClient({ initialRequests }: Props) {
             style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(30,42,56,0.03)' }}>
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                style={{ background: key.startsWith('job_card') ? 'rgba(58,124,165,0.1)' : 'rgba(217,164,65,0.1)', color: key.startsWith('job_card') ? S.accent : S.gold }}>
+                style={{ background: key.startsWith('job_card') ? 'rgba(var(--qh-accent-rgb),0.1)' : 'rgba(217,164,65,0.1)', color: key.startsWith('job_card') ? S.accent : S.gold }}>
                 {key.startsWith('job_card') ? 'Job Card' : 'Project'}
               </span>
               <span className="text-sm font-semibold truncate" style={{ color: S.text }}>{group.label || 'Unknown'}</span>

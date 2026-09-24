@@ -2,6 +2,7 @@ import React from 'react'
 import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
+import { countsInQuoteTotal, isOpenOptional } from '@/lib/quote-options'
 
 const ACCENT = '#3A7CA5'
 const DARK   = '#18181B'
@@ -103,12 +104,17 @@ function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?
   )
 }
 
-export function ElecQuotePDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecQuotePDFProps) {
+export function ElecQuotePDF({ quote, client, sections, items: allItems, settings, companyName, companyEmail, logoUrl }: ElecQuotePDFProps) {
+  // Optional extras print in their own block below the quote, outside its total.
+  const items         = allItems.filter(countsInQuoteTotal)
+  const optionals     = allItems.filter(isOpenOptional)
   const freeItems     = items.filter(i => i.section_id === null)
   const contractTotal = items.reduce((s, i) => s + lineTotal(i), 0)
   const vatRate       = quote.vat_rate != null ? quote.vat_rate : (settings?.default_vat_rate ?? 0)
   const vatAmount     = contractTotal * (vatRate / 100)
   const grandTotal    = contractTotal + vatAmount
+  const depositPct    = Number(quote.deposit_percentage ?? 0)
+  const sectionTitle  = new Map(sections.map(sec => [sec.id, sec.title]))
 
   const CONTRACT_TYPE: Record<string, string> = {
     lump_sum: 'Lump Sum', re_measurement: 'Re-Measurement', cost_plus: 'Cost Plus',
@@ -200,6 +206,19 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
           )
         })}
 
+        {optionals.length > 0 && (
+          <View style={{ marginTop: 12 }}>
+            <View style={s.secRow} wrap={false}>
+              <Text style={[s.secLabel, { flex: 1 }]}>OPTIONAL EXTRAS — not included in the total</Text>
+              <Text style={[s.secLabel, { width: 72, textAlign: 'right' }]}>{fmtR(optionals.reduce((sum, i) => sum + lineTotal(i), 0))}</Text>
+            </View>
+            <ItemRows indent list={optionals.map(i => {
+              const room = i.section_id ? sectionTitle.get(i.section_id) : null
+              return room ? { ...i, description: `${room} — ${i.description}` } : i
+            })} />
+          </View>
+        )}
+
         {/* Totals */}
         <View style={s.totalsWrap}>
           <View style={s.totalsBox}>
@@ -216,6 +235,15 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
               <Text style={s.tBigLabel}>TOTAL</Text>
               <Text style={s.tBigVal}>{fmtR(grandTotal)}</Text>
             </View>
+            {depositPct > 0 && (
+              <>
+                <View style={s.tDivider} />
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Deposit on acceptance ({depositPct}%)</Text>
+                  <Text style={s.tVal}>{fmtR(grandTotal * depositPct / 100)}</Text>
+                </View>
+              </>
+            )}
             {(quote.retention_percentage ?? 0) > 0 && (
               <>
                 <View style={s.tDivider} />

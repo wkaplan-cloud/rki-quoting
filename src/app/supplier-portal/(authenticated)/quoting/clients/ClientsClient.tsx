@@ -7,7 +7,7 @@ import type { ElecClient } from '@/lib/elec-types'
 const S = {
   bg:     '#F0F2F5',
   card:   '#FFFFFF',
-  accent: '#3A7CA5',
+  accent: 'var(--qh-accent)',
   text:   '#18181B',
   muted:  '#71717A',
   border: '#E4E4E7',
@@ -309,7 +309,7 @@ export function ClientsClient({ portalAccountId, initialClients }: Props) {
             >
               {/* Avatar */}
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                 {client.client_name.charAt(0).toUpperCase()}
               </div>
 
@@ -338,7 +338,7 @@ export function ClientsClient({ portalAccountId, initialClients }: Props) {
               {/* Payment terms badge */}
               {client.payment_terms_days != null && (
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                  style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent }}>
                   Net {client.payment_terms_days}
                 </span>
               )}

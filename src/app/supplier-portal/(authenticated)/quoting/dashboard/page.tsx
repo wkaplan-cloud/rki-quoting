@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { countsInQuoteTotal } from '@/lib/quote-options'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
@@ -66,6 +67,8 @@ interface QuoteLineItemRow {
   labour_rate: number | null
   as_built_quantity: number | null
   as_built_unit_rate: number | null
+  is_optional?: boolean | null
+  optional_selected?: boolean | null
 }
 
 interface VariationOrderRow { status: string | null; value: number | null }
@@ -132,7 +135,7 @@ export default async function QuotingDashboardPage() {
   const [{ data: quotesRaw }, { data: claimsRaw }, { data: jobCardsRaw }] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
-      .select('id, quote_number, project_name, status, contract_type, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(quoted_quantity, quoted_unit_rate, labour_rate, as_built_quantity, as_built_unit_rate), variation_orders:elec_variation_orders(status, value)')
+      .select('id, quote_number, project_name, status, contract_type, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(*), variation_orders:elec_variation_orders(status, value)')
       .eq('portal_account_id', account.id)
       .is('archived_at', null)
       .order('created_at', { ascending: false }),
@@ -180,7 +183,7 @@ export default async function QuotingDashboardPage() {
     const client = Array.isArray(q.client) ? q.client[0] : q.client
     const lis = q.line_items ?? []
     const vos = q.variation_orders ?? []
-    const contract_value = lis.reduce((s, li) =>
+    const contract_value = lis.filter(countsInQuoteTotal).reduce((s, li) =>
       s + (li.quoted_quantity ?? 0) * ((li.quoted_unit_rate ?? 0) + (li.labour_rate ?? 0)), 0)
     const approved_vo_value = vos.filter(v => v.status === 'approved').reduce((s, v) => s + (v.value ?? 0), 0)
     const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }

@@ -2,7 +2,8 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap } from 'lucide-react'
+import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap, Package } from 'lucide-react'
+import type { TradeType } from '@/lib/portal-theme'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -17,15 +18,18 @@ interface Props {
   receivePriceRequests?: boolean
   /** Off when this org does not use the Projects section. */
   projectsEnabled?: boolean
+  tradeType?: TradeType
 }
 
+// Trade-specific colours come in as CSS variables set by the portal shell
+// (lib/portal-theme.ts), so this stays a module-level constant.
 const S = {
-  sidebar:      '#1E2A38',
+  sidebar:      'var(--qh-sidebar)',
   sidebarBorder:'rgba(255,255,255,0.07)',
-  textMuted:    '#94A3B8',
+  textMuted:    'var(--qh-nav-muted)',
   textLight:    '#E2E8F0',
-  activeAccent: '#3A7CA5',
-  activeBg:     'rgba(58,124,165,0.15)',
+  activeAccent: 'var(--qh-nav-accent)',
+  activeBg:     'rgba(var(--qh-nav-accent-rgb),0.15)',
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
@@ -86,9 +90,10 @@ function NavLink({ nav, href, label, icon: Icon, badge, pendingBadge, exact = fa
   )
 }
 
-export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false, projectsEnabled = true }: Props) {
+export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false, projectsEnabled = true, tradeType = 'electrician' }: Props) {
   const isTrades = supplierCategory === 'trades'
   const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
+  const isInstaller = isTrades && tradeType === 'installer'
   const tradesTierRank = isTrades ? ({ starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0) : 0
   const pathname = usePathname()
   const router = useRouter()
@@ -204,10 +209,11 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
                     <NavLink nav={nav} href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
                     {isBiz && projectsEnabled && <NavLink nav={nav} href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />}
-                    {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/coc"       label="COC"       icon={FileCheck} />}
+                    {isPro && !isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/coc" label="COC" icon={FileCheck} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
-                    {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen} />}
+                    {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/price-book" label={isInstaller ? 'Catalogue' : 'Line Items'} icon={BookOpen} />}
+                    {isBiz && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/kits" label="Kits" icon={Package} />}
                   </>
                 )
               })()}

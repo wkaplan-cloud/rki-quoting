@@ -91,11 +91,21 @@ export async function POST(req: NextRequest) {
       .eq('portal_account_id', account.id)
       .maybeSingle()
 
+    // Read apart from the settings above so a database without the deposit
+    // column still gets every other default.
+    const { data: depositRow } = await supabaseAdmin
+      .from('elec_settings')
+      .select('default_deposit_percentage')
+      .eq('portal_account_id', account.id)
+      .maybeSingle()
+    const defaultDeposit = Number((depositRow as { default_deposit_percentage?: number } | null)?.default_deposit_percentage ?? 0)
+
     const quoteNumber = await nextQuoteNumber(account.id, account.company_name, settings)
 
     const createdByName = await resolveCreatorName(user.id)
 
     const insertRow = {
+      ...(defaultDeposit > 0 ? { deposit_percentage: defaultDeposit } : {}),
       portal_account_id:             account.id,
       client_id:                     clientId,
       quote_number:                  quoteNumber,

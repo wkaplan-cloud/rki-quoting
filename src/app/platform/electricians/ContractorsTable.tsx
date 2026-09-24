@@ -427,8 +427,14 @@ const FEATURE_LABELS: { key: string; label: string; hint: string }[] = [
   { key: 'job_card_client_send_enabled', label: 'Email job cards to clients', hint: 'Off means job cards reach the office only' },
 ]
 
+const TRADES: { value: 'electrician' | 'installer'; label: string; hint: string }[] = [
+  { value: 'electrician', label: 'Electrician', hint: 'COC engine, blue portal' },
+  { value: 'installer',   label: 'Installer',   hint: 'Automation, AV, CCTV — kits, catalogue import, deposits, green portal' },
+]
+
 function FeaturesPanel({ accountId }: { accountId: string }) {
   const [features, setFeatures] = useState<Record<string, boolean> | null>(null)
+  const [trade, setTrade] = useState<'electrician' | 'installer' | null>(null)
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState('')
 
@@ -436,10 +442,11 @@ function FeaturesPanel({ accountId }: { accountId: string }) {
     let cancelled = false
     void (async () => {
       const res = await fetch(`/api/platform/elec-accounts/${accountId}`)
-      const json = await res.json() as { features?: Record<string, boolean>; error?: string }
+      const json = await res.json() as { features?: Record<string, boolean>; trade_type?: 'electrician' | 'installer'; error?: string }
       if (cancelled) return
       if (!res.ok) { setError(json.error ?? 'Could not load features'); return }
       setFeatures(json.features ?? {})
+      setTrade(json.trade_type ?? 'electrician')
     })()
     return () => { cancelled = true }
   }, [accountId])
@@ -461,8 +468,45 @@ function FeaturesPanel({ accountId }: { accountId: string }) {
     }
   }
 
+  async function changeTrade(value: 'electrician' | 'installer') {
+    if (value === trade) return
+    setSaving('trade'); setError('')
+    const previous = trade
+    setTrade(value)
+    const res = await fetch(`/api/platform/elec-accounts/${accountId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trade_type: value }),
+    })
+    setSaving(null)
+    if (!res.ok) {
+      setTrade(previous)
+      const json = await res.json().catch(() => ({})) as { error?: string }
+      setError(json.error ?? 'Could not change the trade — nothing was changed')
+    }
+  }
+
   return (
     <div className="px-5 py-4 bg-[#F7F4EE] border-t border-[#EAE5DB]">
+      {trade && (
+        <div className="mb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8A877F] mb-2">Trade</p>
+          <div className="flex gap-2 flex-wrap">
+            {TRADES.map(t => {
+              const on = trade === t.value
+              return (
+                <button key={t.value} onClick={() => void changeTrade(t.value)} disabled={saving === 'trade'}
+                  aria-pressed={on}
+                  className="text-left px-3 py-2 rounded-lg border disabled:opacity-50 cursor-pointer"
+                  style={{ background: on ? '#fff' : 'transparent', borderColor: on ? '#8F5706' : '#DED8CC' }}>
+                  <span className="block text-xs font-semibold text-[#3F3D38]">{t.label}</span>
+                  <span className="block text-[11px] text-[#8A877F]">{t.hint}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8A877F] mb-3">Sections this company uses</p>
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
       {features === null && !error && <Loader2 size={14} className="animate-spin text-[#8A877F]" />}

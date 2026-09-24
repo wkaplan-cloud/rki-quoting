@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { getTradeType } from '@/lib/trade-type'
+import { isTradeType } from '@/lib/portal-theme'
 
 const PLATFORM_ADMIN = process.env.PLATFORM_ADMIN_EMAIL
 
@@ -37,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const row = (data ?? {}) as Record<string, boolean | undefined>
     const features = Object.fromEntries(FEATURE_FLAGS.map(f => [f, row[f] !== false]))
-    return NextResponse.json({ ok: true, features })
+    return NextResponse.json({ ok: true, features, trade_type: await getTradeType(id) })
   } catch (e) { return apiError(e) }
 }
 
@@ -56,6 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       setup_fee_paid?: boolean
       admin_notes?: string
       supplier_category?: string
+      trade_type?: string
       features?: Record<string, boolean>
     }
 
@@ -83,6 +86,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.setup_fee_paid      !== undefined) patch.setup_fee_paid      = body.setup_fee_paid
     if (body.admin_notes         !== undefined) patch.admin_notes         = body.admin_notes
     if (body.supplier_category   !== undefined) patch.supplier_category   = body.supplier_category
+    if (body.trade_type          !== undefined) {
+      if (!isTradeType(body.trade_type)) return NextResponse.json({ error: 'Unknown trade' }, { status: 400 })
+      patch.trade_type = body.trade_type
+    }
 
     if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true })
 

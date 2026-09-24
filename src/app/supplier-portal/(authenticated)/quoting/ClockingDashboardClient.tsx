@@ -4,7 +4,7 @@ import { MapPin, LogIn, LogOut, Users, Clock, CalendarDays, RefreshCw } from 'lu
 import { punchesToBreakdownRange, get5pmSASTCutoff } from '@/lib/sa-overtime'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A', sidebar: '#1E2A38',
 }
@@ -208,7 +208,7 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
                     <a href={`https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-                      style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                      style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                       <MapPin size={10} /> Map
                     </a>
                   )}

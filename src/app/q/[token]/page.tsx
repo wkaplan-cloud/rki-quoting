@@ -22,6 +22,12 @@ function fmt(date: string | null) {
   return new Date(date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+// Once approved the project has started; any of these means the client has said yes.
+const APPROVED_STATUSES = ['approved', 'in_progress', 'completed']
+
+const lineValue = (i: { quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null }) =>
+  i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0))
+
 const CONTRACT_LABELS: Record<string, string> = {
   lump_sum: 'Lump Sum',
   re_measurement: 'Re-measurement',
@@ -35,10 +41,11 @@ interface QuoteData {
     retention_percentage: number; payment_terms_days: number; notes: string | null
     quoted_date: string | null; expected_completion_date: string | null
     approved_date: string | null; drawing_reference: string | null
+    deposit_percentage?: number | null
   }
   client: { id: string; client_name: string; company: string | null; email: string | null; contact_number: string | null; address: string | null } | null
   sections: { id: string; title: string; sort_order: number }[]
-  items: { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null; sort_order: number }[]
+  items: { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null; sort_order: number; is_optional?: boolean | null; optional_selected?: boolean | null }[]
   company: { company_name: string | null; email: string | null; logo_url: string | null; phone: string | null } | null
   settings: { vat_registration_number: string | null; company_registration_number: string | null; cidb_registration_number: string | null; bank_name: string | null; bank_account_number: string | null; bank_branch_code: string | null; bank_account_type: string | null } | null
 }
@@ -53,6 +60,8 @@ export default function QuoteApprovalPage() {
   const [notes, setNotes]       = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone]         = useState<'approved' | 'requested' | null>(null)
+  // Optional extras the client has ticked, seeded from any the contractor pre-ticked.
+  const [chosen, setChosen]     = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch(`/api/q/${token}`)
@@ -60,8 +69,9 @@ export default function QuoteApprovalPage() {
       .then(d => {
         if (d.error) { setError(d.error); setLoading(false); return }
         setData(d)
+        setChosen(new Set((d as QuoteData).items.filter(i => i.is_optional && i.optional_selected).map(i => i.id)))
         document.title = `${d.quote.quote_number} – ${d.quote.project_name} | QuotingHub`
-        if (d.quote.status === 'approved') setDone('approved')
+        if (APPROVED_STATUSES.includes(d.quote.status)) setDone('approved')
         setLoading(false)
       })
       .catch(() => { setError('Failed to load quote'); setLoading(false) })
@@ -73,7 +83,7 @@ export default function QuoteApprovalPage() {
     const res = await fetch(`/api/q/${token}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, notes }),
+      body: JSON.stringify({ action, notes, selected_optional_ids: [...chosen] }),
     })
     const json = await res.json()
     if (json.ok) setDone(action === 'approve' ? 'approved' : 'requested')
@@ -94,12 +104,17 @@ export default function QuoteApprovalPage() {
     </div>
   )
 
-  const { quote, client, sections, items, company, settings } = data
-  const subtotal  = items.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
+  const { quote, client, sections, company, settings } = data
+  const items     = data.items.filter(i => !i.is_optional)
+  const optionals = data.items.filter(i => i.is_optional)
+  const subtotal  = items.reduce((s, i) => s + lineValue(i), 0)
+    + optionals.filter(i => chosen.has(i.id)).reduce((s, i) => s + lineValue(i), 0)
   const vatAmt    = subtotal * (quote.vat_rate / 100)
   const total     = subtotal + vatAmt
   const retention = subtotal * (quote.retention_percentage / 100)
-  const isAlreadyActioned = done !== null || quote.status === 'approved' || quote.status === 'cancelled'
+  const depositPct = Number(quote.deposit_percentage ?? 0)
+  const isAlreadyActioned = done !== null || APPROVED_STATUSES.includes(quote.status) || quote.status === 'cancelled'
+  const sectionTitle = new Map(sections.map(sec => [sec.id, sec.title]))
 
   const metaParts = [
     settings?.vat_registration_number  ? `VAT: ${settings.vat_registration_number}`   : null,
@@ -174,7 +189,7 @@ export default function QuoteApprovalPage() {
               <p style={{ fontSize: 22, fontWeight: 700, color: DARK, lineHeight: 1, marginBottom: 6 }}>{quote.quote_number}</p>
               {quote.quoted_date && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Date: {fmt(quote.quoted_date)}</p>}
               {quote.payment_terms_days > 0 && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Payment terms: {quote.payment_terms_days} days</p>}
-              {quote.status === 'approved' && (
+              {APPROVED_STATUSES.includes(quote.status) && (
                 <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: 'rgba(22,163,74,0.1)', color: GREEN }}>
                   Approved{quote.approved_date ? ` · ${fmt(quote.approved_date)}` : ''}
                 </span>
@@ -215,7 +230,7 @@ export default function QuoteApprovalPage() {
             {sections.map(sec => {
               const secItems = itemsBySection[sec.id] ?? []
               if (secItems.length === 0) return null
-              const secTotal = secItems.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
+              const secTotal = secItems.reduce((s, i) => s + lineValue(i), 0)
               const isCollapsed = collapsed[sec.id] ?? false
               return (
                 <div key={sec.id} style={{ marginTop: 2 }}>
@@ -234,6 +249,41 @@ export default function QuoteApprovalPage() {
               )
             })}
           </div>
+
+          {/* Optional extras — the client ticks the ones they want */}
+          {optionals.length > 0 && (
+            <div style={{ marginBottom: 20, border: `0.5px solid ${BORDER}`, borderRadius: 3 }}>
+              <div style={{ padding: '8px 12px', background: SEC_BG, borderBottom: `0.5px solid ${BORDER}` }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: ACC }}>Optional extras</p>
+                <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>
+                  {isAlreadyActioned ? 'Offered with this quote.' : 'Tick any you would like added — the total updates as you go.'}
+                </p>
+              </div>
+              {optionals.map((item, i) => {
+                const room = item.section_id ? sectionTitle.get(item.section_id) : null
+                const checked = chosen.has(item.id)
+                return (
+                  <label key={item.id} className="line-item-row"
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderTop: i > 0 ? `0.5px solid ${BORDER}` : 'none', cursor: isAlreadyActioned ? 'default' : 'pointer', background: checked ? 'rgba(22,163,74,0.05)' : '#fff' }}>
+                    <input type="checkbox" checked={checked} disabled={isAlreadyActioned}
+                      onChange={e => setChosen(prev => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(item.id); else next.delete(item.id)
+                        return next
+                      })}
+                      style={{ marginTop: 2, width: 15, height: 15, accentColor: GREEN, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 12, color: DARK }}>{item.description}</span>
+                      <span style={{ display: 'block', fontSize: 10, color: MUTED, marginTop: 2 }}>
+                        {room ? `${room} · ` : ''}{item.quoted_quantity} {item.unit ?? ''} × {fmtR(item.quoted_unit_rate + (item.labour_rate ?? 0))}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: checked ? GREEN : DARK, flexShrink: 0 }}>+ {fmtR(lineValue(item))}</span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
 
           {/* Totals row */}
           <div className="totals-row">
@@ -261,6 +311,12 @@ export default function QuoteApprovalPage() {
                 <span style={{ fontSize: 13, fontWeight: 700, color: ACC }}>TOTAL</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: ACC }}>{fmtR(total)}</span>
               </div>
+              {depositPct > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                  <span style={{ fontSize: 10, color: MUTED }}>Deposit on acceptance ({depositPct}%)</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: DARK }}>{fmtR(total * depositPct / 100)}</span>
+                </div>
+              )}
               {retention > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                   <span style={{ fontSize: 10, color: MUTED }}>Retention ({quote.retention_percentage}%)</span>

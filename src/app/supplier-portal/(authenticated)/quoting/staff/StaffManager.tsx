@@ -2,22 +2,37 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown, Smartphone, Download, MessageCircle } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
+import type { TradeType } from '@/lib/portal-theme'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import { punchesToBreakdown, punchesToBreakdownRange, buildDaySessions, saDateKey, type HourBreakdown } from '@/lib/sa-overtime'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
 
-const ROLES: { value: ElecStaffRole; label: string }[] = [
+const ELECTRICIAN_ROLES: { value: ElecStaffRole; label: string }[] = [
   { value: 'electrician',   label: 'Electrician' },
   { value: 'apprentice',    label: 'Apprentice' },
   { value: 'site_foreman',  label: 'Site Foreman' },
   { value: 'helper',        label: 'Helper' },
   { value: 'admin',         label: 'Admin' },
 ]
+
+const INSTALLER_ROLES: { value: ElecStaffRole; label: string }[] = [
+  { value: 'technician',      label: 'Technician' },
+  { value: 'installer',       label: 'Installer' },
+  { value: 'programmer',      label: 'Programmer' },
+  { value: 'project_manager', label: 'Project Manager' },
+  { value: 'helper',          label: 'Helper' },
+  { value: 'admin',           label: 'Admin' },
+]
+
+// Every label, so a staff card still reads correctly if the trade changes.
+const ROLE_LABELS: Record<string, string> = Object.fromEntries(
+  [...ELECTRICIAN_ROLES, ...INSTALLER_ROLES].map(r => [r.value, r.label]),
+)
 
 const COLORS = [
   '#3A7CA5', '#16A34A', '#D9A441', '#DC2626',
@@ -26,21 +41,29 @@ const COLORS = [
 
 function roleBg(role: ElecStaffRole) {
   const map: Record<ElecStaffRole, string> = {
-    electrician:  'rgba(58,124,165,0.12)',
-    apprentice:   'rgba(217,164,65,0.12)',
-    site_foreman: 'rgba(22,163,74,0.12)',
-    helper:       'rgba(100,116,139,0.12)',
-    admin:        'rgba(124,58,237,0.12)',
+    electrician:     'rgba(58,124,165,0.12)',
+    apprentice:      'rgba(217,164,65,0.12)',
+    site_foreman:    'rgba(22,163,74,0.12)',
+    helper:          'rgba(100,116,139,0.12)',
+    admin:           'rgba(124,58,237,0.12)',
+    technician:      'rgba(31,92,69,0.12)',
+    installer:       'rgba(8,145,178,0.12)',
+    programmer:      'rgba(217,164,65,0.12)',
+    project_manager: 'rgba(22,163,74,0.12)',
   }
   return map[role] ?? S.bg
 }
 function roleColor(role: ElecStaffRole) {
   const map: Record<ElecStaffRole, string> = {
-    electrician:  '#3A7CA5',
-    apprentice:   '#D9A441',
-    site_foreman: '#16A34A',
-    helper:       '#64748B',
-    admin:        '#7C3AED',
+    electrician:     '#3A7CA5',
+    apprentice:      '#D9A441',
+    site_foreman:    '#16A34A',
+    helper:          '#64748B',
+    admin:           '#7C3AED',
+    technician:      '#1F5C45',
+    installer:       '#0891B2',
+    programmer:      '#B7862F',
+    project_manager: '#16A34A',
   }
   return map[role] ?? S.muted
 }
@@ -271,9 +294,12 @@ type Tab = 'staff' | 'timesheet'
 interface Props {
   initialStaff: ElecStaff[]
   punches: ElecTimePunch[]
+  tradeType?: TradeType
 }
 
-export function StaffManager({ initialStaff, punches }: Props) {
+export function StaffManager({ initialStaff, punches, tradeType = 'electrician' }: Props) {
+  const roles = tradeType === 'installer' ? INSTALLER_ROLES : ELECTRICIAN_ROLES
+  const blankForm: FormState = { ...EMPTY_FORM, role: roles[0].value }
   const [tab, setTab] = useState<Tab>('staff')
   const [staff, setStaff] = useState(initialStaff)
   const [geoAddresses, setGeoAddresses] = useState<Record<string, string>>({})
@@ -302,7 +328,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
   }, [punches])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [form, setForm] = useState<FormState>(blankForm)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
@@ -412,7 +438,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
 
   function openAdd() {
     setEditingId(null)
-    setForm(EMPTY_FORM)
+    setForm(blankForm)
     setShowForm(true)
   }
 
@@ -426,7 +452,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
   function closeForm() {
     setShowForm(false)
     setEditingId(null)
-    setForm(EMPTY_FORM)
+    setForm(blankForm)
     setNewCredentials(null)
   }
 
@@ -462,7 +488,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
       setSaving(false)
       setShowForm(false)
       setEditingId(null)
-      setForm(EMPTY_FORM)
+      setForm(blankForm)
     }
   }
 
@@ -671,7 +697,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                       <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as ElecStaffRole }))}
                         className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                         style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-                        {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        {roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                       </select>
                     </div>
 
@@ -746,7 +772,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
           {staff.length === 0 && !showForm && (
             <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                style={{ background: 'rgba(58,124,165,0.1)' }}>
+                style={{ background: 'rgba(var(--qh-accent-rgb),0.1)' }}>
                 <UserCircle2 size={22} style={{ color: S.accent }} />
               </div>
               <p className="font-semibold mb-1" style={{ color: S.text }}>No team members yet</p>
@@ -1011,7 +1037,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                       className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
                       onClick={() => setExpandedJobs(prev => ({ ...prev, [jobKey]: !prev[jobKey] }))}>
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: isUnlinked ? 'rgba(113,113,122,0.1)' : 'rgba(58,124,165,0.1)' }}>
+                        style={{ background: isUnlinked ? 'rgba(113,113,122,0.1)' : 'rgba(var(--qh-accent-rgb),0.1)' }}>
                         <Briefcase size={15} style={{ color: isUnlinked ? S.muted : S.accent }} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1152,7 +1178,7 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
   deleting: boolean
   toggling: boolean
 }) {
-  const roleLabel = ROLES.find(r => r.value === s.role)?.label ?? s.role
+  const roleLabel = ROLE_LABELS[s.role] ?? s.role
   const inactive = !s.is_active
   const hasCredentials = !!s.username && !!s.auth_user_id
 

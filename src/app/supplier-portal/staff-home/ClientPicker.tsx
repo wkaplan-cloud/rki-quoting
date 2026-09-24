@@ -4,7 +4,7 @@ import { Loader2, Plus, X } from 'lucide-react'
 import type { ElecClient } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
 }
 
@@ -56,9 +56,9 @@ export function ClientPicker({ clients, selectedId, selectedName, onSelect, onCl
       <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>{label}</label>
       {selectedId ? (
         <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl"
-          style={{ background: 'rgba(58,124,165,0.08)', border: `1.5px solid ${S.accent}` }}>
+          style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', border: `1.5px solid ${S.accent}` }}>
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-            style={{ background: 'rgba(58,124,165,0.15)', color: S.accent }}>
+            style={{ background: 'rgba(var(--qh-accent-rgb),0.15)', color: S.accent }}>
             {selectedName.charAt(0).toUpperCase()}
           </div>
           <span className="flex-1 text-sm font-semibold" style={{ color: S.text }}>{selectedName}</span>
@@ -68,7 +68,7 @@ export function ClientPicker({ clients, selectedId, selectedName, onSelect, onCl
           </button>
         </div>
       ) : addingName !== null ? (
-        <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: 'rgba(58,124,165,0.06)', border: `1.5px solid ${S.accent}` }}>
+        <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: 'rgba(var(--qh-accent-rgb),0.06)', border: `1.5px solid ${S.accent}` }}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold" style={{ color: S.text }}>New client: {addingName}</p>
             <button onClick={() => { setAddingName(null); setEmail(''); setPhone('') }}
@@ -130,7 +130,7 @@ export function ClientPicker({ clients, selectedId, selectedName, onSelect, onCl
                     className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
                     style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                      style={{ background: 'rgba(var(--qh-accent-rgb),0.1)', color: S.accent }}>
                       {c.client_name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">

@@ -8,6 +8,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ElecQuotePDF } from '@/lib/pdf/ElecQuotePDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
+import { countsInQuoteTotal } from '@/lib/quote-options'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       logoUrl,
     }))
 
-    const subtotal = (items ?? []).reduce((s, i) => {
+    const subtotal = (items ?? []).filter(countsInQuoteTotal).reduce((s, i) => {
       const item = i as ElecQuoteLineItem
       return s + (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)
     }, 0)

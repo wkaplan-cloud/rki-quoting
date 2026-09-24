@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.default_retention_percentage   === 'number') payload.default_retention_percentage   = body.default_retention_percentage
     if (typeof body.default_payment_terms_days     === 'number') payload.default_payment_terms_days     = body.default_payment_terms_days
     if (typeof body.default_defects_liability_days === 'number') payload.default_defects_liability_days = body.default_defects_liability_days
+    if (typeof body.default_deposit_percentage     === 'number') payload.default_deposit_percentage     = Math.min(100, Math.max(0, body.default_deposit_percentage))
     if (typeof body.quote_prefix                   === 'string') payload.quote_prefix                   = body.quote_prefix
     if (typeof body.claim_prefix                   === 'string') payload.claim_prefix                   = body.claim_prefix
     if (typeof body.vo_prefix                      === 'string') payload.vo_prefix                      = body.vo_prefix

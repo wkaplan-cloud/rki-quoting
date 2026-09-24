@@ -4,7 +4,7 @@ import { WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { pendingCount, flushQueue } from '@/lib/offline-punch-queue'
 
 const S = {
-  accent: '#3A7CA5',
+  accent: 'var(--qh-accent)',
   gold: '#D9A441',
   green: '#16A34A',
   border: '#E4E4E7',

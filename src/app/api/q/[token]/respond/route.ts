@@ -3,12 +3,13 @@ import { todaySA } from '@/lib/dates'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { finaliseAcceptedQuote } from '@/lib/quote-acceptance'
 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params
-    const body = await req.json() as { action: 'approve' | 'request_changes'; client_name?: string; notes?: string }
+    const body = await req.json() as { action: 'approve' | 'request_changes'; client_name?: string; notes?: string; selected_optional_ids?: string[] }
 
     const { data: quote } = await supabaseAdmin
       .from('elec_quotes')
@@ -22,6 +23,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     }
 
     if (body.action === 'approve') {
+      // Settle optional lines and raise any deposit before the status flips —
+      // safe to repeat if the status update below fails and the client retries.
+      await finaliseAcceptedQuote({
+        quoteId: quote.id,
+        portalAccountId: quote.portal_account_id,
+        selectedOptionalIds: Array.isArray(body.selected_optional_ids)
+          ? body.selected_optional_ids.filter((v): v is string => typeof v === 'string')
+          : undefined,
+      })
       await supabaseAdmin
         .from('elec_quotes')
         .update({ status: 'in_progress', approved_date: todaySA() })

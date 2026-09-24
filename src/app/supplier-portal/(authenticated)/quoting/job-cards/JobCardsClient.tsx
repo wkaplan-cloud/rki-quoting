@@ -7,7 +7,7 @@ import { ClientCombobox } from '../ClientCombobox'
 import { StaffMultiSelect } from '../StaffMultiSelect'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -20,7 +20,7 @@ function fmtSentAt(iso: string) {
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   pending:     { bg: 'rgba(217,164,65,0.1)',  color: S.gold,    label: 'Pending' },
-  in_progress: { bg: 'rgba(58,124,165,0.1)',  color: S.accent,  label: 'In Progress' },
+  in_progress: { bg: 'rgba(var(--qh-accent-rgb),0.1)',  color: S.accent,  label: 'In Progress' },
   completed:   { bg: 'rgba(22,163,74,0.1)',   color: S.green,   label: 'Completed' },
   cancelled:   { bg: 'rgba(113,113,122,0.1)', color: S.muted,   label: 'Cancelled' },
 }
@@ -39,6 +39,8 @@ interface Props {
   staff: ElecStaff[]
   clients: ElecClient[]
   portalAccountId: string
+  /** Installers don't issue COCs, so the COC job type is left out of the pickers. */
+  hideCoc?: boolean
 }
 
 const EMPTY_FORM = {
@@ -47,7 +49,8 @@ const EMPTY_FORM = {
   location: '', scheduled_at: '', work_description: '',
 }
 
-export function JobCardsClient({ initialJobCards, staff, clients: initialClients, portalAccountId }: Props) {
+export function JobCardsClient({ initialJobCards, staff, clients: initialClients, portalAccountId, hideCoc = false }: Props) {
+  const typeOptions = Object.entries(TYPE_LABEL).filter(([k]) => !(hideCoc && k === 'coc'))
   const router = useRouter()
   const [jobCards, setJobCards] = useState<ElecJobCard[]>(initialJobCards)
   const [clients, setClients] = useState<ElecClient[]>(initialClients)
@@ -169,7 +172,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
           className="px-3 py-2 rounded-xl text-sm"
           style={{ background: S.card, border: `1px solid ${S.border}`, color: S.text }}>
           <option value="all">All types</option>
-          {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {typeOptions.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
 
@@ -299,7 +302,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                   <select value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value as ElecJobCardType }))}
                     className="w-full px-3 py-2 rounded-xl text-sm"
                     style={{ border: `1px solid ${S.border}`, color: S.text }}>
-                    {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {typeOptions.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
                 <div>

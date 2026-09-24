@@ -1,8 +1,9 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { Home, Briefcase, Plus, FolderOpen, ClipboardCheck } from 'lucide-react'
+import { useStaffTrade } from './StaffTradeContext'
 
-const S = { card: '#FFFFFF', accent: '#3A7CA5', muted: '#A1A1AA', border: '#E4E4E7' }
+const S = { card: '#FFFFFF', accent: 'var(--qh-accent)', muted: '#A1A1AA', border: '#E4E4E7' }
 
 export type NavTab = 'home' | 'jobs' | 'projects' | 'history' | 'inspect'
 
@@ -33,7 +34,7 @@ function NavButton({ tab, activeTab, icon, label, badge, onClick }: NavButtonPro
     >
       <div
         className="w-14 h-8 rounded-full flex items-center justify-center relative"
-        style={{ background: isActive ? 'rgba(58,124,165,0.14)' : 'transparent' }}
+        style={{ background: isActive ? 'rgba(var(--qh-accent-rgb),0.14)' : 'transparent' }}
       >
         <div style={{ color: isActive ? S.accent : S.muted }}>{icon}</div>
         {!!badge && (
@@ -63,6 +64,8 @@ function NavButton({ tab, activeTab, icon, label, badge, onClick }: NavButtonPro
 
 export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, projectsBadge }: Props) {
   const router = useRouter()
+  // Inspect is the COC inspection flow, which installers don't do.
+  const showInspect = useStaffTrade() !== 'installer'
 
   function go(tab: NavTab) {
     if (onTabChange) onTabChange(tab)
@@ -94,14 +97,14 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, pr
         <button
           onClick={handlePlus}
           className="w-13 h-13 rounded-full flex items-center justify-center text-white -mt-4"
-          style={{ background: S.accent, boxShadow: '0 4px 16px rgba(58,124,165,0.5)', width: 52, height: 52 }}
+          style={{ background: S.accent, boxShadow: '0 4px 16px rgba(var(--qh-accent-rgb),0.5)', width: 52, height: 52 }}
         >
           <Plus size={24} />
         </button>
       </div>
 
       <NavButton tab="projects" activeTab={activeTab} icon={<FolderOpen size={24} />}      label="Projects" badge={projectsBadge} onClick={() => go('projects')} />
-      <NavButton tab="inspect"  activeTab={activeTab} icon={<ClipboardCheck size={24} />}  label="Inspect"  onClick={() => go('inspect')} />
+      {showInspect && <NavButton tab="inspect"  activeTab={activeTab} icon={<ClipboardCheck size={24} />}  label="Inspect"  onClick={() => go('inspect')} />}
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { useVisiblePoll } from '@/lib/useVisiblePoll'
 import { toSADateTimeLocal } from '@/lib/dates'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -193,6 +193,7 @@ export function WeekCalendar({
   companyName,
   initialLiveStatuses = [],
   projectsEnabled = true,
+  hideCoc = false,
 }: {
   initialJobs: ElecJob[]
   staff: ElecStaff[]
@@ -203,6 +204,8 @@ export function WeekCalendar({
   initialLiveStatuses?: StaffLiveStatus[]
   /** Off for a contractor who works from job cards only — no project to book against. */
   projectsEnabled?: boolean
+  /** Installers don't issue COCs, so the COC job type is left out. */
+  hideCoc?: boolean
 }) {
   const [currentDay, setCurrentDay] = useState(() => {
     const d = new Date()
@@ -717,7 +720,7 @@ export function WeekCalendar({
                       href={`https://www.google.com/maps?q=${ls.latitude},${ls.longitude}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
-                      style={{ background: 'rgba(58,124,165,0.06)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+                      style={{ background: 'rgba(var(--qh-accent-rgb),0.06)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
                       <MapPin size={11} /> Map
                     </a>
                   )}
@@ -767,7 +770,7 @@ export function WeekCalendar({
       <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
         {/* Day header */}
-        <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${S.border}`, background: isToday ? 'rgba(58,124,165,0.04)' : 'transparent' }}>
+        <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${S.border}`, background: isToday ? 'rgba(var(--qh-accent-rgb),0.04)' : 'transparent' }}>
           <p className="text-sm font-bold" style={{ color: isToday ? S.accent : S.text }}>
             {DAY_NAMES[currentDay.getDay()]}
             {isToday && <span className="ml-2 text-xs font-medium" style={{ color: S.accent }}>(Today)</span>}
@@ -861,7 +864,7 @@ export function WeekCalendar({
               {/* Job blocks with overlap columns */}
               {layout.map(({ job, col, totalCols }) => {
                 const staffMember = job.staff ?? staff.find(s => s.id === job.staff_id)
-                const color  = staffMember?.color ?? S.accent
+                const color  = staffMember?.color ?? '#3A7CA5'
                 const top    = jobTop(job.start_time)
                 const height = jobHeight(job.start_time, job.end_time)
                 const isDone = job.status === 'completed' || job.status === 'cancelled'
@@ -1025,7 +1028,7 @@ export function WeekCalendar({
                   <select value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value as ElecJobCardType }))}
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-                    {JOB_CARD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    {JOB_CARD_TYPES.filter(t => !(hideCoc && t.value === 'coc')).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
               )}
@@ -1181,7 +1184,7 @@ export function WeekCalendar({
             {/* Share with worker */}
             {modal.mode === 'edit' && modal.job && (
               <div className="px-5 pt-1 pb-2">
-                <div className="rounded-xl p-3" style={{ background: 'rgba(58,124,165,0.05)', border: `1px solid rgba(58,124,165,0.15)` }}>
+                <div className="rounded-xl p-3" style={{ background: 'rgba(var(--qh-accent-rgb),0.05)', border: `1px solid rgba(var(--qh-accent-rgb),0.15)` }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-1.5">
                       <Share2 size={12} style={{ color: S.accent }} />

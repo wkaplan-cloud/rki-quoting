@@ -74,7 +74,7 @@ interface Props {
 // ── Palette ──────────────────────────────────────────────────────────────────
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -104,7 +104,7 @@ const QUOTE_STATUS_CFG: Partial<Record<ElecQuoteStatus, { label: string; bg: str
 
 const JC_STATUS_CFG: Record<string, { label: string; bg: string; color: string }> = {
   pending:     { label: 'Pending',     bg: 'rgba(217,164,65,0.12)',  color: S.gold   },
-  in_progress: { label: 'In Progress', bg: 'rgba(58,124,165,0.12)',  color: S.accent },
+  in_progress: { label: 'In Progress', bg: 'rgba(var(--qh-accent-rgb),0.12)',  color: S.accent },
   completed:   { label: 'Completed',   bg: 'rgba(22,163,74,0.12)',   color: S.green  },
 }
 
@@ -118,7 +118,7 @@ const JC_TYPE_LABEL: Record<string, string> = {
 function FinancialStrip({ financial }: { financial: Props['financial'] }) {
   const { pipelineValue, activeValue, completedValue, outstanding, paidYTD } = financial
   const cards = [
-    { label: 'Pipeline',    value: fmtR(pipelineValue),  sub: 'Projects pending',          icon: TrendingUp,   color: S.accent,                                          iconBg: 'rgba(58,124,165,0.08)'  },
+    { label: 'Pipeline',    value: fmtR(pipelineValue),  sub: 'Projects pending',          icon: TrendingUp,   color: S.accent,                                          iconBg: 'rgba(var(--qh-accent-rgb),0.08)'  },
     { label: 'Active Jobs', value: fmtR(activeValue),    sub: 'Contract value',           icon: Briefcase,    color: S.green,                                           iconBg: 'rgba(22,163,74,0.08)'   },
     { label: 'Completed',   value: fmtR(completedValue), sub: 'Total contract value',     icon: CheckCircle2, color: '#166534',                                         iconBg: 'rgba(22,101,52,0.08)'   },
     { label: 'Outstanding', value: fmtR(outstanding),    sub: 'Invoiced, not yet paid',   icon: AlertCircle,  color: outstanding > 0 ? S.gold : S.muted,                iconBg: outstanding > 0 ? 'rgba(217,164,65,0.08)' : 'rgba(113,113,122,0.06)' },
@@ -147,7 +147,7 @@ function JobCardStrip({ summary }: { summary: Props['jobCardSummary'] }) {
   const { pendingCount, inProgressCount, completedCount, totalRevenue } = summary
   const cards = [
     { label: 'Pending',     value: pendingCount,    sub: 'Awaiting action',    color: S.gold,   iconBg: 'rgba(217,164,65,0.08)',  fmt: 'count' },
-    { label: 'Active',      value: inProgressCount, sub: 'Currently on site',  color: S.accent, iconBg: 'rgba(58,124,165,0.08)',  fmt: 'count' },
+    { label: 'Active',      value: inProgressCount, sub: 'Currently on site',  color: S.accent, iconBg: 'rgba(var(--qh-accent-rgb),0.08)',  fmt: 'count' },
     { label: 'Completed',   value: completedCount,  sub: 'Total job cards',    color: S.green,  iconBg: 'rgba(22,163,74,0.08)',   fmt: 'count' },
     { label: 'Total Revenue', value: totalRevenue,  sub: 'From completed jobs', color: S.green, iconBg: 'rgba(22,163,74,0.08)',   fmt: 'money' },
   ] as const
@@ -319,7 +319,7 @@ function QuotesTab({ pipeline, active, completed, reconMonths, reconMap }: {
       {/* Monthly RECON */}
       {reconMonths.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.04)' }}>
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(var(--qh-accent-rgb),0.04)' }}>
             <p className="text-sm font-semibold" style={{ color: S.text }}>Monthly RECON</p>
             <p className="text-[10px]" style={{ color: S.muted }}>Cash flow by claim period · last 12 months</p>
           </div>
@@ -537,7 +537,7 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
                 {count > 0 && (
                   <span
                     className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{ background: isActive ? 'rgba(58,124,165,0.12)' : '#F4F4F5', color: isActive ? S.accent : S.muted }}
+                    style={{ background: isActive ? 'rgba(var(--qh-accent-rgb),0.12)' : '#F4F4F5', color: isActive ? S.accent : S.muted }}
                   >
                     {count}
                   </span>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { StaffManager } from './StaffManager'
+import { getTradeType } from '@/lib/trade-type'
 import type { ElecStaff, ElecTimePunch } from '@/lib/elec-types'
 
 export const metadata = { title: 'Staff — QuotingHub' }
@@ -22,7 +23,7 @@ export default async function StaffPage() {
   // eslint-disable-next-line react-hooks/purity
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  const [{ data: staff }, { data: rawPunches }] = await Promise.all([
+  const [{ data: staff }, { data: rawPunches }, tradeType] = await Promise.all([
     supabaseAdmin
       .from('elec_staff')
       .select('*')
@@ -34,6 +35,7 @@ export default async function StaffPage() {
       .eq('portal_account_id', account.id)
       .gte('punched_at', since)
       .order('punched_at', { ascending: false }),
+    getTradeType(account.id),
   ])
 
   // Separately fetch job cards referenced by punches (avoids needing a FK relationship)
@@ -52,6 +54,7 @@ export default async function StaffPage() {
     <StaffManager
       initialStaff={(staff ?? []) as ElecStaff[]}
       punches={punches}
+      tradeType={tradeType}
     />
   )
 }

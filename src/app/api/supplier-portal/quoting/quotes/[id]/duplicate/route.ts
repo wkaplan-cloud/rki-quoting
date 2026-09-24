@@ -69,6 +69,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       additional_staff_ids: source.additional_staff_ids,
       drawing_reference: source.drawing_reference,
       is_quick_job: source.is_quick_job,
+      // Only named when the source row has it, so a database without the
+      // installer columns duplicates exactly as before.
+      ...('deposit_percentage' in source ? { deposit_percentage: source.deposit_percentage } : {}),
       created_by_name: createdByName,
       // Explicitly reset: quoted_date, approved_date, expected/practical_completion_date,
       // notes, archived_at, invoiced, share_token(_created_at) — a duplicate is a fresh
@@ -115,6 +118,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           as_built_unit_rate: null,
           variation_order_id: null,
           is_variation: false,
+          ...('is_optional' in i ? { is_optional: i.is_optional, optional_selected: false } : {}),
           sort_order: i.sort_order,
         }))
       )

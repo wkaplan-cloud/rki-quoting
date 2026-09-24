@@ -7,6 +7,7 @@ import { isActivePlan, planRank } from '@/lib/plan-features'
 import { SupplierProfileClient } from './SupplierProfileClient'
 import type { PortalOrgMember } from '@/lib/elec-types'
 import type { ElecSettings } from '@/lib/elec-types'
+import { getTradeType } from '@/lib/trade-type'
 
 const CATEGORY_OPTIONS = [
   'Upholstery', 'Curtains & Soft Furnishings', 'Furniture Manufacturing',
@@ -53,9 +54,10 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
       : Promise.resolve({ data: [] }),
   ])
 
-  const [{ data: acctExtra }, { count: staffCount }] = await Promise.all([
+  const [{ data: acctExtra }, { count: staffCount }, tradeType] = await Promise.all([
     supabaseAdmin.from('supplier_portal_accounts').select('setup_fee_paid').eq('id', base.id).single(),
     supabaseAdmin.from('elec_staff').select('id', { count: 'exact', head: true }).eq('portal_account_id', base.id).eq('is_active', true),
+    getTradeType(base.id),
   ])
   const setupFeePaid = (acctExtra as Record<string, unknown> | null)?.setup_fee_paid === true
 
@@ -71,6 +73,7 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
       setupFeePaid={setupFeePaid}
       initialTab={initialTab}
       justUpgraded={justUpgraded}
+      tradeType={tradeType}
       account={{
         email: account.email,
         company_name: account.company_name ?? '',

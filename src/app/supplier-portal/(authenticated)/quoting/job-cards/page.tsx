@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { JobCardsClient } from './JobCardsClient'
+import { getTradeType } from '@/lib/trade-type'
 import type { ElecJobCard, ElecStaff, ElecClient } from '@/lib/elec-types'
 
 export const metadata = { title: 'Job Cards — QuotingHub' }
@@ -29,7 +30,7 @@ export default async function JobCardsPage() {
     else redirect('/supplier-portal/not-a-supplier')
   }
 
-  const [{ data: jobCards }, { data: staff }, { data: clients }] = await Promise.all([
+  const [{ data: jobCards }, { data: staff }, { data: clients }, tradeType] = await Promise.all([
     supabaseAdmin
       .from('elec_job_cards')
       .select(`*, staff:elec_staff(id,name,color,role), client:elec_clients(id,client_name,email)`)
@@ -46,6 +47,7 @@ export default async function JobCardsPage() {
       .select('id, client_name, email')
       .eq('portal_account_id', accountId!)
       .order('client_name'),
+    getTradeType(accountId!),
   ])
 
   return (
@@ -54,6 +56,7 @@ export default async function JobCardsPage() {
       staff={(staff ?? []) as ElecStaff[]}
       clients={(clients ?? []) as ElecClient[]}
       portalAccountId={accountId!}
+      hideCoc={tradeType === 'installer'}
     />
   )
 }

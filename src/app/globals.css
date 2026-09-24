@@ -117,3 +117,15 @@ body:has(.staff-portal) {
 @media (prefers-reduced-motion: reduce) {
   .qh-skeleton { animation: none; }
 }
+
+/* Trades-portal accent. The portal shell overrides these per trade (see
+   lib/portal-theme.ts); these defaults keep anything rendered outside the
+   shell on the original blue. */
+:root {
+  --qh-accent: #3A7CA5;
+  --qh-accent-rgb: 58,124,165;
+  --qh-sidebar: #1E2A38;
+  --qh-nav-accent: #3A7CA5;
+  --qh-nav-accent-rgb: 58,124,165;
+  --qh-nav-muted: #94A3B8;
+}

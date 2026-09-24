@@ -6,7 +6,7 @@ import type { ElecNotification } from '@/lib/elec-types'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -36,7 +36,7 @@ function typeColor(type: string) {
     case 'clock_out':          return { bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.2)'   }
     case 'job_completed':      return { bg: 'rgba(22,163,74,0.08)',   border: 'rgba(22,163,74,0.2)'   }
     case 'signature_captured': return { bg: 'rgba(22,163,74,0.06)',   border: 'rgba(22,163,74,0.15)'  }
-    case 'vo_submitted':       return { bg: 'rgba(58,124,165,0.08)',  border: 'rgba(58,124,165,0.2)'  }
+    case 'vo_submitted':       return { bg: 'rgba(var(--qh-accent-rgb),0.08)',  border: 'rgba(var(--qh-accent-rgb),0.2)'  }
     case 'extra_work':         return { bg: 'rgba(217,164,65,0.08)',  border: 'rgba(217,164,65,0.2)'  }
     case 'extra_work_approved': return { bg: 'rgba(22,163,74,0.08)',   border: 'rgba(22,163,74,0.2)'   }
     case 'material_request':   return { bg: 'rgba(217,164,65,0.08)',  border: 'rgba(217,164,65,0.2)'  }
@@ -151,7 +151,7 @@ export function NotificationsClient({ portalAccountId: _portalAccountId, initial
             return (
               <div key={n.id}
                 className="flex items-start gap-3 px-4 py-3.5"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isUnread ? 'rgba(58,124,165,0.025)' : undefined }}>
+                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isUnread ? 'rgba(var(--qh-accent-rgb),0.025)' : undefined }}>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                   style={{ background: colors.bg, border: `1px solid ${colors.border}` }}>
                   {typeIcon(n.type)}

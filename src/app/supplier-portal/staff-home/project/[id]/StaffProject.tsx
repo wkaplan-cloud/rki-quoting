@@ -9,13 +9,13 @@ import { uniqueUploadPath } from '@/lib/upload-path'
 import { compressImage } from '@/lib/compressImage'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A', gold: '#D9A441',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  draft: S.muted, quoted: S.accent, approved: S.green,
+  draft: S.muted, quoted: '#3A7CA5', approved: S.green,
   in_progress: S.gold, completed: '#166534', cancelled: S.danger,
 }
 const STATUS_LABEL: Record<string, string> = {
@@ -304,7 +304,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
             {freeItems.length > 0 && (
               <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                 <div className="grid px-4 py-2 text-[10px] font-bold uppercase tracking-wider"
-                  style={{ gridTemplateColumns: '1fr 45px 55px', gap: '8px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                  style={{ gridTemplateColumns: '1fr 45px 55px', gap: '8px', color: S.muted, background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: `1px solid ${S.border}` }}>
                   <span>Item</span><span className="text-center">Unit</span><span className="text-right">Qty</span>
                 </div>
                 {freeItems.map((item, i) => (
@@ -324,7 +324,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
               return (
                 <div key={sec.id} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   <div className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider"
-                    style={{ color: S.accent, background: 'rgba(58,124,165,0.06)', borderBottom: `1px solid ${S.border}` }}>
+                    style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.06)', borderBottom: `1px solid ${S.border}` }}>
                     {sec.title || 'Section'}
                   </div>
                   <div className="grid px-4 py-2 text-[10px] font-bold uppercase tracking-wider"
@@ -357,7 +357,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                 {!showAddOrder && (
                   <button onClick={() => setShowAddOrder(true)}
                     className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
-                    style={{ color: S.accent, border: `1px solid rgba(58,124,165,0.3)` }}>
+                    style={{ color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.3)` }}>
                     <Plus size={11} /> Request
                   </button>
                 )}
@@ -371,7 +371,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
               )}
 
               {matOrders.map((o, i) => {
-                const statusColor = o.status === 'received' ? S.green : o.status === 'ordered' ? S.accent : S.gold
+                const statusColor = o.status === 'received' ? S.green : o.status === 'ordered' ? '#3A7CA5' : S.gold
                 const statusLabel = o.status === 'received' ? 'Received' : o.status === 'ordered' ? 'Ordered' : 'Pending'
                 return (
                   <div key={o.id} className="px-4 py-3" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
@@ -662,13 +662,13 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                   <label className="text-xs font-semibold" style={{ color: S.muted }}>Line Items (optional)</label>
                   <button onClick={() => setVOItems(prev => [...prev, newVOItem()])}
                     className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg"
-                    style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}>
+                    style={{ color: S.accent, background: 'rgba(var(--qh-accent-rgb),0.08)' }}>
                     <Plus size={11} /> Add
                   </button>
                 </div>
                 <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
-                    style={{ gridTemplateColumns: '1fr 60px 60px 20px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                    style={{ gridTemplateColumns: '1fr 60px 60px 20px', gap: '6px', color: S.muted, background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: `1px solid ${S.border}` }}>
                     <span>Description</span>
                     <span className="text-center">Unit</span>
                     <span className="text-right">Qty</span>

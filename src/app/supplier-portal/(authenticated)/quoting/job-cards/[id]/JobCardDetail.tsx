@@ -22,14 +22,14 @@ import { useVisiblePoll } from '@/lib/useVisiblePoll'
 import { toSADateTimeLocal } from '@/lib/dates'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: 'var(--qh-accent)', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string; icon: React.ElementType }> = {
   pending:     { bg: 'rgba(217,164,65,0.12)',  color: S.gold,    label: 'Pending',     icon: Clock        },
-  in_progress: { bg: 'rgba(58,124,165,0.12)',  color: S.accent,  label: 'In Progress', icon: Play         },
+  in_progress: { bg: 'rgba(58,124,165,0.12)',  color: '#3A7CA5',  label: 'In Progress', icon: Play         },
   completed:   { bg: 'rgba(22,163,74,0.12)',   color: S.green,   label: 'Completed',   icon: CheckCircle2 },
   cancelled:   { bg: 'rgba(113,113,122,0.12)', color: S.muted,   label: 'Cancelled',   icon: XCircle      },
 }
@@ -248,6 +248,8 @@ interface Props {
   officeEmail?: string | null
   /** The tech who found the extra work this card came from, offered as the obvious pick. */
   suggestedStaff?: { id: string; name: string; fromJobNumber: string } | null
+  /** Installers don't issue COCs — the COC section is left off unless one already exists. */
+  hideCoc?: boolean
 }
 
 /** A slot on the schedule for this job card. */
@@ -263,7 +265,7 @@ type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'extras' | 'photos
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, clientSendEnabled = true, officeEmail = null, suggestedStaff = null }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, clientSendEnabled = true, officeEmail = null, suggestedStaff = null, hideCoc = false }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -929,7 +931,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     for (const p of jobPunches) { // sorted by punched_at ASC from API
       const staffObj = !Array.isArray(p.staff) ? p.staff : null
       const name = staffObj?.name ?? 'Unknown'
-      const color = staffObj?.color ?? S.accent
+      const color = staffObj?.color ?? '#3A7CA5'
       if (!byStaff[p.staff_id]) byStaff[p.staff_id] = { name, color, sessions: [], lastPunchType: '' }
       byStaff[p.staff_id].lastPunchType = p.punch_type // track last punch — ground truth for on-site status
       if (p.punch_type === 'clock_in') {
@@ -966,8 +968,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       state: hasCharges ? 'done' : 'waiting' },
     { key: 'details', owner: 'office', label: 'Details', chip: 'Client & site',
       state: detailsDone ? 'done' : 'waiting' },
-    { key: 'coc', owner: 'office', label: 'COC', chip: 'COC',
-      state: initialCOC ? 'done' : cocRelevant ? 'waiting' : 'na' },
+    ...(hideCoc && !initialCOC ? [] : [{ key: 'coc' as Tab, owner: 'office' as const, label: 'COC', chip: 'COC',
+      state: (initialCOC ? 'done' : cocRelevant ? 'waiting' : 'na') as SectionState }]),
     { key: 'materials', owner: 'shared',
       label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}`,
       chip: pendingOrders > 0 ? `Orders — ${pendingOrders} to action` : 'Orders',
@@ -1561,7 +1563,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             )}
 
             {matOrders.map((req, i) => {
-              const statusColors: Record<string, string> = { pending: S.gold, ordered: S.accent, received: S.green, cancelled: S.muted }
+              const statusColors: Record<string, string> = { pending: S.gold, ordered: '#3A7CA5', received: S.green, cancelled: S.muted }
               const statusLabels: Record<string, string> = { pending: 'Pending', ordered: 'Ordered', received: 'Received', cancelled: 'Cancelled' }
               const nextStatus: Partial<Record<string, ElecMaterialRequestStatus>> = { pending: 'ordered', ordered: 'received' }
               const nextLabel: Partial<Record<string, string>> = { pending: 'Mark Ordered', ordered: 'Mark Received' }
@@ -1633,7 +1635,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {/* Column headers */}
             {(materials.length > 0 || newMat !== null) && (
               <div className="grid px-5 py-2 text-[10px] font-bold uppercase tracking-wider"
-                style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingRight: 76, color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingRight: 76, color: S.muted, background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: `1px solid ${S.border}` }}>
                 <span>Description</span>
                 <span className="text-center">Qty</span>
                 <span className="text-right">Cost</span>
@@ -1657,7 +1659,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               return (
                 <div key={m.id}
                   className={!isEditing && editable ? 'group cursor-pointer' : ''}
-                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(58,124,165,0.03)' : undefined, position: 'relative' }}
+                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(var(--qh-accent-rgb),0.03)' : undefined, position: 'relative' }}
                   onClick={!isEditing && editable ? () => startEditMaterial(m) : undefined}
                   onBlur={isEditing ? e => {
                     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void updateMaterial()
@@ -1832,7 +1834,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <button onClick={() => setNewMat({ desc: '', qty: '1', price: '', cost: '', markup: '' })}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mt-3"
               style={{ border: `1px solid ${S.border}`, color: S.accent, background: S.card }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.06)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--qh-accent-rgb),0.06)'}
               onMouseLeave={e => e.currentTarget.style.background = S.card}>
               <Plus size={13} /> Add Item
             </button>
@@ -1962,7 +1964,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           {/* ── Staff time for this job ──────────────────────────────────── */}
           {staffSummary.length > 0 && (
             <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+              <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(var(--qh-accent-rgb),0.03)' }}>
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Staff Time on Job</p>
                 <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Clocked in/out via the job card on mobile</p>
               </div>
@@ -2045,7 +2047,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
             {extrasCardGroups.map(([cardId, group], gi) => (
               <div key={cardId} style={{ borderTop: gi > 0 ? `1px solid ${S.border}` : undefined }}>
-                <div className="flex items-center justify-between gap-3 px-5 py-2.5" style={{ background: 'rgba(58,124,165,0.04)' }}>
+                <div className="flex items-center justify-between gap-3 px-5 py-2.5" style={{ background: 'rgba(var(--qh-accent-rgb),0.04)' }}>
                   <div className="flex items-center gap-2 min-w-0">
                     <ClipboardCheck size={13} style={{ color: S.accent }} />
                     <span className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: S.accent }}>
@@ -2478,7 +2480,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <div className="space-y-4">
                 {!clientSendEnabled && (
                   <div className="rounded-xl px-3.5 py-2.5 flex items-start gap-2.5"
-                    style={{ background: 'rgba(58,124,165,0.07)', border: `1px solid rgba(58,124,165,0.3)` }}>
+                    style={{ background: 'rgba(var(--qh-accent-rgb),0.07)', border: `1px solid rgba(var(--qh-accent-rgb),0.3)` }}>
                     <Lock size={14} style={{ color: S.accent, flexShrink: 0, marginTop: 1 }} />
                     <p className="text-xs leading-snug" style={{ color: S.text }}>
                       Sending job cards to clients is switched off for this company, so this goes
@@ -2516,7 +2518,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       disabled={isApproved && !card.amended_at}
                       className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left disabled:opacity-50"
                       style={{
-                        background: sendMethod === 'link' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        background: sendMethod === 'link' ? 'rgba(var(--qh-accent-rgb),0.08)' : S.bg,
                         border: `1.5px solid ${sendMethod === 'link' ? S.accent : S.border}`,
                       }}>
                       <div className="flex items-center gap-1.5">
@@ -2537,7 +2539,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       onClick={() => setSendMethod('pdf')}
                       className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left"
                       style={{
-                        background: sendMethod === 'pdf' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        background: sendMethod === 'pdf' ? 'rgba(var(--qh-accent-rgb),0.08)' : S.bg,
                         border: `1.5px solid ${sendMethod === 'pdf' ? S.accent : S.border}`,
                       }}>
                       <div className="flex items-center gap-1.5">
