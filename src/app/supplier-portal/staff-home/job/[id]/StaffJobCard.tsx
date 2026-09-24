@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest, ElecJobCardExtra } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
+import { useStaffTrade } from '../../StaffTradeContext'
+import { DevicesPanel } from '@/components/devices/DevicesPanel'
 import { OfflineSyncBanner } from '../../OfflineSyncBanner'
 import { enqueue } from '@/lib/offline-punch-queue'
 import { compressImage } from '@/lib/compressImage'
@@ -50,7 +52,7 @@ interface Props {
   scopeItems?: { description: string; unit: string | null; qty: number }[]
 }
 
-type Tab = 'report' | 'materials' | 'extras' | 'photos' | 'signature'
+type Tab = 'report' | 'materials' | 'extras' | 'photos' | 'signature' | 'devices'
 
 export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge, extrasEnabled = true, scopeItems = [] }: Props) {
   const router = useRouter()
@@ -78,6 +80,10 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const client = !Array.isArray(card.client) ? card.client : null
 
   // Job clock in/out
+  const isInstaller = useStaffTrade() === 'installer'
+  // Installers say whether they're installing or programming, so the office
+  // can see programming time on its own.
+  const [workType, setWorkType] = useState<'install' | 'programming'>('install')
   const [isClockedIn, setIsClockedIn] = useState(false)
   const [clockedInAt, setClockedInAt] = useState<Date | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -95,7 +101,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   useEffect(() => {
     fetch('/api/supplier-portal/staff/punch')
       .then(r => r.json())
-      .then((d: { punches?: { punch_type: string; job_id: string | null; punched_at: string }[] }) => {
+      .then((d: { punches?: { punch_type: string; job_id: string | null; punched_at: string; work_type?: 'install' | 'programming' | null }[] }) => {
         // Whether THIS job is running is decided by this job's own last punch.
         // The endpoint's `isClockedIn` is the global (no job_id) state and its
         // `lastPunch` is the latest punch on any job — using those meant the
@@ -104,6 +110,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
         const lastForThisJob = (d.punches ?? []).find(pu => pu.job_id === card.id)
         if (lastForThisJob?.punch_type === 'clock_in') {
           setIsClockedIn(true)
+          if (lastForThisJob.work_type) setWorkType(lastForThisJob.work_type)
           const since = new Date(lastForThisJob.punched_at)
           setClockedInAt(since)
           startTimer(since)
@@ -142,12 +149,12 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
       const res = await fetch('/api/supplier-portal/staff/punch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ punch_type, punched_at: punchedAt, latitude, longitude, job_id: card.id }),
+        body: JSON.stringify({ punch_type, punched_at: punchedAt, latitude, longitude, job_id: card.id, ...(isInstaller ? { work_type: workType } : {}) }),
       })
       success = res.ok
     } catch {
       // No internet — queue it
-      enqueue({ punch_type, punched_at: punchedAt, latitude, longitude, job_id: card.id })
+      enqueue({ punch_type, punched_at: punchedAt, latitude, longitude, job_id: card.id, ...(isInstaller ? { work_type: workType } : {}) })
       setOfflinePending(prev => prev + 1)
       success = true // optimistic
     }
@@ -481,6 +488,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
       ? [{ key: 'extras' as Tab, label: 'Extra Work', done: sentExtras.length > 0 }]
       : []),
     { key: 'photos',    label: 'Photos',    done: photos.length > 0 },
+    // Installers: what's already on site, and anything fitted on this visit.
+    ...(isInstaller && client?.id ? [{ key: 'devices' as Tab, label: 'Devices', done: false }] : []),
     { key: 'signature', label: 'Sign',      done: !!(card.client_signature_url || card.sent_at) },
   ]
 
@@ -518,20 +527,34 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                 <CheckCircle2 size={11} /> Done
               </div>
             ) : (
-              <button
-                onClick={() => void handleClockToggle()}
-                disabled={clockLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-50"
-                style={{
-                  background: isClockedIn ? 'rgba(220,38,38,0.85)' : 'rgba(22,163,74,0.85)',
-                  color: '#fff',
-                  border: `1px solid ${isClockedIn ? 'rgba(220,38,38,0.5)' : 'rgba(22,163,74,0.5)'}`,
-                }}>
-                {clockLoading
-                  ? <Loader2 size={12} className="animate-spin" />
-                  : isClockedIn ? <Square size={12} /> : <Play size={12} />}
-                {clockLoading ? '…' : isClockedIn ? 'Clock Out' : 'Clock In'}
-              </button>
+              <>
+                {isInstaller && (
+                  <div className="flex rounded-lg overflow-hidden text-[10px] font-semibold" role="group" aria-label="Type of work"
+                    style={{ border: '1px solid rgba(255,255,255,0.25)' }}>
+                    {(['install', 'programming'] as const).map(t => (
+                      <button key={t} type="button" disabled={isClockedIn} onClick={() => setWorkType(t)} aria-pressed={workType === t}
+                        className="px-2 py-1 disabled:cursor-default"
+                        style={{ background: workType === t ? 'rgba(255,255,255,0.9)' : 'transparent', color: workType === t ? '#10261D' : 'rgba(255,255,255,0.7)' }}>
+                        {t === 'install' ? 'Install' : 'Programming'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={() => void handleClockToggle()}
+                  disabled={clockLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-50"
+                  style={{
+                    background: isClockedIn ? 'rgba(220,38,38,0.85)' : 'rgba(22,163,74,0.85)',
+                    color: '#fff',
+                    border: `1px solid ${isClockedIn ? 'rgba(220,38,38,0.5)' : 'rgba(22,163,74,0.5)'}`,
+                  }}>
+                  {clockLoading
+                    ? <Loader2 size={12} className="animate-spin" />
+                    : isClockedIn ? <Square size={12} /> : <Play size={12} />}
+                  {clockLoading ? '…' : isClockedIn ? 'Clock Out' : 'Clock In'}
+                </button>
+              </>
             )}
             {isClockedIn && (
               <span className="font-mono text-[11px] font-semibold tabular-nums"
@@ -922,6 +945,11 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
               Next: Photos →
             </button>
           </div>
+        )}
+
+        {/* ── DEVICES TAB (installers) ── */}
+        {tab === 'devices' && isInstaller && client?.id && (
+          <DevicesPanel clientId={client.id} title="Devices on site" />
         )}
 
         {/* ── PHOTOS TAB ── */}

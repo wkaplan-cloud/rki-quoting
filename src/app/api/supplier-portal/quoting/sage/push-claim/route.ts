@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { getElecPortalAccount, elecSageGet, elecSagePost } from '@/lib/sage-elec'
+import { getElecPortalAccount } from '@/lib/sage-elec'
+import { pushSageInvoice } from '@/lib/sage-invoice'
 import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 30
@@ -52,76 +53,20 @@ export async function POST(req: NextRequest) {
     const invoiceAmount = claim.total_invoiced ?? claim.total_claimed
     const amountExclVat = parseFloat((invoiceAmount / (1 + vatRate / 100)).toFixed(2))
 
-    const selectionId: number = settings?.sage_item_id ?? 1
-
-    // Fetch tax types and customer in parallel
-    const [taxTypesResp, customerRaw] = await Promise.all([
-      elecSageGet(account.id, '/TaxType/Get'),
-      elecSageGet(account.id, `/Customer/Get/${Number(sageCustomerId)}`).catch(() =>
-        elecSageGet(account.id, '/Customer/Get', { '$filter': `ID eq ${Number(sageCustomerId)}`, '$top': 1 }).catch(() => null)
-      ),
-    ])
-
-    const customerResp: Record<string, unknown> | null =
-      customerRaw?.Results?.[0] ??
-      (Array.isArray(customerRaw) ? customerRaw[0] : null) ??
-      (customerRaw?.ID ? customerRaw : null)
-
-    const defaultTaxType = (taxTypesResp.Results ?? []).find(
-      (t: { IsDefault?: boolean; CompanyId?: number }) => t.IsDefault && (t.CompanyId ?? 0) > 0
-    )
-    const taxTypeId: number = defaultTaxType?.ID ?? 146922
-
-    const toSageDate = (d: Date) => `/Date(${d.getTime()})/`
-    const now = new Date()
-    const dueDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-
-    // Copy customer address fields to invoice
-    const customerFields: Record<string, unknown> = {}
-    if (customerResp) {
-      const taxRef = customerResp.TaxReference ?? customerResp.TaxNumber ?? customerResp.VatRegistrationNumber ?? null
-      if (taxRef) customerFields.TaxReference = taxRef
-      for (let i = 1; i <= 5; i++) {
-        const da = customerResp[`DeliveryAddress0${i}`]
-        const pa = customerResp[`PostalAddress0${i}`]
-        if (da !== undefined) customerFields[`DeliveryAddress0${i}`] = da
-        if (pa !== undefined) customerFields[`PostalAddress0${i}`] = pa
-      }
-    }
-
     const description = `${projectName} – ${claim.claim_number}`
-
-    const payload: Record<string, unknown> = {
-      CustomerID: Number(sageCustomerId),
-      Date: toSageDate(now),
-      DueDate: toSageDate(dueDate),
-      Inclusive: false,
-      Reference: claim.claim_number,
-      Description: description.length > 100 ? description.slice(0, 97) + '…' : description,
-      Lines: [{
-        SelectionId: selectionId,
-        LineType: 0,
-        Description: `${projectName}${quoteNumber ? ` (${quoteNumber})` : ''} – ${claim.claim_number}`,
-        Quantity: 1,
-        UnitPriceExclusive: amountExclVat,
-        TaxTypeId: taxTypeId,
-      }],
-      ...customerFields,
-    }
-
-    let invoice: Record<string, unknown>
-    if (claim.sage_invoice_id) {
-      try {
-        invoice = await elecSagePost(account.id, '/TaxInvoice/Save', { ...payload, ID: Number(claim.sage_invoice_id) })
-      } catch {
-        invoice = await elecSagePost(account.id, '/TaxInvoice/Save', payload)
-      }
-    } else {
-      invoice = await elecSagePost(account.id, '/TaxInvoice/Save', payload)
-    }
-
-    const sageId = invoice.ID ?? invoice.id
-    const sageStatus = invoice.Status ?? invoice.status ?? 'DRAFT'
+    const invoice = await pushSageInvoice({
+      portalAccountId: account.id,
+      sageCustomerId,
+      selectionId: settings?.sage_item_id ?? 1,
+      reference: claim.claim_number,
+      description,
+      lineDescription: `${projectName}${quoteNumber ? ` (${quoteNumber})` : ''} – ${claim.claim_number}`,
+      amountExclVat,
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      existingSageId: claim.sage_invoice_id,
+    })
+    const sageId = invoice.id
+    const sageStatus = invoice.status
     const pushedAt = new Date().toISOString()
 
     await supabaseAdmin.from('elec_claims').update({

@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { normaliseSAScheduledAt } from '@/lib/elec-job-sync'
 import { resolveCreatorName } from '@/lib/resolve-creator'
+import { getTradeType } from '@/lib/trade-type'
+import { coverageForNewJobCard } from '@/lib/service-contracts'
 
 async function resolveAccount(userId: string): Promise<{ accountId: string; staffId: string | null } | null> {
   // owner
@@ -66,6 +68,12 @@ export async function POST(req: NextRequest) {
 
     const createdByName = await resolveCreatorName(user.id)
 
+    // An installer's client on a support plan: note the plan on the card and
+    // whether this visit is covered or chargeable. The office can override it.
+    const coverage = typeof body.client_id === 'string' && await getTradeType(accountId) === 'installer'
+      ? await coverageForNewJobCard(accountId, body.client_id, typeof body.job_type === 'string' ? body.job_type : 'callout')
+      : null
+
     // Auto-assign staff_id when request comes from a staff member
     const insertData = {
       ...body,
@@ -73,6 +81,7 @@ export async function POST(req: NextRequest) {
       job_number: jobNumber,
       created_by_name: createdByName,
       ...(staffId && !body.staff_id ? { staff_id: staffId } : {}),
+      ...(coverage ?? {}),
     }
 
     const { data, error } = await supabaseAdmin

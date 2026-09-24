@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap, Package } from 'lucide-react'
+import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap, Package, Router, Repeat } from 'lucide-react'
 import type { TradeType } from '@/lib/portal-theme'
 import { createClient } from '@/lib/supabase/client'
 
@@ -212,6 +212,8 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
                     {isPro && !isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/coc" label="COC" icon={FileCheck} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
+                    {isPro && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/contracts" label="Contracts" icon={Repeat} />}
+                    {isPro && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/devices"   label="Devices"   icon={Router} />}
                     {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/price-book" label={isInstaller ? 'Catalogue' : 'Line Items'} icon={BookOpen} />}
                     {isBiz && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/kits" label="Kits" icon={Package} />}
                   </>

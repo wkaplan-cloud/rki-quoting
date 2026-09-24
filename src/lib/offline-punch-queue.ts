@@ -5,6 +5,7 @@ export interface QueuedPunch {
   latitude?: number
   longitude?: number
   job_id?: string
+  work_type?: 'install' | 'programming'
   attempts?: number        // failed sync attempts, so a poison row can't jam the queue
 }
 
@@ -80,6 +81,7 @@ export async function flushQueue(onProgress?: (remaining: number) => void): Prom
           latitude: punch.latitude,
           longitude: punch.longitude,
           job_id: punch.job_id,
+          work_type: punch.work_type,
           idempotency_key: punch.id,
         }),
       })

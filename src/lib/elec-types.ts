@@ -23,6 +23,9 @@ export interface ElecSettings {
   default_payment_terms_days: number
   default_defects_liability_days: number
   default_deposit_percentage?: number | null
+  /** Installer trades: support-plan invoice numbering and whether the daily run emails them itself. */
+  contract_invoice_prefix?: string | null
+  contract_invoices_auto_send?: boolean | null
   company_code: string | null
   quote_prefix: string
   claim_prefix: string
@@ -704,6 +707,10 @@ export interface ElecJobCard {
   approval_note: string | null
   /** Set when this card came out of another card's extra work. */
   extras_from_job_card_id: string | null
+  /** Installer trades: the client's support plan this card falls under. */
+  service_contract_id?: string | null
+  /** Whether this visit is on the plan or charged. */
+  contract_coverage?: 'covered' | 'billable' | null
   sent_to_name: string | null
   sent_to_email: string | null
   sent_at: string | null
@@ -827,4 +834,112 @@ export interface ElecKit {
   created_at: string
   updated_at: string
   items: ElecKitItem[]
+}
+
+// ─── Device register (installer trades) ─────────────────────────────────────
+
+/** A device left on a client's site. The login password never travels in this shape — see has_password. */
+export interface ElecDevice {
+  id: string
+  portal_account_id: string
+  client_id: string | null
+  quote_id: string | null
+  room: string | null
+  category: string | null
+  brand: string | null
+  model: string | null
+  description: string | null
+  serial_number: string | null
+  mac_address: string | null
+  ip_address: string | null
+  firmware: string | null
+  installed_on: string | null
+  warranty_until: string | null
+  username: string | null
+  has_password: boolean
+  notes: string | null
+  created_by_name: string | null
+  created_at: string
+  updated_at: string
+  // Joined
+  client?: { id: string; client_name: string } | null
+  quote?: { id: string; quote_number: string; project_name: string } | null
+}
+
+/** What a form sends to create or edit a device. password: string sets, null clears, absent keeps. */
+export interface ElecDeviceInput {
+  client_id?: string | null
+  quote_id?: string | null
+  room?: string | null
+  category?: string | null
+  brand?: string | null
+  model?: string | null
+  description?: string | null
+  serial_number?: string | null
+  mac_address?: string | null
+  ip_address?: string | null
+  firmware?: string | null
+  installed_on?: string | null
+  warranty_until?: string | null
+  username?: string | null
+  password?: string | null
+  notes?: string | null
+}
+
+export type ElecWorkType = 'install' | 'programming'
+
+// ─── Service contracts (installer trades) ───────────────────────────────────
+
+export type ElecContractPeriod = 'monthly' | 'annual'
+export type ElecContractStatus = 'active' | 'paused' | 'ended'
+export type ElecContractInvoiceStatus = 'draft' | 'sent' | 'paid' | 'void'
+
+export interface ElecServiceContract {
+  id: string
+  portal_account_id: string
+  client_id: string
+  name: string
+  billing_period: ElecContractPeriod
+  /** Per billing period, ex VAT. */
+  fee: number
+  /** Covered visits per contract year; null = unlimited. */
+  included_visits: number | null
+  includes_remote_support: boolean
+  callout_rate: number | null
+  covered_job_types: string[]
+  response_time: string | null
+  start_date: string
+  renewal_date: string
+  auto_renew: boolean
+  next_invoice_date: string | null
+  status: ElecContractStatus
+  sage_customer_id: string | null
+  sage_customer_name: string | null
+  notes: string | null
+  renewal_reminder_sent_for: string | null
+  created_at: string
+  updated_at: string
+  // Joined
+  client?: { id: string; client_name: string; email: string | null } | null
+}
+
+export interface ElecContractInvoice {
+  id: string
+  contract_id: string
+  portal_account_id: string
+  invoice_number: string
+  invoice_date: string
+  due_date: string | null
+  period_start: string
+  period_end: string
+  /** Ex VAT. */
+  amount: number
+  vat_rate: number
+  status: ElecContractInvoiceStatus
+  sent_at: string | null
+  paid_at: string | null
+  sage_invoice_id: string | null
+  sage_invoice_status: string | null
+  sage_pushed_at: string | null
+  created_at: string
 }

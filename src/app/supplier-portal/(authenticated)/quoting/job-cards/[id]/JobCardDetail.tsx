@@ -17,6 +17,9 @@ import type {
 } from '@/lib/elec-types'
 import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
+import { DevicesPanel } from '@/components/devices/DevicesPanel'
+import { WorkHoursCard } from '../../WorkHoursCard'
+import { fmtRand } from '@/lib/contract-format'
 import { JobCardCOCTab } from './JobCardCOCTab'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
 import { toSADateTimeLocal } from '@/lib/dates'
@@ -250,6 +253,20 @@ interface Props {
   suggestedStaff?: { id: string; name: string; fromJobNumber: string } | null
   /** Installers don't issue COCs — the COC section is left off unless one already exists. */
   hideCoc?: boolean
+  /** Installer trades get a Site tab: the client's devices and the hours on this card. */
+  installer?: boolean
+  /** The client's active support plan, when they have one. */
+  contract?: JobCardContract | null
+}
+
+/** A client's support plan as a job card needs it. */
+export interface JobCardContract {
+  id: string
+  name: string
+  summary: string
+  callout_rate: number | null
+  included_visits: number | null
+  visits_used: number
 }
 
 /** A slot on the schedule for this job card. */
@@ -261,11 +278,11 @@ export interface JobCardBooking {
   staff: { id: string; name: string } | null
 }
 
-type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'extras' | 'photos' | 'signature' | 'coc'
+type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'extras' | 'photos' | 'signature' | 'coc' | 'site'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, clientSendEnabled = true, officeEmail = null, suggestedStaff = null, hideCoc = false }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, clientSendEnabled = true, officeEmail = null, suggestedStaff = null, hideCoc = false, installer = false, contract = null }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -968,6 +985,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       state: hasCharges ? 'done' : 'waiting' },
     { key: 'details', owner: 'office', label: 'Details', chip: 'Client & site',
       state: detailsDone ? 'done' : 'waiting' },
+    ...(installer ? [{ key: 'site' as Tab, owner: 'office' as const, label: 'Site & Devices', chip: 'Site & devices',
+      state: 'na' as SectionState }] : []),
     ...(hideCoc && !initialCOC ? [] : [{ key: 'coc' as Tab, owner: 'office' as const, label: 'COC', chip: 'COC',
       state: (initialCOC ? 'done' : cocRelevant ? 'waiting' : 'na') as SectionState }]),
     { key: 'materials', owner: 'shared',
@@ -1240,6 +1259,45 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </div>
       )}
 
+      {/* ── Support plan — covered or chargeable ──────────────────────────── */}
+      {contract && (() => {
+        const coverage = card.service_contract_id === contract.id ? card.contract_coverage ?? null : null
+        const covered = coverage === 'covered'
+        const pricedAsCovered = (card.callout_fee ?? 0) === 0 && (card.labour_rate ?? 0) === 0
+        return (
+          <div className="mb-5 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2"
+            style={{ background: covered ? 'rgba(22,163,74,0.06)' : 'rgba(217,164,65,0.07)', border: `1px solid ${covered ? 'rgba(22,163,74,0.25)' : 'rgba(217,164,65,0.3)'}` }}>
+            <div className="flex-1 min-w-[240px]">
+              <p className="text-sm" style={{ color: S.text }}>
+                <strong>{contract.name}</strong> — {covered ? 'this visit is on the plan' : coverage === 'billable' ? 'this visit is charged' : 'this client has a support plan'}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                {contract.included_visits == null ? `${contract.visits_used} covered visits this year (unlimited)` : `${contract.visits_used} of ${contract.included_visits} covered visits used this year`}
+                {contract.callout_rate != null ? ` · other work ${fmtRand(contract.callout_rate)}/hour` : ''}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {covered && !pricedAsCovered && (
+                <button onClick={() => void save({ callout_fee: 0, labour_rate: 0 })} disabled={saving}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ background: S.green }}>
+                  Don&apos;t charge callout or labour
+                </button>
+              )}
+              {!covered && contract.callout_rate != null && card.labour_rate !== contract.callout_rate && (
+                <button onClick={() => void save({ labour_rate: contract.callout_rate })} disabled={saving}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: '#fff', color: S.text, border: `1px solid ${S.border}` }}>
+                  Use plan rate {fmtRand(contract.callout_rate)}/h
+                </button>
+              )}
+              <button onClick={() => void save({ service_contract_id: contract.id, contract_coverage: covered ? 'billable' : 'covered' })} disabled={saving}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50" style={{ background: '#fff', color: S.text, border: `1px solid ${S.border}` }}>
+                {covered ? 'Charge this visit instead' : 'Cover under the plan'}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Tabs — grouped by who fills them in ──────────────────────────── */}
       <div className="flex items-end mb-6 overflow-x-auto" style={{ borderBottom: `1px solid ${S.border}` }}>
         <TabGroup caption="You fill in" sections={officeSections} tab={tab} onPick={setTab} />
@@ -1463,6 +1521,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           </div>
         </div>
         </fieldset>
+      )}
+
+      {/* ── Tab: Site & Devices (installers) ──────────────────────────────── */}
+      {tab === 'site' && installer && (
+        <div className="grid lg:grid-cols-[1fr_300px] gap-5 items-start">
+          {card.client_id
+            ? <DevicesPanel clientId={card.client_id} title="Devices at this client" />
+            : <p className="text-sm" style={{ color: S.muted }}>Choose a client on Details to see the devices installed at their site.</p>}
+          <WorkHoursCard jobCardId={card.id} />
+        </div>
       )}
 
       {/* ── Tab: Report — the technician's, unless you take it over ─────── */}

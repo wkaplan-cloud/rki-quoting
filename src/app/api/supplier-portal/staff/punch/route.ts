@@ -6,8 +6,10 @@ import { reverseGeocode } from '@/lib/reverse-geocode'
 
 export async function POST(req: NextRequest) {
   try {
-    const { punch_type, latitude, longitude, job_id, notes, punched_at: clientPunchedAt, idempotency_key } = await req.json() as {
+    const { punch_type, latitude, longitude, job_id, notes, punched_at: clientPunchedAt, idempotency_key, work_type } = await req.json() as {
       punch_type: 'clock_in' | 'clock_out'
+      /** Installer job cards: whether this session is install or programming time. */
+      work_type?: 'install' | 'programming'
       latitude?: number
       longitude?: number
       job_id?: string
@@ -63,6 +65,8 @@ export async function POST(req: NextRequest) {
         job_id: job_id ?? null,
         notes: notes ?? null,
         idempotency_key: idempotency_key ?? null,
+        // Only on a job clock-in; named only when sent, so nothing else changes.
+        ...(punch_type === 'clock_in' && job_id && (work_type === 'install' || work_type === 'programming') ? { work_type } : {}),
       })
       .select()
       .single()

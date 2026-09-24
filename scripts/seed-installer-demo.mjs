@@ -43,6 +43,16 @@ const hashStaffPin      = pin => crypto.createHmac('sha256', STAFF_SALT).update(
 const staffAuthEmail    = u   => `staff_${u.toLowerCase()}@staff.quotinghub`
 const staffAuthPassword = pin => `${pin}${STAFF_SALT}`
 
+// Mirrors src/lib/sage-crypto.ts, so device passwords are stored the way the app reads them.
+function encryptSecret(plaintext) {
+  const hex = env.SAGE_ENCRYPTION_KEY
+  if (!hex || hex.length !== 64) throw new Error('SAGE_ENCRYPTION_KEY missing from .env.local')
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(hex, 'hex'), iv)
+  const enc = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
+  return `${iv.toString('hex')}:${cipher.getAuthTag().toString('hex')}:${enc.toString('hex')}`
+}
+
 // ─── demo identity ────────────────────────────────────────────────────────────
 const EMAIL    = 'demo-installer@quotinghub.co.za'
 const PASSWORD = 'InstallDemo2026!'
@@ -230,13 +240,42 @@ const QUOTES = [
 ]
 
 const JOB_CARDS = [
-  { job_type: 'callout',     status: 'completed',   client: 'sandhurst', title: 'Halo remote not controlling the lounge TV', location: '41 Oxford Road, Sandhurst', staff: 'Thandeka Zulu', days_ago: 2, work_description: 'Client reports the remote shows the TV but nothing happens.', work_found: 'TV firmware update changed its IR codes; driver no longer matched.', resolution: 'Updated the TV driver in Composer, re-tested all sources, refreshed the remote. Walked the client through it.', callout_fee: 950, labour_hours: 1.5, labour_rate: 650, invoiced: true, materials: [] },
+  { job_type: 'callout',     status: 'completed',   client: 'sandhurst', coverage: 'covered', title: 'Halo remote not controlling the lounge TV', location: '41 Oxford Road, Sandhurst', staff: 'Thandeka Zulu', days_ago: 2, work_description: 'Client reports the remote shows the TV but nothing happens.', work_found: 'TV firmware update changed its IR codes; driver no longer matched.', resolution: 'Updated the TV driver in Composer, re-tested all sources, refreshed the remote. Walked the client through it.', callout_fee: 950, labour_hours: 1.5, labour_rate: 650, invoiced: true, materials: [] },
   { job_type: 'repair',      status: 'completed',   client: 'waterfall', title: 'Driveway camera offline', location: '14 Kikuyu Close, Waterfall', staff: 'Pieter Nel', days_ago: 6, work_description: 'Camera 3 shows no signal on the NVR.', work_found: 'Water in the RJ45 junction behind the camera.', resolution: 'Re-terminated with a weatherproof gland and dielectric grease; camera back online, recording checked.', callout_fee: 950, labour_hours: 2, labour_rate: 650, invoiced: false, materials: [ { description: 'Weatherproof RJ45 junction box', qty: 1, cost_price: 180, unit_price: 290 } ] },
-  { job_type: 'maintenance', status: 'completed',   client: 'houghton',  title: 'Quarterly network health check', location: 'Houghton Rose Hotel', staff: 'Kyle Jacobs', days_ago: 12, work_description: 'Support plan quarterly visit: firmware, backups, Wi-Fi survey.', work_found: 'Two access points on old firmware, room 14 signal weak.', resolution: 'Updated all firmware, backed up the controller config, moved AP-7 channel. Report sent to GM.', callout_fee: 0, labour_hours: 3, labour_rate: 650, invoiced: true, materials: [] },
-  { job_type: 'callout',     status: 'in_progress', client: 'sandhurst', title: 'Sonos dropping out in the main bedroom', location: '41 Oxford Road, Sandhurst', staff: 'Thandeka Zulu', days_ago: 0, work_description: 'Music cuts out every few minutes in the main bedroom.', work_found: 'Amp sitting on a congested 2.4GHz channel — investigating wiring the amp.', resolution: null, callout_fee: 950, labour_rate: 650, materials: [] },
+  { job_type: 'maintenance', status: 'completed',   client: 'houghton',  coverage: 'covered', title: 'Quarterly network health check', location: 'Houghton Rose Hotel', staff: 'Kyle Jacobs', days_ago: 12, work_description: 'Support plan quarterly visit: firmware, backups, Wi-Fi survey.', work_found: 'Two access points on old firmware, room 14 signal weak.', resolution: 'Updated all firmware, backed up the controller config, moved AP-7 channel. Report sent to GM.', callout_fee: 0, labour_hours: 3, labour_rate: 650, invoiced: true, materials: [] },
+  { job_type: 'callout',     status: 'in_progress', client: 'sandhurst', coverage: 'covered', title: 'Sonos dropping out in the main bedroom', location: '41 Oxford Road, Sandhurst', staff: 'Thandeka Zulu', days_ago: 0, work_description: 'Music cuts out every few minutes in the main bedroom.', work_found: 'Amp sitting on a congested 2.4GHz channel — investigating wiring the amp.', resolution: null, callout_fee: 950, labour_rate: 650, materials: [] },
   { job_type: 'once_off',    status: 'pending',     client: 'dunkeld',   title: 'Site walk-through with the electrician', location: '23 Bompas Road, Dunkeld', staff: 'Noah Pillay', days_ahead: 2, work_description: 'Mark up conduit and back-box positions for pre-wire before the plasterers start.', callout_fee: 0, labour_rate: 650, materials: [] },
-  { job_type: 'maintenance', status: 'pending',     client: 'sandhurst', title: 'Monthly support visit — October', location: '41 Oxford Road, Sandhurst', staff: 'Kyle Jacobs', days_ahead: 5, work_description: 'Controller updates, 4Sight check, remote batteries.', callout_fee: 0, labour_rate: 650, materials: [] },
+  { job_type: 'once_off',    status: 'completed',   client: 'sandhurst', coverage: 'billable', title: 'Add outdoor speakers to the pool deck', location: '41 Oxford Road, Sandhurst', staff: 'Pieter Nel', days_ago: 40, work_description: 'Client asked for a pair of outdoor speakers on the existing patio amp.', work_found: 'Spare zone on the patio Sonos Amp.', resolution: 'Installed and tuned a pair of Episode outdoor speakers. Not covered by the support plan — charged at the plan rate.', callout_fee: 0, labour_hours: 4, labour_rate: 650, invoiced: true, materials: [ { description: 'Episode outdoor speaker 6.5", pair', qty: 1, cost_price: 5400, unit_price: 7290 } ] },
+  { job_type: 'once_off',    status: 'in_progress', client: 'waterfall', quote: 'waterfall', title: 'Waterfall — intercom and camera programming', location: '14 Kikuyu Close, Waterfall', staff: 'Kyle Jacobs', days_ago: 1, work_description: 'Program the 2N intercom to the gate motor and phones; set camera analytics zones.', callout_fee: 0, labour_rate: 650, materials: [] },
+  { job_type: 'maintenance', status: 'pending',     client: 'sandhurst', coverage: 'covered', title: 'Monthly support visit — October', location: '41 Oxford Road, Sandhurst', staff: 'Kyle Jacobs', days_ahead: 5, work_description: 'Controller updates, 4Sight check, remote batteries.', callout_fee: 0, labour_rate: 650, materials: [] },
 ]
+
+// Support plans: [client, name, period, fee, visits, callout rate, types, months running]
+const CONTRACTS = [
+  { client: 'sandhurst', name: 'Gold Support', billing_period: 'monthly', fee: 1450, included_visits: 6, callout_rate: 650,
+    covered_job_types: ['maintenance', 'callout', 'repair'], response_time: 'next business day', months: 7 },
+  { client: 'houghton', name: 'Hospitality Care', billing_period: 'annual', fee: 24000, included_visits: 4, callout_rate: 750,
+    covered_job_types: ['maintenance', 'callout', 'repair', 'emergency'], response_time: '4 hours', months: 3 },
+]
+
+// Devices: [room, category, sku, serial, mac, ip, username, password]
+const DEVICES = {
+  waterfall: [
+    ['Rack', 'Network', 'UBQ-UDM-PRO', 'UDMP24A91F3', '24:5A:4C:91:1F:30', '192.168.1.1', 'admin', 'Hav3n!Wf-2026'],
+    ['Rack', 'Network', 'UBQ-USW-24P', 'USW24P88C1A', '24:5A:4C:88:C1:A2', '192.168.1.2', null, null],
+    ['Rack', 'NVR / recorder', 'HIK-NVR-8', 'DS7608-K2024A118', '44:47:CC:18:0B:9E', '192.168.1.20', 'admin', 'Cam-Wf#8841'],
+    ['Driveway', 'Camera', 'HIK-8MP-BUL', 'DS2CD-K2024B332', '44:47:CC:32:11:40', '192.168.1.21', null, null],
+    ['Driveway', 'Camera', 'HIK-8MP-BUL', 'DS2CD-K2024B333', '44:47:CC:32:11:41', '192.168.1.22', null, null],
+    ['Gate', 'Intercom / access', '2N-IP-VERSO', '54-2140-0098', '7C:1E:B3:40:00:98', '192.168.1.30', 'admin', 'Gate2N!552'],
+    ['Lounge', 'Wi-Fi access point', 'UBQ-U6-PRO', 'U6P9A12F007', '24:5A:4C:9A:F0:07', '192.168.1.41', null, null],
+    ['Garden', 'Wi-Fi access point', 'UBQ-U6-MESH', 'U6M77B21C4E', '24:5A:4C:77:C4:E1', '192.168.1.44', null, null],
+  ],
+  houghton: [
+    ['Server room', 'Network', 'UBQ-UDM-PRO', 'UDMP24A02B10', '24:5A:4C:02:B1:00', '10.10.0.1', 'admin', 'Rose!Net-7719'],
+    ['Lobby', 'Audio', 'SON-AMP', 'RINCON-AMP-7731', '48:A6:B8:77:31:0C', '10.10.0.60', null, null],
+    ['Restaurant', 'Audio', 'SON-AMP', 'RINCON-AMP-7732', '48:A6:B8:77:32:0D', '10.10.0.61', null, null],
+  ],
+}
 
 const SITES = [
   { address: '23 Bompas Road, Dunkeld, Johannesburg',       lat: -26.1398, lng: 28.0391 },
@@ -347,7 +386,7 @@ async function run() {
     await sb.from('elec_variation_orders').delete().in('quote_id', oldQuoteIds)
     await sb.from('elec_quote_sections').delete().in('quote_id', oldQuoteIds)
   }
-  for (const t of ['elec_material_requests', 'elec_notifications', 'elec_time_punches', 'elec_jobs',
+  for (const t of ['elec_devices', 'elec_service_contracts', 'elec_material_requests', 'elec_notifications', 'elec_time_punches', 'elec_jobs',
                    'elec_job_cards', 'elec_quotes', 'elec_clients', 'elec_kits',
                    'elec_item_library', 'elec_section_library']) {
     await sb.from(t).delete().eq('portal_account_id', A)
@@ -370,6 +409,8 @@ async function run() {
     default_payment_terms_days:     7,
     default_defects_liability_days: 90,
     default_deposit_percentage:     DEPOSIT,
+    contract_invoice_prefix:        'SUP',
+    contract_invoices_auto_send:    false,
     quote_prefix:                   'QU',
     claim_prefix:                   'INV',
     vo_prefix:                      'VO',
@@ -537,6 +578,45 @@ async function run() {
   }
   console.log(`  · ${QUOTES.length} projects, ${totalItems} line items (${totalOptional} optional extras), ${totalClaims} claims`)
 
+  // ── 8b. Support plans + their invoice history ───────────────────────────────
+  const contractIds = {}
+  let invSeq = 0, totalInvoices = 0
+  for (const c of CONTRACTS) {
+    const start = monthStart(-c.months)
+    const startDate = new Date(start + 'T12:00:00')
+    const renewal = ymd(new Date(startDate.getFullYear() + 1, startDate.getMonth(), 1))
+    const stepMonths = c.billing_period === 'annual' ? 12 : 1
+    const periods = []
+    for (let m = 0; m < c.months; m += stepMonths) periods.push(monthStart(-c.months + m))
+    const next = monthStart(-c.months + periods.length * stepMonths)
+    const [row] = await ins('elec_service_contracts', [{
+      portal_account_id: A, client_id: clientIds[c.client], name: c.name,
+      billing_period: c.billing_period, fee: c.fee, included_visits: c.included_visits,
+      includes_remote_support: true, callout_rate: c.callout_rate, covered_job_types: c.covered_job_types,
+      response_time: c.response_time, start_date: start, renewal_date: renewal, auto_renew: true,
+      next_invoice_date: next, status: 'active',
+    }])
+    contractIds[c.client] = row.id
+    await ins('elec_contract_invoices', periods.map((p, i) => {
+      invSeq += 1
+      const end = new Date(new Date(p + 'T12:00:00').setMonth(new Date(p + 'T12:00:00').getMonth() + stepMonths))
+      end.setDate(end.getDate() - 1)
+      const latest = i === periods.length - 1
+      return {
+        contract_id: row.id, portal_account_id: A,
+        invoice_number: `${CODE}-SUP-${YEAR}-${String(invSeq).padStart(3, '0')}`,
+        invoice_date: p, due_date: ymd(new Date(new Date(p + 'T12:00:00').getTime() + 7 * DAY)),
+        period_start: p, period_end: ymd(end), amount: c.fee, vat_rate: 15,
+        // everything paid except the latest, which is out with the client
+        status: latest ? 'sent' : 'paid',
+        sent_at: iso(new Date(p + 'T09:00:00')),
+        paid_at: latest ? null : iso(new Date(new Date(p + 'T12:00:00').getTime() + 5 * DAY)),
+      }
+    }))
+    totalInvoices += periods.length
+  }
+  console.log(`  · ${CONTRACTS.length} support plans, ${totalInvoices} plan invoices`)
+
   // ── 9. Job cards ───────────────────────────────────────────────────────────
   let jcSeq = 0
   const jcIds = []
@@ -547,7 +627,10 @@ async function run() {
     const [row] = await ins('elec_job_cards', [{
       portal_account_id: A,
       client_id: clientIds[jc.client],
+      quote_id: jc.quote ? quoteIds[jc.quote] : null,
       staff_id: staffIds[jc.staff],
+      service_contract_id: jc.coverage && contractIds[jc.client] ? contractIds[jc.client] : null,
+      contract_coverage: jc.coverage && contractIds[jc.client] ? jc.coverage : null,
       job_number: `JC-${String(jcSeq).padStart(4, '0')}`,
       job_type: jc.job_type,
       status: jc.status,
@@ -580,6 +663,26 @@ async function run() {
     }
   }
   console.log(`  · ${JOB_CARDS.length} job cards`)
+
+  // ── 9b. Device register ────────────────────────────────────────────────────
+  const deviceRows = []
+  for (const [site, list] of Object.entries(DEVICES)) {
+    const q = QUOTES.find(x => x.key === site)
+    const installed = q?.approved_date ?? ymd(daysAgo(30))
+    for (const [room, category, sku, serial, mac, ip, username, password] of list) {
+      const c = cat.get(sku)
+      deviceRows.push({
+        portal_account_id: A, client_id: clientIds[site], quote_id: quoteIds[site] ?? null,
+        room, category, brand: c.brand, model: c.description, serial_number: serial, mac_address: mac, ip_address: ip,
+        installed_on: installed,
+        warranty_until: ymd(new Date(new Date(installed + 'T12:00:00').getTime() + (category === 'Camera' ? 3 : 2) * 365 * DAY)),
+        username, password_encrypted: password ? encryptSecret(password) : null,
+        created_by_name: 'Thandeka Zulu',
+      })
+    }
+  }
+  await ins('elec_devices', deviceRows)
+  console.log(`  · ${deviceRows.length} devices registered (with encrypted logins)`)
 
   // ── 10. Scheduled jobs (calendar) ──────────────────────────────────────────
   const schedule = [
@@ -628,6 +731,20 @@ async function run() {
       }
     }
   }
+  // Job-card sessions, so job cards and the Waterfall project show install vs programming time.
+  const jobSession = (jcIndex, name, dayOffset, from, to, work_type) => {
+    const day = daysAgo(dayOffset)
+    const job_id = jcIds[jcIndex].id
+    punches.push(
+      { portal_account_id: A, staff_id: staffIds[name], job_id, work_type, punch_type: 'clock_in',  punched_at: at(day, from[0], from[1]) },
+      { portal_account_id: A, staff_id: staffIds[name], job_id, punch_type: 'clock_out', punched_at: at(day, to[0], to[1]) },
+    )
+  }
+  const waterfallCard = JOB_CARDS.findIndex(j => j.quote === 'waterfall')
+  jobSession(waterfallCard, 'Kyle Jacobs', 2, [9, 0], [12, 30], 'programming')
+  jobSession(waterfallCard, 'Pieter Nel', 2, [8, 0], [15, 0], 'install')
+  jobSession(waterfallCard, 'Kyle Jacobs', 1, [8, 30], [11, 15], 'programming')
+  jobSession(0, 'Thandeka Zulu', 2, [9, 10], [10, 40], 'programming')
   await ins('elec_time_punches', punches)
   console.log(`  · ${punches.length} time punches (last 2 weeks, GPS tagged)`)
 
@@ -649,16 +766,22 @@ async function run() {
   console.log('  · 4 notifications')
 
   // ── verify ─────────────────────────────────────────────────────────────────
+  // Staff are counted separately below: logins someone added by hand to the
+  // demo (a person trying the staff app) are kept, and aren't a failure.
   const expected = {
     elec_clients: CLIENTS.length, elec_quotes: QUOTES.length, elec_job_cards: JOB_CARDS.length,
-    elec_staff: STAFF.length, elec_jobs: schedule.length, elec_kits: KITS.length,
-    elec_item_library: CATALOGUE.length,
+    elec_jobs: schedule.length, elec_kits: KITS.length,
+    elec_item_library: CATALOGUE.length, elec_service_contracts: CONTRACTS.length,
+    elec_devices: Object.values(DEVICES).reduce((s, l) => s + l.length, 0),
   }
   const wrong = []
   for (const [table, want] of Object.entries(expected)) {
     const { count } = await sb.from(table).select('*', { count: 'exact', head: true }).eq('portal_account_id', A)
     if (count !== want) wrong.push(`${table}: expected ${want}, found ${count}`)
   }
+  const { count: seededStaff } = await sb.from('elec_staff').select('*', { count: 'exact', head: true })
+    .eq('portal_account_id', A).in('username', STAFF.map(x => x.username))
+  if (seededStaff !== STAFF.length) wrong.push(`elec_staff: expected ${STAFF.length} demo staff, found ${seededStaff}`)
   if (wrong.length) { console.error('\n  ✗ VERIFY FAILED\n    ' + wrong.join('\n    ')); process.exit(1) }
   completed = true
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type CSSProperties, type ReactNode } from 'react'
 import { todaySA } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +14,7 @@ import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecIt
 import { tradeUnits, type TradeType } from '@/lib/portal-theme'
 import { countsInQuoteTotal, isOpenOptional } from '@/lib/quote-options'
 import { AddKitModal } from './AddKitModal'
+import { HandoverTab } from './HandoverTab'
 import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
 import { SnagTab } from './SnagTab'
@@ -67,6 +68,11 @@ function newItem(quoteId: string, sectionId: string | null, sortOrder: number): 
     sort_order: sortOrder, _expanded: false,
   }
 }
+
+// Width of the buttons at the end of a line row. The column headers reserve
+// the same, so every column lines up — including on a locked quote, where the
+// buttons are gone but their slot stays.
+const rowActionsWidth = (installer: boolean) => (installer ? 54 : 28)
 
 function newSection(quoteId: string, sortOrder: number): SectionState {
   return { id: crypto.randomUUID(), quote_id: quoteId, title: '', sort_order: sortOrder, items: [] }
@@ -216,8 +222,8 @@ function RateInput({ value, onChange, placeholder = '0', width = 90, locked, dec
         e.target.value = n !== 0 ? (decimals ? n.toFixed(2) : String(n)) : ''
       }}
       placeholder={placeholder}
-      className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right flex-shrink-0"
-      style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width }}
+      className="w-full md:w-[var(--w)] px-2.5 py-1.5 text-sm rounded-lg outline-none text-right flex-shrink-0"
+      style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, '--w': `${width}px` } as CSSProperties}
     />
   )
 }
@@ -236,15 +242,24 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
   const numInput = (val: number | null, cb: (n: number) => void, placeholder = '0', w = 90, decimals = false) => (
     <RateInput value={val} onChange={cb} placeholder={placeholder} width={w} locked={locked} decimals={decimals} />
   )
+  // Below md the row is a card: description across the top, the figures in a
+  // labelled three-up grid, the line total along the bottom. md:contents drops
+  // each wrapper on desktop, so there the row is the same single flex line.
+  const field = (label: string, input: ReactNode) => (
+    <div className="col-span-2 md:contents">
+      <span className="block md:hidden text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{label}</span>
+      {input}
+    </div>
+  )
 
   return (
     <div className="rounded-xl mb-1.5 group"
       style={{ background: S.bg, border: item.is_optional ? `1px dashed rgba(var(--qh-accent-rgb),0.55)` : `1px solid ${S.border}` }}>
-      <div className="flex items-center gap-2 p-2">
+      <div className="grid grid-cols-6 items-end gap-2 p-2 md:flex md:items-center">
         {/* The grip and the insert button each get their own slot. Stacking the
             button over the grip made the grip unclickable: opacity-0 still takes
             the pointer, so hovering a row to drag it hit the button instead. */}
-        <div className="flex items-center" style={{ flexShrink: 0, gap: 2 }}>
+        <div className="hidden md:flex items-center" style={{ flexShrink: 0, gap: 2 }}>
           {/* Locked quotes cannot be reordered, so no grip is drawn — showing an
               inert one just looks like dragging is broken. The box stays for
               column alignment. */}
@@ -263,6 +278,7 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
             )}
           </div>
         </div>
+        <div className="col-span-6 md:contents">
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => {
             const markup = s.default_markup_percent ?? item.markup_percentage
@@ -283,65 +299,74 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
             })
           }}
           portalAccountId={portalAccountId} locked={locked} installer={installer} />
-        <select value={item.unit ?? 'nr'} onChange={e => set({ unit: e.target.value })} disabled={locked}
-          className="px-2 py-1.5 text-sm rounded-lg outline-none"
-          style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width: 60 }}>
-          {[...units, ...(item.unit && !units.includes(item.unit) ? [item.unit] : [])].map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
-        {numInput(item.quoted_quantity, v => {
+        </div>
+        {field('Unit', (
+          <select value={item.unit ?? 'nr'} onChange={e => set({ unit: e.target.value })} disabled={locked}
+            aria-label="Unit"
+            className="w-full md:w-[60px] px-2 py-1.5 text-sm rounded-lg outline-none"
+            style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }}>
+            {[...units, ...(item.unit && !units.includes(item.unit) ? [item.unit] : [])].map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        ))}
+        {field('Qty', numInput(item.quoted_quantity, v => {
           set({ quoted_quantity: v })
-        }, 'Qty', 72)}
-        {numInput(item.cost_unit_rate, v => {
+        }, 'Qty', 72))}
+        {field('Cost', numInput(item.cost_unit_rate, v => {
           const sell = v * (1 + (item.markup_percentage ?? 0) / 100)
           set({ cost_unit_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
-        }, 'Cost', 82, true)}
-        {numInput(item.markup_percentage, v => {
+        }, 'Cost', 82, true))}
+        {field('Markup %', numInput(item.markup_percentage, v => {
           // With no cost captured there is nothing to mark up — leave a hand-typed
           // sell rate alone rather than zeroing it.
           if (!item.cost_unit_rate) { set({ markup_percentage: v }); return }
           const sell = item.cost_unit_rate * (1 + v / 100)
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
-        }, '%', 65)}
+        }, '%', 65))}
         {/* Sell rate per unit — editable; changing it auto-updates markup % */}
-        {numInput(item.quoted_unit_rate, v => {
+        {field('Rate', numInput(item.quoted_unit_rate, v => {
           const newMarkup = item.cost_unit_rate && item.cost_unit_rate > 0
             ? Math.round(((v / item.cost_unit_rate - 1) * 100) * 10) / 10
             : item.markup_percentage
           set({ quoted_unit_rate: v, markup_percentage: newMarkup ?? item.markup_percentage })
-        }, 'Rate', 72, true)}
-        {/* Material subtotal = qty × sell rate */}
-        <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
+        }, 'Rate', 72, true))}
+        {/* Material subtotal = qty × sell rate. The two subtotals are desktop
+            columns only; on a phone the line total below carries the sum. */}
+        <div className="hidden md:block text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {fmtR((item.quoted_quantity ?? 0) * computeSellRate(item))}
         </div>
-        {numInput(item.labour_rate, v => {
+        {field('Labour/Unit', numInput(item.labour_rate, v => {
           set({ labour_rate: v })
-        }, 'Labour/Unit', 82, true)}
-        <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
+        }, 'Labour/Unit', 82, true))}
+        <div className="hidden md:block text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {(item.labour_rate ?? 0) > 0 ? fmtR((item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)) : '—'}
         </div>
-        <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: isOpenOptional(item) ? S.muted : S.text, width: 92 }}>
+        <div className={`col-span-5 self-center flex items-center justify-between md:block md:w-[92px] text-sm font-semibold text-right flex-shrink-0`}
+          style={{ color: isOpenOptional(item) ? S.muted : S.text }}>
+          <span className="md:hidden text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Line total</span>
           {fmtR(itemTotal(item))}
         </div>
-        {installer && !locked && (
-          <button type="button" onClick={() => set({ is_optional: !item.is_optional, optional_selected: false })}
-            title={item.is_optional ? 'Make this a standard line' : 'Make this an optional extra'}
-            aria-label={item.is_optional ? 'Make this a standard line' : 'Make this an optional extra'}
-            aria-pressed={!!item.is_optional}
-            className="p-1.5 rounded-lg flex-shrink-0"
-            style={{ color: item.is_optional ? S.accent : S.muted, background: item.is_optional ? 'rgba(var(--qh-accent-rgb),0.1)' : 'transparent' }}>
-            <ListPlus size={13} />
-          </button>
-        )}
-        {!locked && (
-          <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
-            <Trash2 size={13} />
-          </button>
-        )}
+        <div className="col-span-1 self-center flex items-center justify-end flex-shrink-0" style={{ width: rowActionsWidth(installer), gap: 2 }}>
+          {installer && !locked && (
+            <button type="button" onClick={() => set({ is_optional: !item.is_optional, optional_selected: false })}
+              title={item.is_optional ? 'Make this a standard line' : 'Make this an optional extra'}
+              aria-label={item.is_optional ? 'Make this a standard line' : 'Make this an optional extra'}
+              aria-pressed={!!item.is_optional}
+              className="p-1.5 rounded-lg flex-shrink-0"
+              style={{ color: item.is_optional ? S.accent : S.muted, background: item.is_optional ? 'rgba(var(--qh-accent-rgb),0.1)' : 'transparent' }}>
+              <ListPlus size={13} />
+            </button>
+          )}
+          {!locked && (
+            <button onClick={onDelete} aria-label="Delete line" className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
       </div>
       {item.is_optional && (
-        <div className="flex items-center gap-4 pb-2 pr-3 text-xs" style={{ paddingLeft: 38 }}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pb-2 pr-3 pl-3 md:pl-[38px] text-xs">
           <span className="font-semibold uppercase tracking-wider text-[10px]" style={{ color: S.accent }}>Optional extra</span>
           <span style={{ color: S.muted }}>The client can add it when they accept — it stays out of the total until then.</span>
           <label className="flex items-center gap-1.5 ml-auto flex-shrink-0 cursor-pointer" style={{ color: S.text }}>
@@ -376,7 +401,9 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
 
   return (
     <div className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
-      <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: collapsed ? 'none' : `1px solid ${S.border}` }}>
+      {/* The title keeps at least half the bar, so on a phone the subtotal and
+          margin wrap to a second line instead of squeezing it to a few letters. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-3" style={{ background: 'rgba(var(--qh-accent-rgb),0.04)', borderBottom: collapsed ? 'none' : `1px solid ${S.border}` }}>
         {/* As on line items: no grip on a locked quote, but keep its width so
             the header row does not shift. */}
         <div {...(locked ? {} : (dragHandleProps ?? {}))}
@@ -388,30 +415,32 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
         </button>
         <input value={section.title} onChange={e => onChange({ ...section, title: e.target.value })}
           disabled={locked} aria-label="Section title" placeholder={installer ? undefined : 'Section title (e.g. DB Board)'}
-          className="flex-1 bg-transparent text-sm font-semibold outline-none" style={{ color: S.text }} />
-        <span className="text-sm font-semibold flex-shrink-0" style={{ color: S.accent }}>{fmtR(subtotal)}</span>
-        {sectionMarginPct !== null && (
-          <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium"
-            style={{ background: sectionMarginPct >= 0 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: sectionMarginPct >= 0 ? S.green : S.danger }}>
-            {Math.round(sectionMarginPct * 10) / 10}% margin
-          </span>
-        )}
-        <span className="text-xs flex-shrink-0" style={{ color: S.muted }}>{section.items.length} item{section.items.length !== 1 ? 's' : ''}</span>
-        {!locked && (
-          <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
-            <Trash2 size={13} />
-          </button>
-        )}
+          className="flex-1 min-w-[50%] bg-transparent text-sm font-semibold outline-none" style={{ color: S.text }} />
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-sm font-semibold flex-shrink-0" style={{ color: S.accent }}>{fmtR(subtotal)}</span>
+          {sectionMarginPct !== null && (
+            <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium"
+              style={{ background: sectionMarginPct >= 0 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: sectionMarginPct >= 0 ? S.green : S.danger }}>
+              {Math.round(sectionMarginPct * 10) / 10}% margin
+            </span>
+          )}
+          <span className="hidden sm:inline text-xs flex-shrink-0" style={{ color: S.muted }}>{section.items.length} item{section.items.length !== 1 ? 's' : ''}</span>
+          {!locked && (
+            <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
       </div>
       {!collapsed && (
         <div className="p-3">
           {section.items.length > 0 && (
-            <div className="flex items-center gap-2 px-2 mb-1.5">
+            <div className="hidden md:flex items-center gap-2 px-2 mb-1.5">
               {/* matches the grip + insert-button column on each row */}
               <div style={{ width: 30 }} />
-              <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
+              <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
               {colHdr('Unit', 60, 'center')}
               {colHdr('Qty', 72, 'right')}
               {colHdr('Cost', 82, 'right')}
@@ -421,7 +450,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
               {colHdr('Labour/Unit', 82, 'right')}
               {colHdr('Lab. Total', 82, 'right')}
               {colHdr('Line Total', 92, 'right')}
-              <div style={{ width: 28 }} />
+              <div style={{ width: rowActionsWidth(installer) }} />
             </div>
           )}
           <Droppable droppableId={section.id} type="ITEM">
@@ -487,7 +516,7 @@ interface Props {
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
+type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting' | 'handover'
 
 export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false, extrasContext = null, tradeType = 'electrician' }: Props) {
   const router = useRouter()
@@ -546,6 +575,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     coc:        started && !isJobCardQuote && !isInstaller,
     as_built:   started && !isJobCardQuote,
     reporting:  started && !isJobCardQuote,
+    handover:   started && !isJobCardQuote && isInstaller,
   }
 
   const [showSendModal, setShowSendModal] = useState(false)
@@ -939,6 +969,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     { id: 'materials',  label: 'Materials' },
     { id: 'snag',       label: 'Snag List' },
     { id: 'as_built',   label: 'As-Built' },
+    // Installers only: the device register and the pack the client keeps.
+    ...(isInstaller ? [{ id: 'handover' as QuoteTab, label: 'Handover' }] : []),
   ]
 
   const contractTotal = billable.reduce((s, i) => s + itemTotal(i), 0)
@@ -1146,7 +1178,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       </div>
 
       {/* ── Tabs — flat underline style ─────────────────────────────────────── */}
-      <div className="flex gap-0 mb-5" style={{ borderBottom: `1px solid ${S.border}` }}>
+      {/* w-0 min-w-full: fill the column but report no width of its own, so the
+          tabs scroll inside it instead of widening the page on a phone. */}
+      <div className="flex gap-0 mb-5 overflow-x-auto w-0 min-w-full" style={{ borderBottom: `1px solid ${S.border}` }}>
         {TABS.map((tab, idx) => {
           const accessible = tabAccessible[tab.id]
           const isActive   = activeTab === tab.id
@@ -1191,13 +1225,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           { label: `Total incl. VAT (${vatRate}%)`, value: fmtR(revisedTotalInclVat), color: S.accent },
         ]
         return (
-          <div className="flex items-stretch rounded-2xl px-4 py-3 mb-4 overflow-x-auto" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="flex items-stretch rounded-2xl px-4 py-3 mb-4 overflow-x-auto w-0 min-w-full" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             {metrics.map((m, i) => (
               <div key={m.label} className="flex items-stretch">
                 {i > 0 && <div style={{ width: 1, background: S.border, margin: '0 14px', alignSelf: 'stretch' }} />}
                 <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{m.label}</p>
-                  <p className="text-xs font-bold tabular-nums" style={{ color: m.color }}>{m.value}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider mb-0.5 whitespace-nowrap" style={{ color: S.muted }}>{m.label}</p>
+                  <p className="text-xs font-bold tabular-nums whitespace-nowrap" style={{ color: m.color }}>{m.value}</p>
                 </div>
               </div>
             ))}
@@ -1271,6 +1305,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       <div style={{ display: activeTab === 'materials' ? undefined : 'none' }}>
         <MaterialsTab quoteId={q.id} />
       </div>
+      {tabAccessible.handover && activeTab === 'handover' && (
+        <HandoverTab quoteId={q.id} clientId={q.client_id} clientEmail={q.client?.email ?? null} />
+      )}
 
       {/* Quote tab content */}
       <div style={{ display: activeTab === 'quote' ? undefined : 'none' }}>
@@ -1317,9 +1354,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             </div>
           )}
           {/* Project & contract details */}
-          <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
             {q.project_address && (
-              <div className="col-span-3">
+              <div className="col-span-2 sm:col-span-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Address</p>
                 <p className="text-sm" style={{ color: S.text }}>{q.project_address}</p>
               </div>
@@ -1365,7 +1402,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           )}
         </div>
       ) : (
-        <div className="rounded-2xl p-5 mb-4 grid grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <div className="rounded-2xl p-5 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           {/* Client — combobox */}
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Client</label>
@@ -1538,7 +1575,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
 
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
             <textarea value={q.notes ?? ''} onChange={e => setQ(p => ({ ...p, notes: e.target.value || null }))}
               rows={2} placeholder="Any notes for this quote…"
@@ -1550,7 +1587,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       {/* Line items */}
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>Line Items</h2>
           {!locked && (
             <div className="flex items-center gap-2">
@@ -1581,10 +1618,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         <DragDropContext onDragEnd={onDragEnd}>
           {freeItems.length > 0 && (
             <div className="rounded-2xl p-3 mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <div className="flex items-center gap-2 px-2 mb-1.5">
+              <div className="hidden md:flex items-center gap-2 px-2 mb-1.5">
                 {/* matches the grip + insert-button column on each row */}
                 <div style={{ width: 30 }} />
-                <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
+                <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-center" style={{ color: S.muted, width: 60 }}>Unit</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Qty</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Cost</div>
@@ -1594,7 +1631,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Labour/Unit</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Lab. Total</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 92 }}>Line Total</div>
-                <div style={{ width: 28 }} />
+                <div style={{ width: rowActionsWidth(isInstaller) }} />
               </div>
               <Droppable droppableId="free" type="ITEM">
                 {(dropProvided) => (

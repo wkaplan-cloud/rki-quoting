@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, MapPin, Camera, Plus, X, Loader2, CheckCircle2, FileText, Trash2, AlertTriangle, TrendingDown, ShoppingCart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StaffBottomNav } from '../../StaffBottomNav'
+import { useStaffTrade } from '../../StaffTradeContext'
+import { DevicesPanel } from '@/components/devices/DevicesPanel'
 import type { ElecMaterialRequest } from '@/lib/elec-types'
 import { uniqueUploadPath } from '@/lib/upload-path'
 import { compressImage } from '@/lib/compressImage'
@@ -23,7 +25,7 @@ const STATUS_LABEL: Record<string, string> = {
   in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled',
 }
 
-type Tab = 'details' | 'materials' | 'photos' | 'vo' | 'reporting'
+type Tab = 'details' | 'materials' | 'photos' | 'vo' | 'reporting' | 'devices'
 
 interface Report {
   id: string; quote_id: string; portal_account_id: string
@@ -65,6 +67,8 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<Tab>('details')
+  // Installers register each device on site as it goes in.
+  const isInstaller = useStaffTrade() === 'installer'
   const [photos, setPhotos] = useState(initialPhotos)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -274,6 +278,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
           ['details', 'Line Items'],
           ['materials', `Materials${matOrders.length > 0 ? ` (${matOrders.length})` : ''}`],
           ['photos', `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`],
+          ...(isInstaller ? [['devices', 'Devices'] as [Tab, string]] : []),
           ['vo', 'Raise VO'],
           ['reporting', 'Report'],
         ] as [Tab, string][]).map(([key, label]) => (
@@ -290,6 +295,11 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
       </div>
 
       <div className="px-4 pt-2 space-y-3">
+
+        {/* ── DEVICES TAB (installers) ── */}
+        {tab === 'devices' && isInstaller && (
+          <DevicesPanel quoteId={quote.id} clientId={quote.client?.id ?? null} />
+        )}
 
         {/* ── LINE ITEMS TAB ── */}
         {tab === 'details' && (

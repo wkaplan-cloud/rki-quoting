@@ -2,11 +2,13 @@ export const dynamic = 'force-dynamic'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { JobCardDetail, type JobCardBooking } from './JobCardDetail'
+import { JobCardDetail, type JobCardBooking, type JobCardContract } from './JobCardDetail'
 import type { ElecJobCard, ElecStaff, ElecClient, ElecCOC } from '@/lib/elec-types'
 import { normalizeExtras } from '@/lib/job-card-extras'
 import { one, type Embedded } from '@/lib/supabase/embed'
 import { getTradeType } from '@/lib/trade-type'
+import { activeContractForClient, visitsUsed } from '@/lib/service-contracts'
+import { planSummary } from '@/lib/contract-format'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -110,6 +112,20 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
     extras: normalizeExtras(extras),
   }
 
+  // The client's support plan, for installers — the one on the card, or the
+  // client's current one for cards raised before the plan existed.
+  let contract: JobCardContract | null = null
+  if (tradeType === 'installer') {
+    const c = await activeContractForClient(accountId!, (card as { client_id: string | null }).client_id)
+    if (c) {
+      contract = {
+        id: c.id, name: c.name, summary: planSummary(c),
+        callout_rate: c.callout_rate, included_visits: c.included_visits,
+        visits_used: await visitsUsed(c),
+      }
+    }
+  }
+
   return (
     <JobCardDetail
       jobCard={jobCard}
@@ -127,6 +143,8 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       bookings={(bookings ?? []) as unknown as JobCardBooking[]}
       suggestedStaff={suggestedStaff}
       hideCoc={tradeType === 'installer'}
+      installer={tradeType === 'installer'}
+      contract={contract}
       extrasEnabled={extras !== null && (extrasSettings as { job_card_extras_enabled?: boolean } | null)?.job_card_extras_enabled !== false}
     />
   )

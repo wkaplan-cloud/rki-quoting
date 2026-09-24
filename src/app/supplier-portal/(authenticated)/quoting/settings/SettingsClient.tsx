@@ -98,6 +98,8 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
   const [claimPrefix, setClaimPrefix]   = useState(settings?.claim_prefix ?? 'CLM')
   const [voPrefix, setVoPrefix]         = useState(settings?.vo_prefix ?? 'VO')
   const [cocPrefix, setCocPrefix]       = useState(settings?.coc_prefix ?? 'COC')
+  const [supPrefix, setSupPrefix]       = useState(settings?.contract_invoice_prefix ?? 'SUP')
+  const [autoSendSupport, setAutoSendSupport] = useState(settings?.contract_invoices_auto_send === true)
 
   // Footer
   const [footer, setFooter] = useState(settings?.email_footer_text ?? '')
@@ -173,7 +175,11 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
         default_payment_terms_days:     paymentTerms.trim() !== '' ? parseInt(paymentTerms) : 30,
         default_defects_liability_days: defectsLiability.trim() !== '' ? parseInt(defectsLiability) : 90,
         // Installer-only column; never named for an electrician's save.
-        ...(isInstaller ? { default_deposit_percentage: deposit.trim() !== '' ? parseFloat(deposit) : 0 } : {}),
+        ...(isInstaller ? {
+          default_deposit_percentage: deposit.trim() !== '' ? parseFloat(deposit) : 0,
+          contract_invoice_prefix: supPrefix.trim().toUpperCase() || 'SUP',
+          contract_invoices_auto_send: autoSendSupport,
+        } : {}),
         quote_prefix:                   quotePrefix.trim() || 'QU',
         claim_prefix:                   claimPrefix.trim() || 'CLM',
         vo_prefix:                      voPrefix.trim() || 'VO',
@@ -189,7 +195,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     setSaving(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [companyName, isInstaller, vatRate, retention, paymentTerms, defectsLiability, deposit, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled])
+  }, [companyName, isInstaller, vatRate, retention, paymentTerms, defectsLiability, deposit, supPrefix, autoSendSupport, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled])
 
   // Auto-save on any field change — 1.5s debounce, skip on first render
   useEffect(() => {
@@ -197,7 +203,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [vatRate, retention, paymentTerms, defectsLiability, deposit, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled, handleSave])
+  }, [vatRate, retention, paymentTerms, defectsLiability, deposit, supPrefix, autoSendSupport, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled, handleSave])
 
   return (
     <div className="space-y-6">
@@ -262,7 +268,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
                     </p>
                   </div>
                 </div>
-                <div className={`grid ${isInstaller ? 'grid-cols-3' : 'grid-cols-4'} gap-4`}>
+                <div className="grid grid-cols-4 gap-4">
                   <Field label="Quotes">
                     <Input value={quotePrefix} onChange={setQuotePrefix} placeholder="EQ" />
                   </Field>
@@ -275,6 +281,11 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
                   {!isInstaller && (
                     <Field label="COC">
                       <Input value={cocPrefix} onChange={setCocPrefix} placeholder="COC" />
+                    </Field>
+                  )}
+                  {isInstaller && (
+                    <Field label="Support Invoices">
+                      <Input value={supPrefix} onChange={v => setSupPrefix(v.toUpperCase().slice(0, 6))} />
                     </Field>
                   )}
                 </div>
@@ -324,6 +335,30 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
               />
             </button>
           </div>
+
+          {isInstaller && (
+            <div className="flex items-center justify-between py-1 mt-4 pt-4" style={{ borderTop: `1px solid ${S.border}` }}>
+              <div className="pr-4">
+                <p className="text-xs font-semibold" style={{ color: S.text }}>Send support-plan invoices automatically</p>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  {autoSendSupport
+                    ? 'Each morning, invoices that come due are emailed to the client and pushed to Sage (where the plan is linked)'
+                    : 'Invoices that come due are raised as drafts for you to check and send from Contracts'}
+                </p>
+              </div>
+              <button
+                onClick={() => setAutoSendSupport(v => !v)}
+                aria-label="Send support-plan invoices automatically"
+                aria-pressed={autoSendSupport}
+                className="relative flex-shrink-0 w-11 h-6 rounded-full"
+                style={{ background: autoSendSupport ? S.accent : S.border, transition: 'background 0.2s' }}>
+                <span
+                  className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                  style={{ transform: autoSendSupport ? 'translateX(20px)' : 'translateX(0)', transition: 'transform 0.2s' }}
+                />
+              </button>
+            </div>
+          )}
         </Section>
 
         {/* What this company uses */}
