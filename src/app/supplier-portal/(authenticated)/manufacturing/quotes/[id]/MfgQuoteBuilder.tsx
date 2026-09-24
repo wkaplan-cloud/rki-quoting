@@ -276,8 +276,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
 
   function setManualCost(idx: number, cost: number | null) {
     const li = lineItems[idx]
-    // Only fill in a selling price when there isn't one yet.
-    const seedPrice = cost !== null && !li.unit_price
+    // Fill in the selling price when there isn't one yet, and keep it following
+    // the cost while it is still the one filled in here (cost × markup). The cost
+    // arrives a keystroke at a time, so seeding only once priced "8400" off its
+    // first digit at R10.80. A price the user typed themselves is left alone.
+    const priceIsSeeded = !li.unit_price || (li.cost_per_unit !== null
+      && li.unit_price === round2(li.cost_per_unit * (1 + li.markup_percentage / 100)))
+    const seedPrice = cost !== null && priceIsSeeded
       ? round2(cost * (1 + li.markup_percentage / 100))
       : li.unit_price
     updateLineItem(idx, { cost_per_unit: cost, unit_price: seedPrice })
