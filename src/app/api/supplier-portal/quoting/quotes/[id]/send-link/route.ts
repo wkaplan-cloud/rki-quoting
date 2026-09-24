@@ -4,7 +4,7 @@ import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { countsInQuoteTotal } from '@/lib/quote-options'
+import { excludedSectionIds, lineCounts } from '@/lib/quote-options'
 import { resolvePortalAccount } from '@/lib/portal-account'
 
 
@@ -51,12 +51,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .eq('id', quoteId)
     }
 
-    const { data: items } = await supabaseAdmin
-      .from('elec_quote_line_items')
-      .select('*')
-      .eq('quote_id', quoteId)
+    const [{ data: items }, { data: sections }] = await Promise.all([
+      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', quoteId),
+      supabaseAdmin.from('elec_quote_sections').select('*').eq('quote_id', quoteId),
+    ])
+    const excluded = excludedSectionIds(sections ?? [])
 
-    const subtotal = (items ?? []).filter(countsInQuoteTotal)
+    const subtotal = (items ?? []).filter(i => lineCounts(i, excluded))
       .reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + ((i.labour_rate as number | null) ?? 0)), 0)
     const vatAmt = subtotal * ((quoteRaw.vat_rate ?? 0) / 100)
     const total = subtotal + vatAmt

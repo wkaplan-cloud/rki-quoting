@@ -222,7 +222,11 @@ const QUOTES = [
     project_address: '8 Fourth Avenue, Parkhurst',
     project_type: 'residential', quoted_date: ymd(daysAgo(0)),
     sections: [
-      { title: 'Cinema', items: [ L('EPS-LS12000', 1), L('SCR-120', 1), L('DEN-X3800', 1), L('EP-CW800', 3), L('TRI-SUB', 1), L('HDMI-FIBRE-15', 1), L('C4-CORE3', 1, { optional: true }), L('C4-HALO', 1, { optional: true }) ] },
+      // Good / better / best: the client picks one cinema package.
+      { title: 'Good — 5.1 with a 65" OLED', option_group: 'Cinema package', items: [ L('LG-OLED65', 1), L('MNT-ART', 1), L('DEN-X3800', 1), L('EP-CW800', 2), L('SON-SUB', 1) ] },
+      { title: 'Better — 5.1 laser projector and 120" screen', option_group: 'Cinema package', option_chosen: true, items: [ L('EPS-LS12000', 1), L('SCR-120', 1), L('DEN-X3800', 1), L('EP-CW800', 3), L('TRI-SUB', 1), L('HDMI-FIBRE-15', 1) ] },
+      { title: 'Best — 7.2 laser projector with Control4 automation', option_group: 'Cinema package', items: [ L('EPS-LS12000', 1), L('SCR-120', 1), L('DEN-X3800', 1), L('EP-CW800', 4), L('TRI-SUB', 2), L('HDMI-FIBRE-15', 1), L('C4-CORE3', 1), L('C4-HALO', 1) ] },
+      { title: 'Extras', items: [ L('C4-CORE3', 1, { optional: true }), L('C4-HALO', 1, { optional: true }) ] },
       { title: 'Labour & Programming', items: [ L('LAB-INSTALL', 12), L('LAB-PROG', 3) ] },
     ],
   },
@@ -528,7 +532,10 @@ async function run() {
     const lineItems = []
     let sortOrder = 0
     for (const [si, section] of q.sections.entries()) {
-      const [secRow] = await ins('elec_quote_sections', [{ quote_id: qid, title: section.title, sort_order: si }])
+      const [secRow] = await ins('elec_quote_sections', [{
+        quote_id: qid, title: section.title, sort_order: si,
+        option_group: section.option_group ?? null, option_chosen: !!section.option_chosen,
+      }])
       for (const item of section.items) {
         sortOrder += 1
         if (item.is_optional) totalOptional += 1

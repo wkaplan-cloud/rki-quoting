@@ -8,6 +8,8 @@ import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
+import { getTradeType } from '@/lib/trade-type'
+import { pdfPalette } from '@/lib/pdf/palette'
 
 export const maxDuration = 60
 
@@ -56,6 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const buffer = await renderPdfToBuffer(
       createElement(ElecQuotePDF, {
+        palette: pdfPalette(await getTradeType(account.id)),
         quote,
         client:      (client ?? null) as ElecClient | null,
         sections:    (sections ?? []) as ElecQuoteSection[],

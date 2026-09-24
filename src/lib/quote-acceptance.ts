@@ -1,15 +1,18 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { nextClaimNumber } from '@/lib/elec-claim-number'
 import { todaySA } from '@/lib/dates'
+import { excludedSectionIds } from '@/lib/quote-options'
 import type { ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
 /**
  * What happens to a quote's contents the moment it is accepted, whether by
  * the client on the approval link or by the office marking it approved.
  *
- * 1. Optional lines: the ones taken become ordinary lines, the rest are
- *    deleted — claims, as-built and VOs never have to know optionals existed.
- * 2. Deposit: if the quote asks for one, it is raised as a DRAFT claim at the
+ * 1. Alternatives (good / better / best): the chosen section in each group
+ *    stays as an ordinary section; the others are deleted with their lines.
+ * 2. Optional lines: the ones taken become ordinary lines, the rest are
+ *    deleted — claims, as-built and VOs never have to know either existed.
+ * 3. Deposit: if the quote asks for one, it is raised as a DRAFT claim at the
  *    deposit % on every line. Being an ordinary claim, the next progress
  *    claim carries on from that % automatically; being a draft, the office
  *    reviews it before it goes to the client or to Sage.
@@ -22,6 +25,7 @@ const MISSING_COLUMN = '42703'
 const round2 = (n: number) => Math.round(n * 100) / 100
 
 export interface AcceptanceResult {
+  removedSectionIds: string[]
   removedOptionalIds: string[]
   keptOptionalIds: string[]
   depositClaim: (ElecClaim & { line_items: ElecClaimLineItem[] }) | null
@@ -32,11 +36,43 @@ export async function finaliseAcceptedQuote(opts: {
   portalAccountId: string
   /** The optional lines the client ticked. Omit to use what is saved on the lines. */
   selectedOptionalIds?: string[]
+  /** The alternative sections the client picked, one per group. Omit to use what is saved. */
+  chosenSectionIds?: string[]
 }): Promise<AcceptanceResult> {
   const { quoteId, portalAccountId } = opts
-  const result: AcceptanceResult = { removedOptionalIds: [], keptOptionalIds: [], depositClaim: null }
+  const result: AcceptanceResult = { removedSectionIds: [], removedOptionalIds: [], keptOptionalIds: [], depositClaim: null }
 
-  // ── 1. Optional lines ──────────────────────────────────────────────────────
+  // ── 1. Alternatives ────────────────────────────────────────────────────────
+  const { data: altRows, error: altErr } = await supabaseAdmin
+    .from('elec_quote_sections')
+    .select('id, sort_order, option_group, option_chosen')
+    .eq('quote_id', quoteId)
+    .not('option_group', 'is', null)
+
+  if (!altErr && altRows && altRows.length > 0) {
+    // A client's pick replaces the saved choice for that group only.
+    const picked = new Set(opts.chosenSectionIds ?? [])
+    const pickedGroups = new Set(altRows.filter(r => picked.has(r.id)).map(r => r.option_group))
+    const rows = altRows.map(r => pickedGroups.has(r.option_group) ? { ...r, option_chosen: picked.has(r.id) } : r)
+    result.removedSectionIds = [...excludedSectionIds(rows)]
+
+    if (result.removedSectionIds.length > 0) {
+      const { error: liErr } = await supabaseAdmin.from('elec_quote_line_items')
+        .delete().eq('quote_id', quoteId).in('section_id', result.removedSectionIds)
+      if (liErr) throw new Error(`Could not remove the alternatives that were not chosen: ${liErr.message}`)
+      const { error: secErr } = await supabaseAdmin.from('elec_quote_sections')
+        .delete().eq('quote_id', quoteId).in('id', result.removedSectionIds)
+      if (secErr) throw new Error(`Could not remove the alternatives that were not chosen: ${secErr.message}`)
+    }
+    const { error: keepErr } = await supabaseAdmin.from('elec_quote_sections')
+      .update({ option_group: null, option_chosen: false })
+      .eq('quote_id', quoteId).not('option_group', 'is', null)
+    if (keepErr) throw new Error(`Could not settle the chosen alternatives: ${keepErr.message}`)
+  } else if (altErr && altErr.code !== MISSING_COLUMN) {
+    throw new Error(altErr.message)
+  }
+
+  // ── 2. Optional lines ──────────────────────────────────────────────────────
   const { data: optionalRows, error: optErr } = await supabaseAdmin
     .from('elec_quote_line_items')
     .select('id, optional_selected')
@@ -66,7 +102,7 @@ export async function finaliseAcceptedQuote(opts: {
     throw new Error(optErr.message)
   }
 
-  // ── 2. Deposit ─────────────────────────────────────────────────────────────
+  // ── 3. Deposit ─────────────────────────────────────────────────────────────
   const { data: quote, error: qErr } = await supabaseAdmin
     .from('elec_quotes')
     .select('id, deposit_percentage, client:elec_clients(client_name, email, qs_name, qs_email)')

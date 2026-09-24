@@ -9,7 +9,7 @@ import { finaliseAcceptedQuote } from '@/lib/quote-acceptance'
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params
-    const body = await req.json() as { action: 'approve' | 'request_changes'; client_name?: string; notes?: string; selected_optional_ids?: string[] }
+    const body = await req.json() as { action: 'approve' | 'request_changes'; client_name?: string; notes?: string; selected_optional_ids?: string[]; chosen_section_ids?: string[] }
 
     const { data: quote } = await supabaseAdmin
       .from('elec_quotes')
@@ -30,6 +30,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         portalAccountId: quote.portal_account_id,
         selectedOptionalIds: Array.isArray(body.selected_optional_ids)
           ? body.selected_optional_ids.filter((v): v is string => typeof v === 'string')
+          : undefined,
+        chosenSectionIds: Array.isArray(body.chosen_section_ids)
+          ? body.chosen_section_ids.filter((v): v is string => typeof v === 'string')
           : undefined,
       })
       await supabaseAdmin

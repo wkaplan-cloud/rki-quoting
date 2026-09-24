@@ -1,6 +1,7 @@
 import React from 'react'
 import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { BLUE_PALETTE, PdfPaletteProvider, recolorStyles, usePdfPalette, usePdfStyles, type PdfPalette } from './palette'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -12,7 +13,7 @@ const GOLD   = '#D9A441'
 const GREEN  = '#16A34A'
 const DANGER = '#DC2626'
 
-const s = StyleSheet.create({
+const baseStyles = StyleSheet.create({
   page:       { fontFamily: 'Helvetica', fontSize: 9, color: DARK, padding: 40, paddingBottom: 60 },
   // Page header
   header:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, alignItems: 'flex-start' },
@@ -76,6 +77,8 @@ function fmtDate(iso: string | null | undefined) {
 const COL = { unit: 28, cQty: 38, cRate: 56, cVal: 64, labour: 52, abQty: 38, abRate: 56, abVal: 64 }
 
 interface Props {
+  /** Document colours — installers print in green. */
+  palette?: PdfPalette
   quote: ElecQuote
   client: ElecClient | null
   settings: ElecSettings | null
@@ -96,6 +99,8 @@ const itemAsBuiltVal = (i: ElecQuoteLineItem) =>
 // Declared at module scope: defined inside the component it was a new
 // component type on every render, remounting everything it drew.
 function SecSubtotal({ contractVal, labourVal, abVal }: { contractVal: number; labourVal: number; abVal: number }) {
+  const s = usePdfStyles(baseStyles)
+  const pal = usePdfPalette()
   return (
     <View style={s.subtotalRow} wrap={false}>
       <Text style={[s.td, { flex: 1, color: MUTED, fontSize: 7 }]}>Section total</Text>
@@ -106,7 +111,7 @@ function SecSubtotal({ contractVal, labourVal, abVal }: { contractVal: number; l
       <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labourVal > 0 ? GREEN : MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{labourVal > 0 ? fmtR(labourVal) : '—'}</Text>
       <Text style={[s.td, { width: COL.abQty }]} />
       <Text style={[s.td, { width: COL.abRate }]} />
-      <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', color: ACCENT, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(abVal)}</Text>
+      <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', color: pal.accent, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(abVal)}</Text>
     </View>
   )
 }
@@ -114,6 +119,8 @@ function SecSubtotal({ contractVal, labourVal, abVal }: { contractVal: number; l
 // Declared at module scope: defined inside the component it was a new
 // component type on every render, remounting everything it drew.
 function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
+  const s = usePdfStyles(baseStyles)
+  const pal = usePdfPalette()
   return (
     <>
       {list.map((item, i) => {
@@ -135,8 +142,8 @@ function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?
             <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labour > 0 ? GREEN : MUTED }]}>
               {labour > 0 ? fmtR(labour) : '—'}
             </Text>
-            <Text style={[s.td, { width: COL.abQty,  textAlign: 'right', color: ACCENT }]}>{abQty}</Text>
-            <Text style={[s.td, { width: COL.abRate, textAlign: 'right', color: ACCENT }]}>{fmtR(abRate)}</Text>
+            <Text style={[s.td, { width: COL.abQty,  textAlign: 'right', color: pal.accent }]}>{abQty}</Text>
+            <Text style={[s.td, { width: COL.abRate, textAlign: 'right', color: pal.accent }]}>{fmtR(abRate)}</Text>
             <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold',
               color: diff > 0.01 ? GOLD : diff < -0.01 ? DANGER : DARK }]}>
               {fmtR(abVal)}
@@ -148,7 +155,8 @@ function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?
   )
 }
 
-export function ElecAsBuiltPDF({ quote, client, settings, sections, items, materials, vos, companyName, logoUrl }: Props) {
+export function ElecAsBuiltPDF({ quote, client, settings, sections, items, materials, vos, companyName, logoUrl, palette = BLUE_PALETTE }: Props) {
+  const s = recolorStyles(baseStyles, palette)
   const quoteItems = items.filter(i => !i.is_variation)
   const voItems    = items.filter(i => i.is_variation)
   const freeItems  = quoteItems.filter(i => i.section_id === null)
@@ -172,197 +180,199 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
     settings?.company_registration_number  ? `Reg: ${settings.company_registration_number}`    : null,
   ].filter(Boolean).join('   ·   ')
 
-  const MAT_COLOR: Record<string, string> = { pending: GOLD, ordered: ACCENT, received: GREEN }
+  const MAT_COLOR: Record<string, string> = { pending: GOLD, ordered: palette.accent, received: GREEN }
 
   // Reusable line item rows
 
   // Section subtotal row
 
   return (
-    <Document>
-      <Page size="A4" orientation="landscape" style={s.page}>
+    <PdfPaletteProvider value={palette}>
+      <Document>
+        <Page size="A4" orientation="landscape" style={s.page}>
 
-        {/* ── Page Header ── */}
-        <View style={s.header} fixed>
-          <View style={{ flex: 1, paddingRight: 16 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ width: 160, marginBottom: metaParts ? 4 : 0 }} />
-              : <Text style={s.company}>{companyName}</Text>}
-            {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={s.docTitle}>AS-BUILT SCHEDULE</Text>
-            <Text style={s.docSub}>{quote.project_name}</Text>
-            {quote.project_address && <Text style={s.docMeta}>{quote.project_address}</Text>}
-            <Text style={s.docMeta}>Ref: {quote.quote_number}   ·   Printed: {fmtDate(todaySA())}</Text>
-          </View>
-        </View>
-
-        {/* ── Project Info Strip ── */}
-        <View style={s.infoStrip}>
-          <View style={s.infoCell}>
-            <Text style={s.infoLbl}>CLIENT</Text>
-            <Text style={s.infoBold}>{client?.client_name ?? '—'}</Text>
-            {client?.email && <Text style={s.infoSub}>{client.email}</Text>}
-          </View>
-          <View style={s.infoCell}>
-            <Text style={s.infoLbl}>PROJECT</Text>
-            <Text style={s.infoBold}>{quote.project_name}</Text>
-            {quote.project_address && <Text style={s.infoSub}>{quote.project_address}</Text>}
-          </View>
-          <View style={s.infoCell}>
-            <Text style={s.infoLbl}>CONTRACT TYPE</Text>
-            <Text style={s.infoBold}>{quote.contract_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) ?? 'Lump Sum'}</Text>
-          </View>
-          <View style={s.infoCellLast}>
-            <Text style={s.infoLbl}>DATE</Text>
-            <Text style={s.infoBold}>{fmtDate(todaySA())}</Text>
-          </View>
-        </View>
-
-        {/* ── Financial Summary Bar ── */}
-        <View style={s.summaryBar}>
-          <View style={s.summaryCell}>
-            <Text style={s.summaryLbl}>ORIGINAL CONTRACT (EX VAT)</Text>
-            <Text style={s.summaryVal}>{fmtR(originalContract)}</Text>
-          </View>
-          {voItems.length > 0 && (
-            <View style={s.summaryCell}>
-              <Text style={s.summaryLbl}>APPROVED VOs</Text>
-              <Text style={s.summaryValGold}>{fmtR(approvedVOValue)}</Text>
+          {/* ── Page Header ── */}
+          <View style={s.header} fixed>
+            <View style={{ flex: 1, paddingRight: 16 }}>
+              {logoUrl
+                ? <Image src={logoUrl} style={{ width: 160, marginBottom: metaParts ? 4 : 0 }} />
+                : <Text style={s.company}>{companyName}</Text>}
+              {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
             </View>
-          )}
-          {voItems.length > 0 && (
-            <View style={s.summaryCell}>
-              <Text style={s.summaryLbl}>REVISED CONTRACT (EX VAT)</Text>
-              <Text style={s.summaryVal}>{fmtR(revisedContract)}</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={s.docTitle}>AS-BUILT SCHEDULE</Text>
+              <Text style={s.docSub}>{quote.project_name}</Text>
+              {quote.project_address && <Text style={s.docMeta}>{quote.project_address}</Text>}
+              <Text style={s.docMeta}>Ref: {quote.quote_number}   ·   Printed: {fmtDate(todaySA())}</Text>
             </View>
-          )}
-          <View style={s.summaryCell}>
-            <Text style={s.summaryLbl}>AS-BUILT TOTAL (EX VAT)</Text>
-            <Text style={s.summaryValAccent}>{fmtR(totalAsBuilt)}</Text>
           </View>
-          <View style={s.summaryCell}>
-            <Text style={s.summaryLbl}>VARIANCE</Text>
-            <Text style={variance > 0.01 ? s.summaryValGold : variance < -0.01 ? s.summaryValDanger : s.summaryValGreen}>
-              {(variance > 0 ? '+' : '') + fmtR(variance)}
-            </Text>
-          </View>
-          <View style={s.summaryCellLast}>
-            <Text style={s.summaryLbl}>TOTAL INCL. VAT ({vatRate}%)</Text>
-            <Text style={s.summaryValAccent}>{fmtR(totalInclVat)}</Text>
-          </View>
-        </View>
 
-        {/* ── Table Header ── */}
-        <View style={s.tableHead}>
-          <Text style={[s.th, { flex: 1 }]}>Description</Text>
-          <Text style={[s.th, { width: COL.unit,   textAlign: 'center' }]}>Unit</Text>
-          <Text style={[s.th, { width: COL.cQty,   textAlign: 'right'  }]}>C Qty</Text>
-          <Text style={[s.th, { width: COL.cRate,  textAlign: 'right'  }]}>C Rate</Text>
-          <Text style={[s.th, { width: COL.cVal,   textAlign: 'right'  }]}>C Value</Text>
-          <Text style={[s.th, { width: COL.labour, textAlign: 'right'  }]}>+ Labour</Text>
-          <Text style={[s.th, { width: COL.abQty,  textAlign: 'right'  }]}>AB Qty</Text>
-          <Text style={[s.th, { width: COL.abRate, textAlign: 'right'  }]}>AB Rate</Text>
-          <Text style={[s.th, { width: COL.abVal,  textAlign: 'right'  }]}>AB Value</Text>
-        </View>
+          {/* ── Project Info Strip ── */}
+          <View style={s.infoStrip}>
+            <View style={s.infoCell}>
+              <Text style={s.infoLbl}>CLIENT</Text>
+              <Text style={s.infoBold}>{client?.client_name ?? '—'}</Text>
+              {client?.email && <Text style={s.infoSub}>{client.email}</Text>}
+            </View>
+            <View style={s.infoCell}>
+              <Text style={s.infoLbl}>PROJECT</Text>
+              <Text style={s.infoBold}>{quote.project_name}</Text>
+              {quote.project_address && <Text style={s.infoSub}>{quote.project_address}</Text>}
+            </View>
+            <View style={s.infoCell}>
+              <Text style={s.infoLbl}>CONTRACT TYPE</Text>
+              <Text style={s.infoBold}>{quote.contract_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) ?? 'Lump Sum'}</Text>
+            </View>
+            <View style={s.infoCellLast}>
+              <Text style={s.infoLbl}>DATE</Text>
+              <Text style={s.infoBold}>{fmtDate(todaySA())}</Text>
+            </View>
+          </View>
 
-        {/* ── Quote Items ── */}
-        <ItemRows list={freeItems} />
-        {sections.map(sec => {
-          const secItems = quoteItems.filter(i => i.section_id === sec.id)
-          if (secItems.length === 0) return null
-          const secContract = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const secLabour   = secItems.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0)
-          const secAB       = secItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
-          return (
-            <View key={sec.id}>
-              <View style={s.secRow} wrap={false}>
-                <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
+          {/* ── Financial Summary Bar ── */}
+          <View style={s.summaryBar}>
+            <View style={s.summaryCell}>
+              <Text style={s.summaryLbl}>ORIGINAL CONTRACT (EX VAT)</Text>
+              <Text style={s.summaryVal}>{fmtR(originalContract)}</Text>
+            </View>
+            {voItems.length > 0 && (
+              <View style={s.summaryCell}>
+                <Text style={s.summaryLbl}>APPROVED VOs</Text>
+                <Text style={s.summaryValGold}>{fmtR(approvedVOValue)}</Text>
               </View>
-              <ItemRows list={secItems} indent />
-              <SecSubtotal contractVal={secContract} labourVal={secLabour} abVal={secAB} />
+            )}
+            {voItems.length > 0 && (
+              <View style={s.summaryCell}>
+                <Text style={s.summaryLbl}>REVISED CONTRACT (EX VAT)</Text>
+                <Text style={s.summaryVal}>{fmtR(revisedContract)}</Text>
+              </View>
+            )}
+            <View style={s.summaryCell}>
+              <Text style={s.summaryLbl}>AS-BUILT TOTAL (EX VAT)</Text>
+              <Text style={s.summaryValAccent}>{fmtR(totalAsBuilt)}</Text>
             </View>
-          )
-        })}
-
-        {/* Quote items subtotal */}
-        {quoteItems.length > 0 && (() => {
-          const qMatTotal    = quoteItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const qLabourTotal = quoteItems.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0)
-          return (
-            <View style={[s.subtotalRow, { backgroundColor: '#DBEAFE' }]} wrap={false}>
-              <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: ACCENT }]}>Quote Items Total</Text>
-              <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
-              <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED  }]}>{fmtR(qMatTotal)}</Text>
-              <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: qLabourTotal > 0 ? GREEN : MUTED }]}>{qLabourTotal > 0 ? fmtR(qLabourTotal) : '—'}</Text>
-              <Text style={{ width: COL.abQty + COL.abRate }} />
-              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>{fmtR(quoteAsBuilt)}</Text>
+            <View style={s.summaryCell}>
+              <Text style={s.summaryLbl}>VARIANCE</Text>
+              <Text style={variance > 0.01 ? s.summaryValGold : variance < -0.01 ? s.summaryValDanger : s.summaryValGreen}>
+                {(variance > 0 ? '+' : '') + fmtR(variance)}
+              </Text>
             </View>
-          )
-        })()}
-
-        {/* ── Variation Orders ── */}
-        {voItems.length > 0 && (
-          <View>
-            <View style={s.voSecRow} wrap={false}>
-              <Text style={[s.voSecLabel, { flex: 1 }]}>VARIATION ORDERS</Text>
-            </View>
-            <ItemRows list={voItems} indent />
-            <View style={[s.subtotalRow, { backgroundColor: '#FEFCE8' }]} wrap={false}>
-              <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: GOLD }]}>Variation Orders Total</Text>
-              <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
-              <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED }]}>{fmtR(voItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0))}</Text>
-              <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GREEN }]}>{fmtR(voItems.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0))}</Text>
-              <Text style={{ width: COL.abQty + COL.abRate }} />
-              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GOLD }]}>{fmtR(voAsBuilt)}</Text>
+            <View style={s.summaryCellLast}>
+              <Text style={s.summaryLbl}>TOTAL INCL. VAT ({vatRate}%)</Text>
+              <Text style={s.summaryValAccent}>{fmtR(totalInclVat)}</Text>
             </View>
           </View>
-        )}
 
-        {/* ── Grand Total Row ── */}
-        {(() => {
-          const totalMat    = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const totalLabour = items.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0)
-          return (
-            <View style={s.grandTotal} wrap={false}>
-              <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: '#FFFFFF' }]}>GRAND TOTAL (EX VAT)</Text>
-              <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
-              <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: 'rgba(255,255,255,0.55)' }]}>{fmtR(totalMat)}</Text>
-              <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#4ADE80' }]}>{fmtR(totalLabour)}</Text>
-              <Text style={{ width: COL.abQty + COL.abRate }} />
-              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#7EC8F4' }]}>{fmtR(totalAsBuilt)}</Text>
-            </View>
-          )
-        })()}
+          {/* ── Table Header ── */}
+          <View style={s.tableHead}>
+            <Text style={[s.th, { flex: 1 }]}>Description</Text>
+            <Text style={[s.th, { width: COL.unit,   textAlign: 'center' }]}>Unit</Text>
+            <Text style={[s.th, { width: COL.cQty,   textAlign: 'right'  }]}>C Qty</Text>
+            <Text style={[s.th, { width: COL.cRate,  textAlign: 'right'  }]}>C Rate</Text>
+            <Text style={[s.th, { width: COL.cVal,   textAlign: 'right'  }]}>C Value</Text>
+            <Text style={[s.th, { width: COL.labour, textAlign: 'right'  }]}>+ Labour</Text>
+            <Text style={[s.th, { width: COL.abQty,  textAlign: 'right'  }]}>AB Qty</Text>
+            <Text style={[s.th, { width: COL.abRate, textAlign: 'right'  }]}>AB Rate</Text>
+            <Text style={[s.th, { width: COL.abVal,  textAlign: 'right'  }]}>AB Value</Text>
+          </View>
 
-        {/* ── VAT & Total summary ── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, marginBottom: 4 }} wrap={false}>
-          <View style={{ width: 240 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER }}>
-              <Text style={{ fontSize: 8, color: MUTED }}>Total (ex VAT)</Text>
-              <Text style={{ fontSize: 8, color: DARK, fontFamily: 'Helvetica-Bold' }}>{fmtR(totalAsBuilt)}</Text>
+          {/* ── Quote Items ── */}
+          <ItemRows list={freeItems} />
+          {sections.map(sec => {
+            const secItems = quoteItems.filter(i => i.section_id === sec.id)
+            if (secItems.length === 0) return null
+            const secContract = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+            const secLabour   = secItems.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0)
+            const secAB       = secItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
+            return (
+              <View key={sec.id}>
+                <View style={s.secRow} wrap={false}>
+                  <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
+                </View>
+                <ItemRows list={secItems} indent />
+                <SecSubtotal contractVal={secContract} labourVal={secLabour} abVal={secAB} />
+              </View>
+            )
+          })}
+
+          {/* Quote items subtotal */}
+          {quoteItems.length > 0 && (() => {
+            const qMatTotal    = quoteItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+            const qLabourTotal = quoteItems.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0)
+            return (
+              <View style={[s.subtotalRow, { backgroundColor: palette.tint2 }]} wrap={false}>
+                <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: palette.accent }]}>Quote Items Total</Text>
+                <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
+                <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED  }]}>{fmtR(qMatTotal)}</Text>
+                <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: qLabourTotal > 0 ? GREEN : MUTED }]}>{qLabourTotal > 0 ? fmtR(qLabourTotal) : '—'}</Text>
+                <Text style={{ width: COL.abQty + COL.abRate }} />
+                <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: palette.accent }]}>{fmtR(quoteAsBuilt)}</Text>
+              </View>
+            )
+          })()}
+
+          {/* ── Variation Orders ── */}
+          {voItems.length > 0 && (
+            <View>
+              <View style={s.voSecRow} wrap={false}>
+                <Text style={[s.voSecLabel, { flex: 1 }]}>VARIATION ORDERS</Text>
+              </View>
+              <ItemRows list={voItems} indent />
+              <View style={[s.subtotalRow, { backgroundColor: '#FEFCE8' }]} wrap={false}>
+                <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: GOLD }]}>Variation Orders Total</Text>
+                <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
+                <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED }]}>{fmtR(voItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0))}</Text>
+                <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GREEN }]}>{fmtR(voItems.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0))}</Text>
+                <Text style={{ width: COL.abQty + COL.abRate }} />
+                <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GOLD }]}>{fmtR(voAsBuilt)}</Text>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER }}>
-              <Text style={{ fontSize: 8, color: MUTED }}>VAT ({vatRate}%)</Text>
-              <Text style={{ fontSize: 8, color: DARK }}>{fmtR(totalAsBuilt * vatRate / 100)}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, paddingHorizontal: 8, backgroundColor: ACCENT, borderRadius: 2 }}>
-              <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>TOTAL (INCL. VAT)</Text>
-              <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>{fmtR(totalInclVat)}</Text>
+          )}
+
+          {/* ── Grand Total Row ── */}
+          {(() => {
+            const totalMat    = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+            const totalLabour = items.reduce((s, i) => s + i.quoted_quantity * (i.labour_rate ?? 0), 0)
+            return (
+              <View style={s.grandTotal} wrap={false}>
+                <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: '#FFFFFF' }]}>GRAND TOTAL (EX VAT)</Text>
+                <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
+                <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: 'rgba(255,255,255,0.55)' }]}>{fmtR(totalMat)}</Text>
+                <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#4ADE80' }]}>{fmtR(totalLabour)}</Text>
+                <Text style={{ width: COL.abQty + COL.abRate }} />
+                <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: palette.light }]}>{fmtR(totalAsBuilt)}</Text>
+              </View>
+            )
+          })()}
+
+          {/* ── VAT & Total summary ── */}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, marginBottom: 4 }} wrap={false}>
+            <View style={{ width: 240 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER }}>
+                <Text style={{ fontSize: 8, color: MUTED }}>Total (ex VAT)</Text>
+                <Text style={{ fontSize: 8, color: DARK, fontFamily: 'Helvetica-Bold' }}>{fmtR(totalAsBuilt)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER }}>
+                <Text style={{ fontSize: 8, color: MUTED }}>VAT ({vatRate}%)</Text>
+                <Text style={{ fontSize: 8, color: DARK }}>{fmtR(totalAsBuilt * vatRate / 100)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, paddingHorizontal: 8, backgroundColor: palette.accent, borderRadius: 2 }}>
+                <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>TOTAL (INCL. VAT)</Text>
+                <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>{fmtR(totalInclVat)}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
 
-        {/* ── Footer ── */}
-        <View style={s.footer} fixed>
-          <Text style={s.footerText}>{companyName}</Text>
-          <Text style={s.footerText}>As-Built Schedule — {quote.project_name}</Text>
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-        </View>
+          {/* ── Footer ── */}
+          <View style={s.footer} fixed>
+            <Text style={s.footerText}>{companyName}</Text>
+            <Text style={s.footerText}>As-Built Schedule — {quote.project_name}</Text>
+            <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          </View>
 
-      </Page>
-    </Document>
+        </Page>
+      </Document>
+    </PdfPaletteProvider>
   )
 }

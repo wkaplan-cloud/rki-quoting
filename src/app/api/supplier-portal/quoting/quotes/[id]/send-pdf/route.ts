@@ -8,9 +8,11 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ElecQuotePDF } from '@/lib/pdf/ElecQuotePDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
-import { countsInQuoteTotal } from '@/lib/quote-options'
+import { excludedSectionIds, lineCounts } from '@/lib/quote-options'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
+import { getTradeType } from '@/lib/trade-type'
+import { pdfPalette } from '@/lib/pdf/palette'
 
 export const maxDuration = 60
 
@@ -55,6 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Generate PDF
     const buffer = await renderPdfToBuffer(createElement(ElecQuotePDF, {
+      palette: pdfPalette(await getTradeType(account.id)),
       quote: quoteRaw as ElecQuote,
       client: (client ?? null) as ElecClient | null,
       sections: (sections ?? []) as ElecQuoteSection[],
@@ -65,7 +68,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       logoUrl,
     }))
 
-    const subtotal = (items ?? []).filter(countsInQuoteTotal).reduce((s, i) => {
+    const excluded = excludedSectionIds((sections ?? []) as ElecQuoteSection[])
+    const subtotal = (items ?? []).filter(i => lineCounts(i as ElecQuoteLineItem, excluded)).reduce((s, i) => {
       const item = i as ElecQuoteLineItem
       return s + (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)
     }, 0)

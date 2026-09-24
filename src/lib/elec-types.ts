@@ -273,6 +273,10 @@ export interface ElecQuoteSection {
   quote_id: string
   title: string
   sort_order: number
+  /** Sections sharing a group are alternatives — the client picks one (good / better / best). */
+  option_group?: string | null
+  /** The alternative the total is built on: the recommendation, then the client's pick. */
+  option_chosen?: boolean
   created_at: string
   // Joined
   line_items?: ElecQuoteLineItem[]

@@ -91,7 +91,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (sections && sections.length > 0) {
       const { data: newSections, error: sectionsErr } = await supabaseAdmin
         .from('elec_quote_sections')
-        .insert(sections.map(s => ({ quote_id: newQuote.id, title: s.title, sort_order: s.sort_order })))
+        .insert(sections.map(s => ({
+          quote_id: newQuote.id, title: s.title, sort_order: s.sort_order,
+          ...('option_group' in s ? { option_group: s.option_group, option_chosen: s.option_chosen } : {}),
+        })))
         .select()
       if (sectionsErr) return NextResponse.json({ error: sectionsErr.message }, { status: 500 })
       newSections?.forEach((ns, i) => sectionIdMap.set(sections[i].id, ns.id))

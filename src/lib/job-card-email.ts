@@ -7,6 +7,8 @@ import { JobCardPDF } from '@/lib/pdf/JobCardPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { jobCardTotals } from '@/lib/job-card-totals'
 import type { ElecJobCard, ElecSettings } from '@/lib/elec-types'
+import { getTradeType } from '@/lib/trade-type'
+import { pdfPalette } from '@/lib/pdf/palette'
 
 /**
  * Builds and sends the client's copy of a job card.
@@ -158,6 +160,7 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
 
   const pdfBuffer = await renderPdfToBuffer(
     createElement(JobCardPDF, {
+      palette: pdfPalette(await getTradeType(account.id)),
       jobCard: card,
       companyName: account.company_name ?? '',
       settings: settings as ElecSettings | null,

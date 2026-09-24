@@ -9,6 +9,8 @@ import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import type { ElecClaim, ElecClaimLineItem, ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 import type { ClaimLineItemForPDF } from '@/lib/pdf/ElecClaimPDF'
+import { getTradeType } from '@/lib/trade-type'
+import { pdfPalette } from '@/lib/pdf/palette'
 
 export const maxDuration = 60
 
@@ -120,6 +122,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const buffer = await renderPdfToBuffer(
       createElement(ElecClaimPDF, {
+        palette: pdfPalette(await getTradeType(account.id)),
         claim,
         lineItems:        lineItemsForPDF,
         sections:         (sections ?? []) as ElecQuoteSection[],

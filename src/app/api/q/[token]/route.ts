@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { getTradeType } from '@/lib/trade-type'
+import { PORTAL_THEMES } from '@/lib/portal-theme'
+import { pdfPalette } from '@/lib/pdf/palette'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -26,12 +29,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       .order('created_at')
     const PUBLIC_ITEM_COLS = 'id, section_id, description, unit, quoted_quantity, quoted_unit_rate, labour_rate, is_variation, sort_order'
 
-    const [{ data: sections }, itemsWithOptions, { data: account }, { data: settings }] = await Promise.all([
-      supabaseAdmin
-        .from('elec_quote_sections')
-        .select('id, title, sort_order')
-        .eq('quote_id', quoteRaw.id)
-        .order('sort_order'),
+    const sectionRows = (cols: string) => supabaseAdmin
+      .from('elec_quote_sections')
+      .select(cols)
+      .eq('quote_id', quoteRaw.id)
+      .order('sort_order')
+
+    const [sectionsWithOptions, itemsWithOptions, { data: account }, { data: settings }] = await Promise.all([
+      sectionRows('id, title, sort_order, option_group, option_chosen'),
       lineItems(`${PUBLIC_ITEM_COLS}, is_optional, optional_selected`),
       supabaseAdmin
         .from('supplier_portal_accounts')
@@ -45,6 +50,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         .maybeSingle(),
     ])
 
+    const sections = sectionsWithOptions.error
+      ? (await sectionRows('id, title, sort_order')).data
+      : sectionsWithOptions.data
     const items = itemsWithOptions.error
       ? (await lineItems(PUBLIC_ITEM_COLS)).data
       : itemsWithOptions.data
@@ -75,6 +83,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       items: items ?? [],
       company: account ?? null,
       settings: settings ?? null,
+      // The contractor's colours: electrician blue, installer green.
+      theme: await (async () => {
+        const trade = await getTradeType(quoteRaw.portal_account_id)
+        return { accent: PORTAL_THEMES[trade].accent, accentRgb: PORTAL_THEMES[trade].accentRgb, tint: pdfPalette(trade).tint }
+      })(),
     })
   } catch (e) {
     return apiError(e)

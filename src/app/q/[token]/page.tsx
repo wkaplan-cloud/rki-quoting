@@ -1,9 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { useParams } from 'next/navigation'
 import { Check, ChevronDown, ChevronRight, Loader2, AlertCircle, ThumbsUp, MessageSquare, Printer } from 'lucide-react'
+import { excludedSectionIds } from '@/lib/quote-options'
 
-const ACC    = '#3A7CA5'
+// The contractor's colours arrive with the quote; blue until then.
+const ACC    = 'var(--q-acc, #3A7CA5)'
 const DARK   = '#18181B'
 const MUTED  = '#71717A'
 const BORDER = '#E4E4E7'
@@ -11,7 +13,7 @@ const GOLD   = '#D9A441'
 const GREEN  = '#16A34A'
 const DANGER = '#DC2626'
 const SURF   = '#F8FAFC'
-const SEC_BG = '#EFF6FF'
+const SEC_BG = 'var(--q-tint, #EFF6FF)'
 const PAGE   = '#F0F2F5'
 
 function fmtR(n: number) {
@@ -44,10 +46,11 @@ interface QuoteData {
     deposit_percentage?: number | null
   }
   client: { id: string; client_name: string; company: string | null; email: string | null; contact_number: string | null; address: string | null } | null
-  sections: { id: string; title: string; sort_order: number }[]
+  sections: { id: string; title: string; sort_order: number; option_group?: string | null; option_chosen?: boolean | null }[]
   items: { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null; sort_order: number; is_optional?: boolean | null; optional_selected?: boolean | null }[]
   company: { company_name: string | null; email: string | null; logo_url: string | null; phone: string | null } | null
   settings: { vat_registration_number: string | null; company_registration_number: string | null; cidb_registration_number: string | null; bank_name: string | null; bank_account_number: string | null; bank_branch_code: string | null; bank_account_type: string | null } | null
+  theme?: { accent: string; accentRgb: string; tint: string }
 }
 
 export default function QuoteApprovalPage() {
@@ -62,6 +65,8 @@ export default function QuoteApprovalPage() {
   const [done, setDone]         = useState<'approved' | 'requested' | null>(null)
   // Optional extras the client has ticked, seeded from any the contractor pre-ticked.
   const [chosen, setChosen]     = useState<Set<string>>(new Set())
+  // Good / better / best: the section picked in each group, seeded from the contractor's recommendation.
+  const [picks, setPicks]       = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetch(`/api/q/${token}`)
@@ -70,6 +75,14 @@ export default function QuoteApprovalPage() {
         if (d.error) { setError(d.error); setLoading(false); return }
         setData(d)
         setChosen(new Set((d as QuoteData).items.filter(i => i.is_optional && i.optional_selected).map(i => i.id)))
+        const initialPicks: Record<string, string> = {}
+        const grouped = (d as QuoteData).sections.filter(sec => sec.option_group)
+        // Sections arrive in order: the first of a group is the fallback, a marked one wins.
+        for (const sec of grouped) {
+          const group = sec.option_group!
+          if (sec.option_chosen || !(group in initialPicks)) initialPicks[group] = sec.id
+        }
+        setPicks(initialPicks)
         document.title = `${d.quote.quote_number} – ${d.quote.project_name} | QuotingHub`
         if (APPROVED_STATUSES.includes(d.quote.status)) setDone('approved')
         setLoading(false)
@@ -83,7 +96,7 @@ export default function QuoteApprovalPage() {
     const res = await fetch(`/api/q/${token}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, notes, selected_optional_ids: [...chosen] }),
+      body: JSON.stringify({ action, notes, selected_optional_ids: [...chosen], chosen_section_ids: Object.values(picks) }),
     })
     const json = await res.json()
     if (json.ok) setDone(action === 'approve' ? 'approved' : 'requested')
@@ -105,9 +118,11 @@ export default function QuoteApprovalPage() {
   )
 
   const { quote, client, sections, company, settings } = data
+  // The alternatives not picked sit outside the total, with everything in them.
+  const excluded  = excludedSectionIds(sections.map(sec => ({ ...sec, option_chosen: !!sec.option_group && picks[sec.option_group] === sec.id })))
   const items     = data.items.filter(i => !i.is_optional)
-  const optionals = data.items.filter(i => i.is_optional)
-  const subtotal  = items.reduce((s, i) => s + lineValue(i), 0)
+  const optionals = data.items.filter(i => i.is_optional && !(i.section_id && excluded.has(i.section_id)))
+  const subtotal  = items.filter(i => !(i.section_id && excluded.has(i.section_id))).reduce((s, i) => s + lineValue(i), 0)
     + optionals.filter(i => chosen.has(i.id)).reduce((s, i) => s + lineValue(i), 0)
   const vatAmt    = subtotal * (quote.vat_rate / 100)
   const total     = subtotal + vatAmt
@@ -132,7 +147,10 @@ export default function QuoteApprovalPage() {
   }
 
   return (
-    <div style={{ background: PAGE, minHeight: '100vh', padding: '32px 16px 48px' }}>
+    <div style={{
+      background: PAGE, minHeight: '100vh', padding: '32px 16px 48px',
+      ...(data.theme ? { '--q-acc': data.theme.accent, '--q-acc-rgb': data.theme.accentRgb, '--q-tint': data.theme.tint } as CSSProperties : {}),
+    }}>
       {/* Responsive helpers */}
       <style>{`
         .doc-pad { padding: 48px; }
@@ -228,6 +246,39 @@ export default function QuoteApprovalPage() {
               <LineItemsTable items={itemsBySection['__free__'] ?? []} />
             )}
             {sections.map(sec => {
+              // Alternatives render together, as one choice, where the first of them sits.
+              if (sec.option_group) {
+                const group = sec.option_group
+                const members = sections.filter(x => x.option_group === group)
+                if (members[0].id !== sec.id) return null
+                return (
+                  <div key={`group-${group}`} style={{ marginTop: 10, marginBottom: 8, border: `1px solid ${BORDER}`, borderRadius: 4 }}>
+                    <div style={{ padding: '8px 12px', background: SEC_BG, borderBottom: `0.5px solid ${BORDER}` }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: ACC }}>{group} — choose one</p>
+                      <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>
+                        {isAlreadyActioned ? 'The options offered for this part of the job.' : 'Pick the option you want — the total updates.'}
+                      </p>
+                    </div>
+                    {members.map(m => {
+                      const mItems = itemsBySection[m.id] ?? []
+                      const mTotal = mItems.reduce((s, i) => s + lineValue(i), 0)
+                      const picked = picks[group] === m.id
+                      return (
+                        <div key={m.id} style={{ borderTop: `0.5px solid ${BORDER}` }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', cursor: isAlreadyActioned ? 'default' : 'pointer', background: picked ? 'rgba(22,163,74,0.05)' : '#fff' }}>
+                            <input type="radio" name={`option-${group}`} checked={picked} disabled={isAlreadyActioned}
+                              onChange={() => setPicks(p => ({ ...p, [group]: m.id }))}
+                              style={{ width: 15, height: 15, accentColor: GREEN, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: DARK }}>{m.title}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: picked ? GREEN : DARK }}>{fmtR(mTotal)}</span>
+                          </label>
+                          {mItems.length > 0 && <LineItemsTable items={mItems} indent />}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              }
               const secItems = itemsBySection[sec.id] ?? []
               if (secItems.length === 0) return null
               const secTotal = secItems.reduce((s, i) => s + lineValue(i), 0)
@@ -351,7 +402,7 @@ export default function QuoteApprovalPage() {
           </div>
         ) : done === 'requested' ? (
           <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: 32, textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(58,124,165,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(var(--q-acc-rgb, 58,124,165),0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
               <MessageSquare size={24} style={{ color: ACC }} />
             </div>
             <p style={{ fontWeight: 700, fontSize: 18, color: DARK, marginBottom: 4 }}>Changes Requested</p>
@@ -369,7 +420,7 @@ export default function QuoteApprovalPage() {
               <button onClick={() => setAction('approve')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: action === 'approve' ? GREEN : 'rgba(22,163,74,0.08)', color: action === 'approve' ? '#fff' : GREEN, border: `1.5px solid ${action === 'approve' ? GREEN : 'rgba(22,163,74,0.3)'}`, transition: 'all 0.15s' }}>
                 <ThumbsUp size={15} /> Approve Quote
               </button>
-              <button onClick={() => setAction('request_changes')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: action === 'request_changes' ? ACC : 'rgba(58,124,165,0.08)', color: action === 'request_changes' ? '#fff' : ACC, border: `1.5px solid ${action === 'request_changes' ? ACC : 'rgba(58,124,165,0.3)'}`, transition: 'all 0.15s' }}>
+              <button onClick={() => setAction('request_changes')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: action === 'request_changes' ? ACC : 'rgba(var(--q-acc-rgb, 58,124,165),0.08)', color: action === 'request_changes' ? '#fff' : ACC, border: `1.5px solid ${action === 'request_changes' ? ACC : 'rgba(var(--q-acc-rgb, 58,124,165),0.3)'}`, transition: 'all 0.15s' }}>
                 <MessageSquare size={15} /> Request Changes
               </button>
             </div>

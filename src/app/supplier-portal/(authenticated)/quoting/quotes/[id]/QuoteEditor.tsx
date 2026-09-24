@@ -6,20 +6,19 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
-  MoreHorizontal, Archive, Lock, Printer, Copy, Wrench, Package, ListPlus,
+  MoreHorizontal, Archive, Lock, Printer, Copy, Wrench, Package, ListPlus, Layers,
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem, ElecStaff, ElecKit } from '@/lib/elec-types'
 import { tradeUnits, type TradeType } from '@/lib/portal-theme'
-import { countsInQuoteTotal, isOpenOptional } from '@/lib/quote-options'
+import { countsInQuoteTotal, isOpenOptional, excludedSectionIds, lineCounts } from '@/lib/quote-options'
 import { AddKitModal } from './AddKitModal'
 import { HandoverTab } from './HandoverTab'
 import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
 import { SnagTab } from './SnagTab'
 import { COCTab } from './COCTab'
-import { ReportingTab } from './ReportingTab'
 import { ClaimsTab } from './ClaimsTab'
 import { MaterialsTab } from './MaterialsTab'
 import { ClientCombobox } from '../../ClientCombobox'
@@ -75,7 +74,7 @@ function newItem(quoteId: string, sectionId: string | null, sortOrder: number): 
 const rowActionsWidth = (installer: boolean) => (installer ? 54 : 28)
 
 function newSection(quoteId: string, sortOrder: number): SectionState {
-  return { id: crypto.randomUUID(), quote_id: quoteId, title: '', sort_order: sortOrder, items: [] }
+  return { id: crypto.randomUUID(), quote_id: quoteId, title: '', sort_order: sortOrder, option_group: null, option_chosen: false, items: [] }
 }
 
 // The sell rate the editor totals from. quoted_unit_rate is the field that is
@@ -381,15 +380,29 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
 }
 
 // ─── Section block ────────────────────────────────────────────────────────────
-function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, onDeleteItem, portalAccountId, locked, dragHandleProps, units, installer = false }: {
+/** Where a section stands in a good / better / best choice, and what can be done with it. */
+interface AlternativeControls {
+  group: { label: string; inTotal: boolean } | null
+  onOffer: () => void
+  onChoose: () => void
+  onStop: () => void
+  onRenameGroup: (label: string) => void
+}
+
+function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, onDeleteItem, portalAccountId, locked, dragHandleProps, units, installer = false, alternatives = null }: {
   section: SectionState; onChange: (s: SectionState) => void
   onDelete: () => void; onAddItem: () => void; onInsertItemAt: (index: number) => void
   onDeleteItem: (id: string) => void; portalAccountId: string; locked?: boolean
   dragHandleProps?: DraggableProvidedDragHandleProps | null
   units: string[]
   installer?: boolean
+  /** Installer quotes: good / better / best alternatives. */
+  alternatives?: AlternativeControls | null
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  // The group label is edited locally and saved on blur: every section in the
+  // group shares it as their key, and an empty one would dissolve the group.
+  const [labelDraft, setLabelDraft] = useState<string | null>(null)
   const counted = section.items.filter(countsInQuoteTotal)
   const subtotal = counted.reduce((s, i) => s + itemTotal(i), 0)
   const sectionCostTotal = counted.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
@@ -425,6 +438,15 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
             </span>
           )}
           <span className="hidden sm:inline text-xs flex-shrink-0" style={{ color: S.muted }}>{section.items.length} item{section.items.length !== 1 ? 's' : ''}</span>
+          {alternatives && !alternatives.group && !locked && (
+            <button onClick={alternatives.onOffer} title="Offer alternatives to this section (good / better / best)"
+              aria-label="Offer alternatives to this section"
+              className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
+              onMouseEnter={e => { e.currentTarget.style.color = S.accent }}
+              onMouseLeave={e => { e.currentTarget.style.color = S.muted }}>
+              <Layers size={13} />
+            </button>
+          )}
           {!locked && (
             <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
               onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
@@ -434,6 +456,33 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
           )}
         </div>
       </div>
+      {alternatives?.group && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-xs"
+          style={{ background: alternatives.group.inTotal ? 'rgba(22,163,74,0.06)' : S.bg, borderBottom: `1px solid ${S.border}` }}>
+          <span className="flex items-center gap-1.5 font-semibold" style={{ color: S.accent }}>
+            <Layers size={12} /> Option — the client chooses one:
+          </span>
+          <input value={labelDraft ?? alternatives.group.label} disabled={locked} aria-label="What the client is choosing between"
+            onChange={e => setLabelDraft(e.target.value)}
+            onBlur={() => {
+              if (labelDraft !== null && labelDraft.trim() && labelDraft.trim() !== alternatives.group?.label) {
+                alternatives.onRenameGroup(labelDraft.trim())
+              }
+              setLabelDraft(null)
+            }}
+            className="px-2 py-1 rounded-md outline-none text-xs font-medium" style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text, minWidth: 140 }} />
+          <label className="flex items-center gap-1.5 cursor-pointer" style={{ color: S.text }}>
+            <input type="radio" checked={alternatives.group.inTotal} disabled={locked} onChange={alternatives.onChoose} />
+            {alternatives.group.inTotal ? 'Recommended — this one is in the total' : 'Make this the recommended option'}
+          </label>
+          {!locked && (
+            <div className="ml-auto flex items-center gap-3">
+              <button onClick={alternatives.onOffer} className="font-medium" style={{ color: S.accent }}>+ Another alternative</button>
+              <button onClick={alternatives.onStop} className="font-medium" style={{ color: S.muted }}>Not an option</button>
+            </div>
+          )}
+        </div>
+      )}
       {!collapsed && (
         <div className="p-3">
           {section.items.length > 0 && (
@@ -516,7 +565,7 @@ interface Props {
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting' | 'handover'
+type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'handover'
 
 export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false, extrasContext = null, tradeType = 'electrician' }: Props) {
   const router = useRouter()
@@ -574,7 +623,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     snag:       started && !isJobCardQuote,
     coc:        started && !isJobCardQuote && !isInstaller,
     as_built:   started && !isJobCardQuote,
-    reporting:  started && !isJobCardQuote,
     handover:   started && !isJobCardQuote && isInstaller,
   }
 
@@ -636,8 +684,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     ...sessionVOItems,
   ] as ElecQuoteLineItem[]
   // Optional extras the client hasn't taken sit outside every total.
-  const billable  = allItems.filter(countsInQuoteTotal)
-  const optionalExtrasTotal = allItems.filter(isOpenOptional).reduce((s, i) => s + itemTotal(i), 0)
+  // Alternatives nobody chose, and extras the client hasn't taken, sit outside every total.
+  const excludedSections = excludedSectionIds(sections.map((sec, i) => ({ ...sec, sort_order: i })))
+  const billable  = allItems.filter(i => lineCounts(i, excludedSections))
+  const optionalExtrasTotal = allItems
+    .filter(i => isOpenOptional(i) && !(i.section_id && excludedSections.has(i.section_id)))
+    .reduce((s, i) => s + itemTotal(i), 0)
   const subtotal  = billable.reduce((s, i) => s + itemTotal(i), 0)
   const vatAmt    = subtotal * ((q.vat_rate ?? 15) / 100)
   const total     = subtotal + vatAmt
@@ -700,7 +752,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
         if (sections.length > 0) {
           await supabase.from('elec_quote_sections').upsert(
-            sections.map((s, si) => ({ id: s.id, quote_id: q.id, title: s.title, sort_order: si }))
+            sections.map((s, si) => ({
+              id: s.id, quote_id: q.id, title: s.title, sort_order: si,
+              ...(isInstaller ? { option_group: s.option_group ?? null, option_chosen: !!s.option_chosen } : {}),
+            }))
           )
         }
 
@@ -859,6 +914,58 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     }
     setShowKitModal(false)
   }
+
+  // ── Good / better / best ────────────────────────────────────────────────────
+  // An alternative starts as a copy of the section it's offered against, so
+  // the office only changes what differs (a bigger screen, more speakers).
+  function offerAlternative(sectionId: string) {
+    setSections(ss => {
+      const idx = ss.findIndex(s => s.id === sectionId)
+      if (idx < 0) return ss
+      const base = ss[idx]
+      const group = base.option_group || base.title.trim() || 'Options'
+      const copyId = crypto.randomUUID()
+      const copy: SectionState = {
+        ...newSection(q.id, idx + 1),
+        id: copyId,
+        title: base.title.trim() ? `${base.title.trim()} — alternative` : 'Alternative',
+        option_group: group,
+        option_chosen: false,
+        items: base.items.map((it, n) => ({ ...it, id: crypto.randomUUID(), section_id: copyId, sort_order: n, optional_selected: false })),
+      }
+      const inGroup = ss.some(s => s.option_group === group && s.id !== sectionId)
+      const next = ss.map(s => s.id === sectionId ? { ...s, option_group: group, option_chosen: inGroup ? !!s.option_chosen : true } : s)
+      // New alternatives go after the last member of the group, keeping it together.
+      const lastInGroup = next.reduce((at, s, i) => (s.option_group === group ? i : at), idx)
+      next.splice(lastInGroup + 1, 0, copy)
+      return next
+    })
+  }
+
+  function chooseAlternative(sectionId: string) {
+    setSections(ss => {
+      const group = ss.find(s => s.id === sectionId)?.option_group
+      if (!group) return ss
+      return ss.map(s => s.option_group === group ? { ...s, option_chosen: s.id === sectionId } : s)
+    })
+  }
+
+  function stopAlternative(sectionId: string) {
+    setSections(ss => {
+      const group = ss.find(s => s.id === sectionId)?.option_group
+      if (!group) return ss
+      const remaining = ss.filter(s => s.option_group === group && s.id !== sectionId)
+      // A group of one isn't a choice any more.
+      const dissolve = remaining.length < 2
+      return ss.map(s => (s.id === sectionId || (dissolve && s.option_group === group))
+        ? { ...s, option_group: null, option_chosen: false } : s)
+    })
+  }
+
+  function renameAlternativeGroup(from: string, to: string) {
+    if (!from || !to) return
+    setSections(ss => ss.map(s => s.option_group === from ? { ...s, option_group: to } : s))
+  }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
   function insertFreeItemAt(index: number) {
     setFreeItems(items => {
@@ -885,7 +992,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     }
     if (section) setDeletedItemIds(ids => [...ids, ...section.items.map(i => i.id)])
     setDeletedSectionIds(ids => [...ids, sectionId])
-    setSections(ss => ss.filter(s => s.id !== sectionId))
+    setSections(ss => {
+      const next = ss.filter(s => s.id !== sectionId)
+      // An alternative left on its own isn't a choice any more.
+      const group = section?.option_group
+      if (!group || next.filter(s => s.option_group === group).length !== 1) return next
+      return next.map(s => s.option_group === group ? { ...s, option_group: null, option_chosen: false } : s)
+    })
   }
   function deleteSectionItem(sectionId: string, itemId: string) {
     setDeletedItemIds(ids => [...ids, itemId])
@@ -1674,7 +1787,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                           onDeleteItem={itemId => deleteSectionItem(section.id, itemId)}
                           portalAccountId={portalAccountId} locked={locked}
                           dragHandleProps={dragProvided.dragHandleProps}
-                          units={units} installer={isInstaller} />
+                          units={units} installer={isInstaller}
+                          alternatives={isInstaller ? {
+                            group: section.option_group
+                              ? { label: section.option_group, inTotal: !excludedSections.has(section.id) }
+                              : null,
+                            onOffer: () => offerAlternative(section.id),
+                            onChoose: () => chooseAlternative(section.id),
+                            onStop: () => stopAlternative(section.id),
+                            onRenameGroup: label => renameAlternativeGroup(section.option_group ?? '', label),
+                          } : null} />
                       </div>
                     )}
                   </Draggable>
