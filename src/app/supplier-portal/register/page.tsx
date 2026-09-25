@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense, type CSSProperties } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -259,7 +259,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
     : ['Receive requests from design studios', 'Manage your full price list', 'Respond faster, win more business', 'All requests in one dashboard']
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex" style={{ '--focus-ring': accent } as CSSProperties}>
       {siteKey && (
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
       )}
