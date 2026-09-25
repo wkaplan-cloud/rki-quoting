@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, KeyRound } from 'lucide-react'
@@ -129,7 +129,7 @@ function SupplierLoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex" style={{ '--focus-ring': '#3A7CA5' } as CSSProperties}>
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-2/5 flex-col items-center justify-between py-16 px-12" style={{ background: '#1E2A38' }}>
         <div />

@@ -51,6 +51,8 @@ export function themeVars(trade: TradeType): CSSProperties {
     '--qh-nav-accent': t.navAccent,
     '--qh-nav-accent-rgb': t.navAccentRgb,
     '--qh-nav-muted': t.navMuted,
+    // The keyboard focus ring (globals.css) in the trade's colour, not the studio gold.
+    '--focus-ring': t.accent,
   } as CSSProperties
 }
 

@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap, Package, Router, Repeat } from 'lucide-react'
 import type { TradeType } from '@/lib/portal-theme'
 import { createClient } from '@/lib/supabase/client'
@@ -132,7 +132,9 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
         className={`group flex flex-col h-[100dvh] fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
           w-52 ${desktopExpanded ? 'md:w-52' : 'md:w-12 md:hover:w-52'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-        style={{ background: S.sidebar, borderRight: `1px solid ${S.sidebarBorder}` }}
+        // On the dark sidebar the focus ring takes the lighter nav accent, which
+        // stays visible where the page accent would disappear.
+        style={{ background: S.sidebar, borderRight: `1px solid ${S.sidebarBorder}`, '--focus-ring': S.activeAccent } as CSSProperties}
       >
         {/* Mobile close */}
         <div className="md:hidden flex justify-end px-3 pt-3 pb-1">

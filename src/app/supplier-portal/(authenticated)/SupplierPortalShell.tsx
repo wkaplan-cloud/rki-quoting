@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { SupplierPortalNav } from './SupplierPortalNav'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
 import { useNow } from '@/lib/useNow'
@@ -77,7 +77,13 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
   }, 30_000)
 
   return (
-    <div className="supplier-portal-root flex min-h-screen" style={{ background: '#F5F7F9', ...themeVars(tradeType) }}>
+    <div className="supplier-portal-root flex min-h-screen" style={{
+      background: '#F5F7F9',
+      ...themeVars(tradeType),
+      // Manufacturers and plain suppliers share this shell but not the trades
+      // colours: their focus ring follows their own pages' accent.
+      ...(supplierCategory === 'trades' ? {} : { '--focus-ring': hasQuoting && supplierCategory === 'manufacturer' ? '#1B4F8A' : '#34495E' } as CSSProperties),
+    }}>
       {/* Hidden notification sound */}
       <audio ref={audioRef} preload="auto" playsInline>
         <source src="/notification.wav" type="audio/wav" />
