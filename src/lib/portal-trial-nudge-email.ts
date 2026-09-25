@@ -21,20 +21,21 @@ import { marketingFooter } from './email'
 
 const BASE = 'https://www.quotinghub.co.za'
 
-export type PortalProduct = 'manufacturer' | 'electrician'
+export type PortalProduct = 'manufacturer' | 'electrician' | 'installer'
 
 /**
- * Which product an account is on, from its plan_category / supplier_category.
- * Anything that is not a manufacturer is a trades (electrician) account —
- * plain product suppliers never get a trial, so they never reach this.
+ * Which product an account is on, from its plan_category / supplier_category
+ * and trade. Anything that is not a manufacturer is a trades account —
+ * electrician or installer. Plain product suppliers never get a trial, so
+ * they never reach this.
  */
 export function portalProduct(
   planCategory: string | null | undefined,
   supplierCategory: string | null | undefined,
+  tradeType?: string | null,
 ): PortalProduct {
-  return planCategory === 'manufacturer' || supplierCategory === 'manufacturer'
-    ? 'manufacturer'
-    : 'electrician'
+  if (planCategory === 'manufacturer' || supplierCategory === 'manufacturer') return 'manufacturer'
+  return tradeType === 'installer' ? 'installer' : 'electrician'
 }
 
 /** Per-product copy: what the thing is called, what it holds, what it costs. */
@@ -53,6 +54,14 @@ const PRODUCT = {
     // Matches PLANS in lib/plan-features.ts
     priceLine: 'Plans start at R999/month, and you can change or cancel at any time.',
     theirWork: 'your quotes, job cards, staff, schedule and COCs',
+    cta: 'Choose your plan →',
+  },
+  installer: {
+    name: 'the QuotingHub Installer Portal',
+    upgradeUrl: `${BASE}/supplier-portal/upgrade`,
+    // Same trades plans as electricians — PLANS in lib/plan-features.ts
+    priceLine: 'Plans start at R999/month, and you can change or cancel at any time.',
+    theirWork: 'your quotes, kits, devices, support contracts and schedule',
     cta: 'Choose your plan →',
   },
 } as const
@@ -89,7 +98,7 @@ function endsPhrase(days: number): string {
 }
 
 export function portalTrialNudgeSubject(product: PortalProduct, days: number): string {
-  const label = product === 'manufacturer' ? 'Manufacturing' : 'Electrician Portal'
+  const label = product === 'manufacturer' ? 'Manufacturing' : product === 'installer' ? 'Installer Portal' : 'Electrician Portal'
   return days > 0
     ? `Your QuotingHub ${label} trial ${endsPhrase(days)}`
     : `Your QuotingHub ${label} trial has ended`

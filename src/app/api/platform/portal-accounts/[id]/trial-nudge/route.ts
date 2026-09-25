@@ -11,6 +11,7 @@ import {
   portalTrialNudgeSubject,
   portalTrialNudgeText,
 } from '@/lib/portal-trial-nudge-email'
+import { getTradeType } from '@/lib/trade-type'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY!
 
@@ -62,7 +63,7 @@ export async function POST(
       return NextResponse.json({ ok: true, skipped: 'recipient unsubscribed' })
     }
 
-    const product = portalProduct(account.plan_category, account.supplier_category)
+    const product = portalProduct(account.plan_category, account.supplier_category, await getTradeType(account.id))
     const days = portalTrialDaysLeft(account.trial_ends_at)
 
     const res = await fetch('https://api.resend.com/emails', {

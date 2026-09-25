@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 
 // POST /api/supplier-portal/auth/register — creates Supabase auth account + portal account row
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { email: string; password: string; company_name: string; contact_name?: string; supplier_category?: string; cf_token?: string }
+  const body = await req.json() as { email: string; password: string; company_name: string; contact_name?: string; supplier_category?: string; trade_type?: string; cf_token?: string }
   const { email, password, company_name, contact_name, supplier_category, cf_token } = body
 
   if (!email?.trim() || !password || !company_name?.trim()) {
@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
       supplier_category: supplier_category ?? 'manufacturer',
       ...(isManufacturer && { plan_category: 'manufacturer' }),
       ...(isTrades && {
+        // An installer is a trades account on the installer trade.
+        ...(body.trade_type === 'installer' ? { trade_type: 'installer' } : {}),
         plan: 'quoting',
         subscription_status: 'trialing',
         trial_ends_at: trialEndsAt,
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
   sendEmail({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: 'hello@quotinghub.co.za',
-    subject: `New supplier signup: ${company_name.trim()}`,
+    subject: `New ${isTrades ? (body.trade_type === 'installer' ? 'installer' : 'electrician') : 'supplier'} signup: ${company_name.trim()}`,
     text: `New supplier registered on QuotingHub.\n\nCompany: ${company_name.trim()}\nContact: ${contact_name?.trim() || '—'}\nEmail: ${email.toLowerCase().trim()}\nTime: ${new Date().toISOString()}`,
   }).catch(() => {})
 
