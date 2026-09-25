@@ -57,7 +57,8 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       items: [
         { href: '/platform/suppliers',     label: 'All Accounts',        icon: 'Store', accent: 'text-teal-300' },
         { href: '/platform/manufacturing', label: 'Manufacturing',       icon: 'Hammer', accent: 'text-orange-300' },
-        { href: '/platform/electricians',  label: 'Electrical & Trades', icon: 'Zap',    accent: 'text-violet-300' },
+        { href: '/platform/electricians',  label: 'Electricians',        icon: 'Zap',       accent: 'text-violet-300' },
+        { href: '/platform/installers',    label: 'Installers',          icon: 'HousePlug', accent: 'text-emerald-300' },
       ],
     },
     {

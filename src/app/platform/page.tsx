@@ -4,11 +4,11 @@ import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import {
   Building2, Users, FolderOpen, MessageSquare, AlertTriangle, Activity,
-  ArrowUpRight, Zap, ChevronRight, Palette, Package, Hammer, CheckCircle2,
+  ArrowUpRight, Zap, HousePlug, ChevronRight, Palette, Package, Hammer, CheckCircle2,
   UserX, BookOpen, History, Sparkles,
 } from 'lucide-react'
 import { one, type Embedded } from '@/lib/supabase/embed'
-import { getPlatformActivity, type ActivityEvent } from '@/lib/platform-activity'
+import { getPlatformActivity, tradesPath, type ActivityEvent } from '@/lib/platform-activity'
 import { ActivityFeed } from './_components/ActivityFeed'
 
 const PLAN_PRICE: Record<string, number> = { solo: 699, studio: 1499, agency: 2499 }
@@ -75,7 +75,7 @@ const getDashboardData = unstable_cache(
       supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
       supabaseAdmin.from('sourcing_sessions').select('org_id'),
       supabaseAdmin.from('supplier_portal_accounts')
-        .select('id, company_name, supplier_category, plan_category, subscription_status, trial_ends_at, created_at'),
+        .select('id, company_name, supplier_category, trade_type, plan_category, subscription_status, trial_ends_at, created_at'),
       supabaseAdmin.from('price_lists').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('price_list_access').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabaseAdmin.from('sourcing_sessions').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
@@ -99,7 +99,7 @@ const getDashboardData = unstable_cache(
       priceListCount: priceListCount ?? 0,
       pendingAccessCount: pendingAccessCount ?? 0,
       sourcingSessionCount: sourcingSessionCount ?? 0,
-      elecJobCardCount: (elecJobCards ?? []).length,
+      elecJobCards: (elecJobCards ?? []) as { portal_account_id: string }[],
       mfgQuoteCount: (mfgQuotes ?? []).length,
       activity,
       strandedSignups,
@@ -108,7 +108,7 @@ const getDashboardData = unstable_cache(
       sevenDaysFromNow,
     }
   },
-  ['platform-dashboard'],
+  ['platform-dashboard-v2'],
   { revalidate: 300 }
 )
 
@@ -142,6 +142,7 @@ interface PortalAccountRow {
   id: string
   company_name: string | null
   supplier_category: string | null
+  trade_type: string | null
   /** Set only once an account is on the manufacturing product. */
   plan_category: string | null
   subscription_status: string | null
@@ -222,7 +223,7 @@ export default async function PlatformDashboard() {
     studioCount, userCount, projectCount, unreadCount,
     recentStudios, orgs, newProjectsCount, allProjects, sourcingOrgs,
     portalAccounts, priceListCount, pendingAccessCount,
-    sourcingSessionCount, elecJobCardCount, mfgQuoteCount, activity, strandedSignups,
+    sourcingSessionCount, elecJobCards, mfgQuoteCount, activity, strandedSignups,
     nowIso, thirtyDaysAgo, sevenDaysFromNow,
   } = await getDashboardData()
 
@@ -277,6 +278,11 @@ export default async function PlatformDashboard() {
   // whose business type is 'manufacturer' — see the note in manufacturing/page.
   const mfgAccounts = portalAccounts.filter(a => a.plan_category === 'manufacturer')
   const tradesAccounts = portalAccounts.filter(a => a.supplier_category === 'trades')
+  const installerAccounts = tradesAccounts.filter(a => a.trade_type === 'installer')
+  const electricianAccounts = tradesAccounts.filter(a => a.trade_type !== 'installer')
+  const installerIds = new Set(installerAccounts.map(a => a.id))
+  const installerJobCardCount = elecJobCards.filter(j => installerIds.has(j.portal_account_id)).length
+  const electricianJobCardCount = elecJobCards.length - installerJobCardCount
 
   const paidIn = (rows: PortalAccountRow[]) => rows.filter(a => a.subscription_status === 'active').length
   const trialingIn = (rows: PortalAccountRow[]) => rows.filter(a => a.subscription_status === 'trialing').length
@@ -354,7 +360,7 @@ export default async function PlatformDashboard() {
         id: a.id,
         label: a.company_name ?? 'Unnamed account',
         meta: `${daysLeft(a.trial_ends_at!)}d left`,
-        href: a.plan_category === 'manufacturer' ? `/platform/manufacturing/${a.id}` : '/platform/electricians',
+        href: a.plan_category === 'manufacturer' ? `/platform/manufacturing/${a.id}` : tradesPath(a.trade_type),
       })),
     })
   }
@@ -437,17 +443,32 @@ export default async function PlatformDashboard() {
     },
     {
       key: 'trades',
-      label: 'Electrical & Trades',
+      label: 'Electricians',
       icon: Zap,
       accent: 'text-[#8F5706]',
       rail: 'bg-[#8F5706]',
       href: '/platform/electricians',
-      headline: `${tradesAccounts.length}`,
+      headline: `${electricianAccounts.length}`,
       headlineLabel: 'contractor accounts',
       stats: [
-        { label: 'Paid', value: paidIn(tradesAccounts).toString() },
-        { label: 'In trial', value: trialingIn(tradesAccounts).toString() },
-        { label: 'Job cards 30d', value: elecJobCardCount.toString() },
+        { label: 'Paid', value: paidIn(electricianAccounts).toString() },
+        { label: 'In trial', value: trialingIn(electricianAccounts).toString() },
+        { label: 'Job cards 30d', value: electricianJobCardCount.toString() },
+      ],
+    },
+    {
+      key: 'installers',
+      label: 'Installers',
+      icon: HousePlug,
+      accent: 'text-[#1F5C45]',
+      rail: 'bg-[#1F5C45]',
+      href: '/platform/installers',
+      headline: `${installerAccounts.length}`,
+      headlineLabel: 'installer accounts',
+      stats: [
+        { label: 'Paid', value: paidIn(installerAccounts).toString() },
+        { label: 'In trial', value: trialingIn(installerAccounts).toString() },
+        { label: 'Job cards 30d', value: installerJobCardCount.toString() },
       ],
     },
   ]
@@ -577,9 +598,9 @@ export default async function PlatformDashboard() {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles size={13} className="text-[#7E6036]" />
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6E6B63]">The four portals</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6E6B63]">The five portals</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4">
           {portals.map(portal => {
             const Icon = portal.icon
             return (

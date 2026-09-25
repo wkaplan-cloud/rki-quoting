@@ -26,6 +26,11 @@ export interface ActivityEvent {
   href: string | null
 }
 
+/** Trades accounts are listed per trade: installers on their own page. */
+export function tradesPath(tradeType: string | null | undefined): string {
+  return tradeType === 'installer' ? '/platform/installers' : '/platform/electricians'
+}
+
 const PER_SOURCE = 12
 
 /** Newest platform-wide events across every portal, newest first. */
@@ -49,7 +54,7 @@ export async function getPlatformActivity(limit = 18): Promise<ActivityEvent[]> 
     supabaseAdmin.from('price_list_access')
       .select('id, org_id, status, requested_at').order('requested_at', { ascending: false }).limit(PER_SOURCE),
     supabaseAdmin.from('supplier_portal_accounts')
-      .select('id, company_name, email, supplier_category, plan_category, created_at').order('created_at', { ascending: false }).limit(PER_SOURCE),
+      .select('id, company_name, email, supplier_category, trade_type, plan_category, created_at').order('created_at', { ascending: false }).limit(PER_SOURCE),
   ])
 
   // Org names are needed by three of the six sources — resolve them in one pass.
@@ -129,7 +134,7 @@ export async function getPlatformActivity(limit = 18): Promise<ActivityEvent[]> 
       title: trades ? 'Contractor registered' : 'Supplier registered',
       subject: acc.company_name || acc.email || null,
       at: acc.created_at,
-      href: trades ? '/platform/electricians' : '/platform/suppliers',
+      href: trades ? tradesPath(acc.trade_type) : '/platform/suppliers',
     })
   }
 

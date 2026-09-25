@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut,
   ArrowLeftRight, Store, FolderOpen, Activity, BadgeDollarSign,
-  Radio, Zap, Palette, Package, Hammer, Users,
+  Radio, Zap, HousePlug, Palette, Package, Hammer, Users,
   Search, Menu, X, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { CommandPalette } from './CommandPalette'
@@ -17,7 +17,7 @@ import { CommandPalette } from './CommandPalette'
  */
 const ICONS = {
   LayoutDashboard, Building2, MessageSquare, BookOpen, ArrowLeftRight, Store,
-  FolderOpen, Activity, BadgeDollarSign, Radio, Zap, Palette, Package, Hammer, Users,
+  FolderOpen, Activity, BadgeDollarSign, Radio, Zap, HousePlug, Palette, Package, Hammer, Users,
 } as const
 
 export type IconName = keyof typeof ICONS

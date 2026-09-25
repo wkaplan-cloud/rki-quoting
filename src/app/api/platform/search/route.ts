@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { tradesPath } from '@/lib/platform-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function GET() {
       .select('id, name, plan, subscription_status, status')
       .order('created_at', { ascending: false }),
     supabaseAdmin.from('supplier_portal_accounts')
-      .select('id, company_name, contact_name, email, supplier_category, plan_category, plan, subscription_status')
+      .select('id, company_name, contact_name, email, supplier_category, trade_type, plan_category, plan, subscription_status')
       .order('created_at', { ascending: false }),
     supabaseAdmin.from('price_lists')
       .select('id, name, supplier_name, item_count')
@@ -64,7 +65,7 @@ export async function GET() {
       // Only manufacturers have a detail route; the rest resolve on their list page.
       href: a.plan_category === 'manufacturer'
         ? `/platform/manufacturing/${a.id}`
-        : trades ? '/platform/electricians' : '/platform/suppliers',
+        : trades ? tradesPath(a.trade_type) : '/platform/suppliers',
       keywords: [a.company_name, a.contact_name, a.email, a.plan].filter(Boolean).join(' '),
     })
   }

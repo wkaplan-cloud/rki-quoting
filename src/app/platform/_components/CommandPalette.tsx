@@ -27,7 +27,8 @@ const DESTINATIONS: SearchEntry[] = [
   { id: 'nav-sourcing',    group: 'Go to', label: 'Price Requests', hint: 'RFQ delivery & responses',  href: '/platform/sourcing',      keywords: 'sourcing rfq suppliers invitations' },
   { id: 'nav-pricelists',  group: 'Go to', label: 'Price Lists',    hint: 'Catalogues & access',       href: '/platform/price-lists',   keywords: 'catalogue twinbru access requests' },
   { id: 'nav-mfg',         group: 'Go to', label: 'Manufacturing',  hint: 'Manufacturer accounts',     href: '/platform/manufacturing', keywords: 'factory workshop makers' },
-  { id: 'nav-elec',        group: 'Go to', label: 'Electrical & Trades', hint: 'Contractor accounts',  href: '/platform/electricians',  keywords: 'electricians trades contractors sparkies' },
+  { id: 'nav-elec',        group: 'Go to', label: 'Electricians',   hint: 'Electrical contractors',    href: '/platform/electricians',  keywords: 'electricians trades contractors sparkies' },
+  { id: 'nav-installers',  group: 'Go to', label: 'Installers',     hint: 'Automation, AV & CCTV',     href: '/platform/installers',    keywords: 'installers home automation control4 av cctv security trades' },
   { id: 'nav-health',      group: 'Go to', label: 'Health',         hint: 'Env vars & activity pulse', href: '/platform/health',        keywords: 'system status uptime env' },
 ]
 

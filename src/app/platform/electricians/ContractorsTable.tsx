@@ -19,14 +19,22 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
   free:         { label: 'Free',         color: 'text-[#6E6B63]',    bg: 'bg-[#EFEBE3]'        },
 }
 
-const PLAN_OPTIONS = [
-  { id: 'starter',      label: 'Starter — R999/mo',       desc: 'Clocking only' },
-  { id: 'professional', label: 'Professional — R1,999/mo', desc: '+ Job Cards'  },
-  { id: 'business',     label: 'Business — R3,199/mo',     desc: '+ Projects'   },
-  { id: 'installer',     label: 'Installer — R2,999/mo',     desc: 'Installers: quoting, kits, devices' },
-  { id: 'installer_pro', label: 'Installer Pro — R4,499/mo', desc: '+ Support contracts'                 },
-  { id: 'free',         label: 'Free',                     desc: 'No access'    },
-]
+export type TradeKind = 'electrician' | 'installer'
+
+// Each trade only sees its own tiers; Free is common to both.
+const PLAN_OPTIONS: Record<TradeKind, { id: string; label: string; desc: string }[]> = {
+  electrician: [
+    { id: 'starter',      label: 'Starter — R999/mo',       desc: 'Clocking only' },
+    { id: 'professional', label: 'Professional — R1,999/mo', desc: '+ Job Cards'  },
+    { id: 'business',     label: 'Business — R3,199/mo',     desc: '+ Projects'   },
+    { id: 'free',         label: 'Free',                     desc: 'No access'    },
+  ],
+  installer: [
+    { id: 'installer',     label: 'Installer — R2,999/mo',     desc: 'Quoting, kits, devices, handover' },
+    { id: 'installer_pro', label: 'Installer Pro — R4,499/mo', desc: '+ Support contracts'              },
+    { id: 'free',          label: 'Free',                      desc: 'No access'                        },
+  ],
+}
 
 const SUB_STATUS: Record<string, { label: string; color: string }> = {
   active:    { label: 'Active',    color: 'bg-emerald-50 text-[#047857]' },
@@ -76,10 +84,11 @@ function timeAgo(iso: string) {
 }
 
 // ── Plan Management Panel ───────────────────────────────────────────────────────
-function PlanPanel({ accountId, initialPlan, initialStatus }: {
+function PlanPanel({ accountId, initialPlan, initialStatus, trade }: {
   accountId: string
   initialPlan: string | null
   initialStatus: string | null
+  trade: TradeKind
 }) {
   const [plan, setPlan]     = useState(initialPlan ?? 'free')
   const [status, setStatus] = useState(initialStatus ?? 'free')
@@ -115,7 +124,7 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
         <div>
           <p className="text-[10px] text-[#6E6B63] mb-1.5 uppercase tracking-wider">Plan Tier</p>
           <div className="space-y-1.5">
-            {PLAN_OPTIONS.map(opt => (
+            {PLAN_OPTIONS[trade].map(opt => (
               <button key={opt.id} onClick={() => setPlan(opt.id)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${plan === opt.id ? 'bg-amber-50 border border-amber-300' : 'bg-[#F3EFE8] border border-[#EAE5DB] hover:bg-[#EFEBE3]'}`}>
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${plan === opt.id ? 'bg-[#8F5706]' : 'bg-[#DED8CC]'}`} />
@@ -509,6 +518,9 @@ function FeaturesPanel({ accountId }: { accountId: string }) {
               )
             })}
           </div>
+          <p className="text-[11px] text-[#8A877F] mt-2">
+            Electricians and installers are listed on separate pages. A changed account moves across on the next page load.
+          </p>
         </div>
       )}
       <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8A877F] mb-3">Sections this company uses</p>
@@ -549,7 +561,7 @@ function FeaturesPanel({ accountId }: { accountId: string }) {
 // ── Main Table ──────────────────────────────────────────────────────────────────
 type ExpandView = 'plan' | 'admins' | 'billing' | 'features'
 
-export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] }) {
+export function ContractorsTable({ rows: initialRows, trade = 'electrician' }: { rows: ContractorRow[]; trade?: TradeKind }) {
   const now = useNow()
   const [rows, setRows] = useState(initialRows)
   const [expanded, setExpanded] = useState<Record<string, ExpandView | null>>({})
@@ -602,9 +614,13 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
     return (
       <div className="bg-[#EFEBE3] border border-[#DED8CC] rounded-xl px-6 py-16 text-center">
         <Zap size={32} className="mx-auto text-[#8F5706]/40 mb-3" />
-        <p className="text-sm font-medium text-[#3F3D38] mb-1">No electrician contractors yet</p>
+        <p className="text-sm font-medium text-[#3F3D38] mb-1">
+          {trade === 'installer' ? 'No installers yet' : 'No electrician contractors yet'}
+        </p>
         <p className="text-xs text-[#6E6B63] max-w-xs mx-auto">
-          Trade contractors appear here once they sign up on the Electrician Portal.
+          {trade === 'installer'
+            ? 'Installers appear here once they sign up with the Installer option.'
+            : 'Trade contractors appear here once they sign up on the Electrician Portal.'}
         </p>
       </div>
     )
@@ -767,6 +783,7 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
                 accountId={a.id}
                 initialPlan={a.plan}
                 initialStatus={a.subscription_status}
+                trade={trade}
               />
             )}
 
