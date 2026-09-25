@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, ArrowRight, ChevronRight, HardHat, Wrench, Zap } from 'lucide-react'
+import { Check, ArrowRight, ChevronRight, HardHat, Wrench, Zap, HousePlug } from 'lucide-react'
 import { NavMobile } from '../_components/NavMobile'
 import { NavDropdown } from '../_components/NavDropdown'
 import { PublicFooter } from '@/components/layout/PublicFooter'
@@ -33,6 +33,20 @@ const TRADES = [
       'Staff timesheets and notifications',
     ],
     href: '/trades/electrician',
+  },
+  {
+    id: 'installer',
+    label: 'Installers',
+    icon: HousePlug,
+    status: 'live' as const,
+    headline: 'Home automation, AV, CCTV and networking — quote, install, hand over, support.',
+    bullets: [
+      'Room-by-room quotes with kits & price-list import',
+      'Good / better / best options and deposits',
+      'Device register & client handover packs',
+      'Support contracts that invoice themselves',
+    ],
+    href: '/trades/installer',
   },
   {
     id: 'plumber',
@@ -121,7 +135,7 @@ export default function TradesHubPage() {
       {/* Trade cards */}
       <section className="pb-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {TRADES.map(trade => {
               const Icon = trade.icon
               const isLive = trade.status === 'live'

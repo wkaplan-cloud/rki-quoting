@@ -30,6 +30,12 @@ export default function LandingPage() {
                 >
                   Electricians click here
                 </Link>
+                <Link
+                  href="/trades/installer"
+                  className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
+                >
+                  Installers click here
+                </Link>
               </div>
 
               <h1 className="font-serif text-5xl md:text-6xl text-[#1A1A18] leading-[1.05] tracking-tight mb-4">
@@ -165,7 +171,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-serif text-xl text-[#1A1A18] mb-2">Trades & Contractors</h3>
               <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-                Electricians, plumbers, and contractors — the same professional quoting system built for the way trade businesses actually work.
+                Electricians, installers, and contractors — the same professional quoting system built for the way trade businesses actually work.
               </p>
               <ul className="space-y-2 mb-6">
                 {['Professional quotes, invoices & job cards', 'Digital COC — SANS 10142-1 compliant', 'GPS staff clock-in/out & timesheets'].map(i => (

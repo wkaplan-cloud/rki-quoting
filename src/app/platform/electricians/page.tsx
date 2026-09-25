@@ -84,6 +84,7 @@ export default async function ElectriciansPage() {
   const starterCount      = rows.filter(a => a.plan === 'starter').length
   const professionalCount = rows.filter(a => a.plan === 'professional').length
   const businessCount     = rows.filter(a => ['business', 'quoting'].includes(a.plan ?? '')).length
+  const installerCount    = rows.filter(a => ['installer', 'installer_pro'].includes(a.plan ?? '')).length
   const setupFeeOwed      = rows.filter(a => !a.setup_fee_paid && a.subscription_status === 'active').length
   const extraStaffAccounts = rows.filter(a => a.staffCount > 20)
   const totalExtraStaff   = extraStaffAccounts.reduce((s, a) => s + Math.max(0, a.staffCount - 20), 0)
@@ -118,11 +119,12 @@ export default async function ElectriciansPage() {
       </div>
 
       {/* Plan breakdown */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { label: 'Starter',       value: starterCount,      sub: 'R999/mo',    color: 'text-[#0F766E]',    bg: 'bg-teal-50'    },
           { label: 'Professional',  value: professionalCount, sub: 'R1,999/mo',  color: 'text-[#8F5706]',   bg: 'bg-amber-50'   },
           { label: 'Business',      value: businessCount,     sub: 'R3,199/mo',  color: 'text-[#047857]', bg: 'bg-emerald-50' },
+          { label: 'Installer',     value: installerCount,    sub: 'R2,999 / R4,499', color: 'text-[#1F5C45]', bg: 'bg-emerald-50' },
           { label: 'Total Staff',   value: totalStaff,        sub: 'across all', color: 'text-[#3F3D38]',    bg: 'bg-[#EFEBE3]'        },
         ].map(({ label, value, sub, color, bg }) => (
           <div key={label} className={`rounded-xl px-4 py-4 border border-[#E2DCD1] ${bg}`}>

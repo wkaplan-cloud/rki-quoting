@@ -356,7 +356,7 @@ async function run() {
       address:             'Unit 4, The Hub, 18 Wessel Road, Rivonia, Johannesburg, 2128',
       description:         'Home automation, AV, CCTV and networking',
       supplier_category:   'trades',
-      plan:                'business',
+      plan:                'installer_pro',
       plan_category:       'electrician',
       trade_type:          'installer',
       subscription_status: 'active',

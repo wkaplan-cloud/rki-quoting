@@ -9,6 +9,7 @@ import type { ElecJob, ElecStaff, ElecJobCard } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
 import { JOB_SELECT_FULL, JOB_SELECT_LEGACY, isMissingJobCardLink } from '@/lib/elec-job-select'
 import { startOfSADayISO } from '@/lib/dates'
+import { tradesPlanRank } from '@/lib/plan-features'
 
 export const metadata = { title: 'Schedule — QuotingHub' }
 
@@ -33,7 +34,7 @@ export default async function SchedulePage() {
 
   const account = await resolvePortalAccount(user.id)
   const isTrialing = account?.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  if (!account || !(['quoting', 'starter', 'professional', 'business'].includes(account.plan ?? '') && (account.subscription_status === 'active' || isTrialing))) {
+  if (!account || !(tradesPlanRank(account.plan) >= 1 && (account.subscription_status === 'active' || isTrialing))) {
     redirect('/supplier-portal/upgrade')
   }
 

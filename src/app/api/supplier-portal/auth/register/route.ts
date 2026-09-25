@@ -77,9 +77,9 @@ export async function POST(req: NextRequest) {
       supplier_category: supplier_category ?? 'manufacturer',
       ...(isManufacturer && { plan_category: 'manufacturer' }),
       ...(isTrades && {
-        // An installer is a trades account on the installer trade.
-        ...(body.trade_type === 'installer' ? { trade_type: 'installer' } : {}),
-        plan: 'quoting',
+        // An installer is a trades account on the installer trade, trialling
+        // Installer Pro so the support contracts are part of what they try.
+        ...(body.trade_type === 'installer' ? { trade_type: 'installer', plan: 'installer_pro' } : { plan: 'quoting' }),
         subscription_status: 'trialing',
         trial_ends_at: trialEndsAt,
       }),

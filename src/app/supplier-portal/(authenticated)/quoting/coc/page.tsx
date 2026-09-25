@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { COCListClient } from './COCListClient'
 import type { ElecCOC, ElecSettings } from '@/lib/elec-types'
+import { tradesPlanRank } from '@/lib/plan-features'
 
 export const metadata = { title: 'COC — QuotingHub' }
 
@@ -14,7 +15,7 @@ export default async function COCPage() {
 
   const account = await resolvePortalAccount(user.id)
   const isTrialing = account?.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  if (!account || !(['quoting', 'starter', 'professional', 'business'].includes(account.plan ?? '') && (account.subscription_status === 'active' || isTrialing))) {
+  if (!account || !(tradesPlanRank(account.plan) >= 1 && (account.subscription_status === 'active' || isTrialing))) {
     redirect('/supplier-portal/upgrade')
   }
 

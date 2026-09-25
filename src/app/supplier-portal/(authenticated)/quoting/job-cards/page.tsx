@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { JobCardsClient } from './JobCardsClient'
 import { getTradeType } from '@/lib/trade-type'
 import type { ElecJobCard, ElecStaff, ElecClient } from '@/lib/elec-types'
+import { tradesPlanRank } from '@/lib/plan-features'
 
 export const metadata = { title: 'Job Cards — QuotingHub' }
 
@@ -20,7 +21,7 @@ export default async function JobCardsPage() {
     .eq('auth_user_id', user.id).maybeSingle()
 
   if (own) {
-    if (!(['quoting', 'professional', 'business'].includes(own.plan ?? '') && (own.subscription_status === 'active' || (own.subscription_status === 'trialing' && own.trial_ends_at != null && new Date(own.trial_ends_at) > new Date())))) redirect('/supplier-portal/upgrade')
+    if (!(tradesPlanRank(own.plan) >= 2 && (own.subscription_status === 'active' || (own.subscription_status === 'trialing' && own.trial_ends_at != null && new Date(own.trial_ends_at) > new Date())))) redirect('/supplier-portal/upgrade')
     accountId = own.id
   } else {
     const { data: mem } = await supabaseAdmin

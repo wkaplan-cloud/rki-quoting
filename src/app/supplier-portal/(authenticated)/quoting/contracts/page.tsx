@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
-import { isActivePlan, planRank } from '@/lib/plan-features'
+import { isActivePlan, hasContracts } from '@/lib/plan-features'
 import { getTradeType } from '@/lib/trade-type'
 import { ContractsClient } from './ContractsClient'
 
@@ -15,8 +15,9 @@ export default async function ContractsPage() {
 
   const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/not-a-supplier')
-  if (planRank(account.plan) < 2 || !isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)) {
-    redirect('/supplier-portal/upgrade')
+  // Support contracts are Installer Pro.
+  if (!hasContracts(account.plan) || !isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)) {
+    redirect(`/supplier-portal/upgrade?current=${account.plan ?? ''}`)
   }
   if (await getTradeType(account.id) !== 'installer') redirect('/supplier-portal/quoting')
 

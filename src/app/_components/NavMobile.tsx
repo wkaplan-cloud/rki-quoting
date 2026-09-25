@@ -12,7 +12,7 @@ const mainLinks = [
 
 const partnerLinks = [
   { href: '/supplier-portal/login', icon: Package, label: 'Supplier Portal',    desc: 'Manage pricing requests & catalogue' },
-  { href: '/trades',                icon: Zap,     label: 'For Trades',          desc: 'Electricians, plumbers & contractors' },
+  { href: '/trades',                icon: Zap,     label: 'For Trades',          desc: 'Electricians, installers & contractors' },
   { href: '/manufacturer',          icon: Hammer,  label: 'For Manufacturers',   desc: 'Wood workshops & furniture makers' },
 ]
 

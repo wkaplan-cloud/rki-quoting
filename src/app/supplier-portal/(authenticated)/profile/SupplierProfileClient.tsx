@@ -7,7 +7,7 @@ import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, Rota
 import type { PortalOrgMember, ElecSettings } from '@/lib/elec-types'
 import type { TradeType } from '@/lib/portal-theme'
 import { SettingsClient } from '../quoting/settings/SettingsClient'
-import { PLANS, planRank } from '@/lib/plan-features'
+import { planRank, tradesPlansFor } from '@/lib/plan-features'
 
 interface Props {
   portalAccountId: string
@@ -304,13 +304,15 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufactu
 
       {/* ── Plan section ── */}
       {(() => {
+        // Installers compare the installer plans; electricians the three trades tiers.
+        const PLANS: readonly { id: string; label: string; price: number; tagline: string; features: readonly string[] }[] = tradesPlansFor(tradeType)
         const currentRank = planRank(plan)
-        const currentPlan = PLANS.find(p => p.id === plan) ?? (plan === 'quoting' ? PLANS[2] : null)
+        const currentPlan = PLANS.find(p => p.id === plan) ?? (plan === 'quoting' ? PLANS[PLANS.length - 1] : null)
         const nextPlans = PLANS.filter(p => planRank(p.id) > currentRank)
         const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt != null && new Date(trialEndsAt) > new Date()
         const isActive = subscriptionStatus === 'active'
         const trialDaysLeft = trialEndsAt ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000)) : 0
-        const TIER_COLOR: Record<string, string> = { starter: '#3A7CA5', professional: '#D9A441', business: '#166534', quoting: '#166534' }
+        const TIER_COLOR: Record<string, string> = { starter: '#3A7CA5', professional: '#D9A441', business: '#166534', quoting: '#166534', installer: '#1F5C45', installer_pro: '#B7862F' }
         const color = TIER_COLOR[plan ?? ''] ?? '#71717A'
 
         // Trial users are exploring — they need a Subscribe button regardless of which plan they're trialing
@@ -382,9 +384,9 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufactu
               )}
             </div>
 
-            {/* Trial: show all 3 plans to compare */}
+            {/* Trial: show the plans to compare */}
             {isTrialing && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className={`grid grid-cols-1 gap-3 pt-1 ${PLANS.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
                 {PLANS.map(p => {
                   const c = TIER_COLOR[p.id] ?? '#71717A'
                   return (

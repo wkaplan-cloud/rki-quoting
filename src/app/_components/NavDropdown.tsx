@@ -15,7 +15,7 @@ const options = [
     href: '/trades',
     icon: HardHat,
     label: 'For Trades',
-    desc: 'Electricians & contractors',
+    desc: 'Electricians, installers & contractors',
   },
   {
     href: '/manufacturer',

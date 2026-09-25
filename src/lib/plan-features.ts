@@ -1,16 +1,19 @@
 // Plan tier hierarchy
 // 'quoting' is the legacy plan — treated as 'business'
-// starter < professional < business
+// Electricians: starter < professional < business
+// Installers:   installer (= business, plus the installer tools) < installer_pro
 // 'manufacturer' is a separate single-tier plan for the manufacturing module
 
-export type QuotingTier = 'starter' | 'professional' | 'business' | 'quoting' | 'manufacturer'
+export type QuotingTier = 'starter' | 'professional' | 'business' | 'quoting' | 'manufacturer' | 'installer' | 'installer_pro'
 
 const TIER_RANK: Record<string, number> = {
-  starter:      1,
-  professional: 2,
-  business:     3,
-  quoting:      3, // legacy — same as business
-  manufacturer: 1, // single tier — unlocks the full manufacturing module
+  starter:       1,
+  professional:  2,
+  business:      3,
+  quoting:       3, // legacy — same as business
+  installer:     3, // everything Business has, for installers
+  installer_pro: 4, // + support contracts and recurring invoicing
+  manufacturer:  1, // single tier — unlocks the full manufacturing module
 }
 
 export function planRank(plan: string | null | undefined): number {
@@ -18,9 +21,16 @@ export function planRank(plan: string | null | undefined): number {
   return TIER_RANK[plan] ?? 0
 }
 
+/** Rank of a trades plan; 0 for the manufacturer plan, which unlocks none of the trades portal. */
+export function tradesPlanRank(plan: string | null | undefined): number {
+  return plan === 'manufacturer' ? 0 : planRank(plan)
+}
+
 export function hasClocking(plan: string | null | undefined)      { return planRank(plan) >= 1 }
 export function hasJobCards(plan: string | null | undefined)      { return planRank(plan) >= 2 }
 export function hasProjects(plan: string | null | undefined)      { return planRank(plan) >= 3 }
+/** Support contracts with recurring invoicing — Installer Pro. */
+export function hasContracts(plan: string | null | undefined)     { return planRank(plan) >= 4 }
 
 export function isActivePlan(
   plan: string | null | undefined,
@@ -80,6 +90,50 @@ export const PLANS = [
     ],
   },
 ] as const
+
+/**
+ * Installer plans. Installers need quoting from day one, so there is no
+ * clocking-only tier: the entry plan is Business plus the installer tools.
+ * Paystack plan codes come from the env keys below — until they're set,
+ * checkout for these plans answers "Plan not configured".
+ */
+export const INSTALLER_PLANS = [
+  {
+    id:       'installer',
+    label:    'Installer',
+    price:    2999,
+    tagline:  'Quote, install and hand over — the whole job in one place',
+    envKey:   'PAYSTACK_PLAN_INSTALLER',
+    features: [
+      'Room-by-room quotes with kits & price-list import',
+      'Good / better / best options, optional extras & deposits',
+      'Projects, variation orders, progress claims & Sage',
+      'Job cards, scheduling & GPS clocking',
+      'Device register & client handover packs',
+      'Staff mobile app — up to 20 staff',
+    ],
+  },
+  {
+    id:       'installer_pro',
+    label:    'Installer Pro',
+    price:    4499,
+    tagline:  'Everything in Installer, plus recurring support revenue',
+    envKey:   'PAYSTACK_PLAN_INSTALLER_PRO',
+    features: [
+      'Everything in Installer',
+      'Support contracts — monthly or annual',
+      'Invoices raised and sent automatically each period',
+      'Callouts marked covered or chargeable automatically',
+      'Renewal reminders 30 days ahead',
+      'See which plans pay their way',
+    ],
+  },
+] as const
+
+/** The plans a trades account can buy: installer plans for installers, the electrician tiers otherwise. */
+export function tradesPlansFor(tradeType: string | null | undefined) {
+  return tradeType === 'installer' ? INSTALLER_PLANS : PLANS
+}
 
 export const MANUFACTURER_PLAN = {
   id:      'manufacturer',

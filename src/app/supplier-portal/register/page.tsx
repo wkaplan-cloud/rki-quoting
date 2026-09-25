@@ -110,7 +110,7 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
             <div className="mt-auto pt-5 w-full flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
               <div className="flex flex-col">
                 <span className="text-xs font-semibold" style={{ color: '#6FAF8F' }}>30-day free trial</span>
-                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>plans from R999/mo</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>plans from R2,999/mo</span>
               </div>
               <span className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0" style={{ background: 'rgba(111,175,143,0.15)', color: '#6FAF8F' }}>Get started →</span>
             </div>
@@ -299,7 +299,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
         <div>
           {isElec || isInst ? (
             <div className="rounded-xl px-4 py-4 mb-6" style={{ background: accentBg, border: `1px solid ${isInst ? 'rgba(111,175,143,0.25)' : 'rgba(217,164,65,0.2)'}` }}>
-              <p className="text-xs font-semibold mb-0.5" style={{ color: accent }}>30 days free, then from R999/month</p>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: accent }}>30 days free, then from {isInst ? 'R2,999' : 'R999'}/month</p>
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>No card required. Cancel anytime.</p>
             </div>
           ) : isMfgQ ? (

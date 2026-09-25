@@ -5,6 +5,7 @@ import { resolvePortalAccount } from '@/lib/portal-account'
 import { StaffManager } from './StaffManager'
 import { getTradeType } from '@/lib/trade-type'
 import type { ElecStaff, ElecTimePunch } from '@/lib/elec-types'
+import { tradesPlanRank } from '@/lib/plan-features'
 
 export const metadata = { title: 'Staff — QuotingHub' }
 
@@ -15,7 +16,7 @@ export default async function StaffPage() {
 
   const account = await resolvePortalAccount(user.id)
   const isTrialing = account?.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  if (!account || !(['quoting', 'starter', 'professional', 'business'].includes(account.plan ?? '') && (account.subscription_status === 'active' || isTrialing))) {
+  if (!account || !(tradesPlanRank(account.plan) >= 1 && (account.subscription_status === 'active' || isTrialing))) {
     redirect('/supplier-portal/upgrade')
   }
 

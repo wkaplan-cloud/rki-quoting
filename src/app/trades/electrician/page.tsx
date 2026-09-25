@@ -291,7 +291,7 @@ export default function ElectricianLandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 px-6 bg-white border-y border-[#D8D3C8]">
+      <section id="pricing" className="py-20 px-6 bg-white border-y border-[#D8D3C8] overflow-hidden">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Pricing</p>

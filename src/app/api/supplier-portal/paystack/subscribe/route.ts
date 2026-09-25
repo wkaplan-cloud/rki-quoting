@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { PLANS, MANUFACTURER_PLAN } from '@/lib/plan-features'
+import { PLANS, INSTALLER_PLANS, MANUFACTURER_PLAN } from '@/lib/plan-features'
 
 const PLAN_MAP: Record<string, { price: number; planCode: string; label: string; type: 'electrician' | 'manufacturer' }> = {
   ...Object.fromEntries(
-    PLANS.map(p => [p.id, { price: p.price, planCode: process.env[p.envKey] ?? '', label: p.label, type: 'electrician' as const }])
+    // Installer plans are trades plans too — 'electrician' is the trades type here.
+    [...PLANS, ...INSTALLER_PLANS].map(p => [p.id, { price: p.price, planCode: process.env[p.envKey] ?? '', label: p.label, type: 'electrician' as const }])
   ),
   [MANUFACTURER_PLAN.id]: {
     price:    MANUFACTURER_PLAN.price,

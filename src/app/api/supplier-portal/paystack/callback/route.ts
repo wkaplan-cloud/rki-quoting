@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     const resolvedPlan = isManufacturerUpgrade
       ? 'manufacturer'
-      : (['starter', 'professional', 'business'].includes(planId) ? planId : 'business')
+      : (['starter', 'professional', 'business', 'installer', 'installer_pro'].includes(planId) ? planId : 'business')
 
     const newSubCode: string | null = paystackData.data?.subscription?.subscription_code ?? null
     const oldPlan    = account.plan

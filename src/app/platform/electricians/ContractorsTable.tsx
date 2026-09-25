@@ -14,6 +14,8 @@ const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> 
   professional: { label: 'Professional', color: 'text-[#8F5706]',   bg: 'bg-amber-50'   },
   business:     { label: 'Business',     color: 'text-[#047857]', bg: 'bg-emerald-50' },
   quoting:      { label: 'Business',     color: 'text-[#047857]', bg: 'bg-emerald-50' }, // legacy
+  installer:     { label: 'Installer',     color: 'text-[#1F5C45]', bg: 'bg-emerald-50' },
+  installer_pro: { label: 'Installer Pro', color: 'text-[#8F5706]', bg: 'bg-amber-50'   },
   free:         { label: 'Free',         color: 'text-[#6E6B63]',    bg: 'bg-[#EFEBE3]'        },
 }
 
@@ -21,6 +23,8 @@ const PLAN_OPTIONS = [
   { id: 'starter',      label: 'Starter — R999/mo',       desc: 'Clocking only' },
   { id: 'professional', label: 'Professional — R1,999/mo', desc: '+ Job Cards'  },
   { id: 'business',     label: 'Business — R3,199/mo',     desc: '+ Projects'   },
+  { id: 'installer',     label: 'Installer — R2,999/mo',     desc: 'Installers: quoting, kits, devices' },
+  { id: 'installer_pro', label: 'Installer Pro — R4,499/mo', desc: '+ Support contracts'                 },
   { id: 'free',         label: 'Free',                     desc: 'No access'    },
 ]
 

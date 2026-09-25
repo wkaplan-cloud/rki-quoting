@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, type CSSProperties } from 'react'
 import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap, Package, Router, Repeat } from 'lucide-react'
 import type { TradeType } from '@/lib/portal-theme'
+import { tradesPlanRank } from '@/lib/plan-features'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -94,7 +95,9 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
   const isTrades = supplierCategory === 'trades'
   const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
   const isInstaller = isTrades && tradeType === 'installer'
-  const tradesTierRank = isTrades ? ({ starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0) : 0
+  const tradesTierRank = isTrades ? tradesPlanRank(quotingPlan) : 0
+  // Installers top out at Installer Pro (rank 4); electricians at Business (3).
+  const topRank = isInstaller ? 4 : 3
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -214,7 +217,7 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
                     {isPro && !isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/coc" label="COC" icon={FileCheck} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
-                    {isPro && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/contracts" label="Contracts" icon={Repeat} />}
+                    {isInstaller && tradesTierRank >= 4 && <NavLink nav={nav} href="/supplier-portal/quoting/contracts" label="Contracts" icon={Repeat} />}
                     {isPro && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/devices"   label="Devices"   icon={Router} />}
                     {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/price-book" label={isInstaller ? 'Catalogue' : 'Line Items'} icon={BookOpen} />}
                     {isBiz && isInstaller && <NavLink nav={nav} href="/supplier-portal/quoting/kits" label="Kits" icon={Package} />}
@@ -284,7 +287,7 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
           )}
 
           {/* Upgrade CTA — trades accounts on Starter or Professional (Business is the top tier) */}
-          {isTrades && tradesTierRank < 3 && (
+          {isTrades && tradesTierRank < topRank && (
             <Link
               href={quotingPlan ? `/supplier-portal/upgrade?current=${quotingPlan}` : '/supplier-portal/upgrade'}
               onClick={() => setMobileOpen(false)}
@@ -297,7 +300,7 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
                 <Zap size={14} style={{ color: '#60A5FA' }} />
               </span>
               <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#93C5FD' }}>
-                Upgrade to {tradesTierRank >= 2 ? 'Business' : 'Professional'}
+                Upgrade to {isInstaller ? (tradesTierRank >= 3 ? 'Installer Pro' : 'Installer') : tradesTierRank >= 2 ? 'Business' : 'Professional'}
               </span>
             </Link>
           )}
