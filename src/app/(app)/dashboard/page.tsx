@@ -28,6 +28,7 @@ export default async function DashboardPage() {
     else redirect('/supplier-portal/register?notice=no-portal-account')
   }
   const currentUserId = user?.id ?? ''
+  const onboardingSeen = user?.user_metadata?.onboarding_seen === true
   const [{ data: projects }, { data: settings }, org, { count: clientCount }, { count: supplierCount }] = await Promise.all([
     supabase.from('projects').select('id, project_name, project_number, status, date, quoted_date, assigned_to, user_id, sage_invoice_id, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),
     supabase.from('settings').select('sage_company_id, quote_validity_days').maybeSingle(),
@@ -121,8 +122,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <WelcomeModal />
-      <GuidedTour />
+      <WelcomeModal accountSeen={onboardingSeen} />
+      <GuidedTour accountSeen={onboardingSeen} />
       <PageHeader
         title="Dashboard"
         actions={

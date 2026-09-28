@@ -1,6 +1,23 @@
 'use client'
 import { useEffect } from 'react'
 import 'driver.js/dist/driver.css'
+import { createClient } from '@/lib/supabase/client'
+
+const WELCOME_KEY = 'qh-welcome-seen'
+const TOUR_KEY = 'qh-tour-seen'
+
+/**
+ * The onboarding flags live on the account (user_metadata.onboarding_seen), not
+ * just in localStorage — iPad Safari drops site storage between sign-ins, which
+ * replayed the welcome + tour on every login. localStorage stays as a fast cache.
+ */
+export function markOnboardingSeen() {
+  try {
+    localStorage.setItem(WELCOME_KEY, '1')
+    localStorage.setItem(TOUR_KEY, '1')
+  } catch {}
+  createClient().auth.updateUser({ data: { onboarding_seen: true } }).catch(() => {})
+}
 
 const STEPS = [
   {
@@ -74,23 +91,29 @@ export async function startTour() {
     prevBtnText: '← Back',
     doneBtnText: 'Done ✓',
     steps: STEPS,
-    onDestroyed: () => {
-      localStorage.setItem('qh-tour-seen', '1')
-    },
+    onDestroyed: markOnboardingSeen,
   })
 
   driverObj.drive()
 }
 
-export function GuidedTour() {
+export function GuidedTour({ accountSeen = false }: { accountSeen?: boolean }) {
   useEffect(() => {
-    // Auto-resume if welcome was dismissed but tour not yet completed (handles page refresh mid-tour)
-    const welcomeSeen = localStorage.getItem('qh-welcome-seen')
-    const tourSeen = localStorage.getItem('qh-tour-seen')
-    if (welcomeSeen && !tourSeen) {
-      setTimeout(startTour, 400)
+    if (accountSeen) return
+    let welcomeSeen: string | null = null
+    let tourSeen: string | null = null
+    try {
+      welcomeSeen = localStorage.getItem(WELCOME_KEY)
+      tourSeen = localStorage.getItem(TOUR_KEY)
+    } catch {}
+    // Finished on this device before the flag moved to the account — carry it over.
+    if (tourSeen) {
+      markOnboardingSeen()
+      return
     }
-  }, [])
+    // Auto-resume if welcome was dismissed but tour not yet completed (handles page refresh mid-tour)
+    if (welcomeSeen) setTimeout(startTour, 400)
+  }, [accountSeen])
 
   return null
 }

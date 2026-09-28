@@ -682,7 +682,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     </td>
                     <td className="w-7 sticky left-6 z-10 bg-[#F5F2EC]" />
                     <td colSpan={12} className="px-2 py-2">
-                      <div className="flex items-center gap-2">
+                      {/* Pinned beside the sticky Item column so the section name stays put on horizontal scroll */}
+                      <div className="sticky left-[60px] w-[284px] flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
                         <input
                           value={item.item_name}
@@ -691,7 +692,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           readOnly={locked}
                           ref={(el) => { if (el && newlyAddedId === item.id) el.focus({ preventScroll: true }) }}
                           onFocus={() => { if (newlyAddedId === item.id) setNewlyAddedId(null) }}
-                          className="flex-1 bg-transparent outline-none text-xs font-semibold text-[#5A5750] uppercase tracking-widest placeholder-[#C4BFB5] focus:text-[#2C2C2A]"
+                          className="flex-1 min-w-0 bg-transparent outline-none text-xs font-semibold text-[#5A5750] uppercase tracking-widest placeholder-[#C4BFB5] focus:text-[#2C2C2A]"
                           placeholder="Room / Section name…"
                         />
                       </div>

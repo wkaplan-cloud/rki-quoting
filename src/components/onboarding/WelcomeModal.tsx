@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { ArrowRight, Users, FolderOpen, FileText } from 'lucide-react'
-import { startTour } from './GuidedTour'
+import { startTour, markOnboardingSeen } from './GuidedTour'
 
 const STEPS = [
   {
@@ -22,19 +22,24 @@ const STEPS = [
   },
 ]
 
-export function WelcomeModal() {
+export function WelcomeModal({ accountSeen = false }: { accountSeen?: boolean }) {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
+    if (accountSeen) return
+    let seen = false
+    try { seen = !!localStorage.getItem('qh-welcome-seen') } catch {}
     // Restores a value from browser storage, which only exists after mount — reading it during render would not match the server-rendered HTML.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!localStorage.getItem('qh-welcome-seen')) setShow(true)
-  }, [])
+    if (!seen) setShow(true)
+  }, [accountSeen])
 
   function dismiss() {
-    localStorage.setItem('qh-welcome-seen', '1')
+    try { localStorage.setItem('qh-welcome-seen', '1') } catch {}
     setShow(false)
-    setTimeout(startTour, 300)
+    // startTour is a no-op below 768px, so the account flag has to be set here too.
+    if (window.innerWidth < 768) markOnboardingSeen()
+    else setTimeout(startTour, 300)
   }
 
   if (!show) return null
