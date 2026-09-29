@@ -1059,6 +1059,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </div>
             </>
           )}
+          <div className="border-t border-[#D8D3C8] pt-2 flex justify-between items-baseline text-sm text-green-700">
+            <span>Gross Profit <span className="text-xs text-green-500">excl. VAT</span></span>
+            <span className="font-semibold">{formatZAR(computed.reduce((sum, i) => sum + i.profit, 0) + totals.design_fee)}</span>
+          </div>
         </div>
       </div>
 
