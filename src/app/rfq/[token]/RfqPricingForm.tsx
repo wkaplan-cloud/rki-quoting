@@ -75,6 +75,52 @@ interface Entry {
   prices: Record<string, string>
 }
 
+/**
+ * What is kept in this browser while a supplier works, so closing the tab
+ * halfway through a long sheet doesn't cost them what they typed. It never
+ * leaves the device and is never a submission — only Submit sends anything.
+ */
+interface RfqDraft {
+  v: 1
+  /** submitted_at the sheet was opened against; a newer submit makes it stale. */
+  basedOn: string | null
+  savedAt: string
+  entries: Record<string, Entry>
+  overallMessage: string
+  revisionReason: string
+  unlocked: boolean
+}
+
+const draftKey = (token: string) => `qh-rfq-draft:${token}`
+
+/**
+ * Lays a saved draft over the sheet as it stands, one known box at a time. An
+ * item or box the studio has since removed is dropped rather than carried back.
+ */
+function mergeDraft(base: Record<string, Entry>, saved: Record<string, Entry>): Record<string, Entry> {
+  const pick = (from: Record<string, string>, onto: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(onto).map(([k, v]) => [k, typeof from?.[k] === 'string' ? from[k] : v])
+    )
+  return Object.fromEntries(
+    Object.entries(base).map(([specId, e]) => {
+      const d = saved[specId]
+      if (!d) return [specId, e]
+      return [
+        specId,
+        {
+          price: typeof d.price === 'string' ? d.price : e.price,
+          leadTime: typeof d.leadTime === 'string' ? d.leadTime : e.leadTime,
+          note: typeof d.note === 'string' ? d.note : e.note,
+          unableToQuote: typeof d.unableToQuote === 'boolean' ? d.unableToQuote : e.unableToQuote,
+          quantities: pick(d.quantities, e.quantities),
+          prices: pick(d.prices, e.prices),
+        },
+      ]
+    })
+  )
+}
+
 /** Every key on an item that takes a quantity, in the order they are shown. */
 function quantityKeys(it: RfqFormItem): { key: string; unit: string; prefill: number | null }[] {
   return [
@@ -101,6 +147,7 @@ export function RfqPricingForm({
   items,
   initialSubmissionMessage,
   alreadySubmitted,
+  submittedAt,
   expiryLabel,
 }: {
   token: string
@@ -113,10 +160,14 @@ export function RfqPricingForm({
   items: RfqFormItem[]
   initialSubmissionMessage: string
   alreadySubmitted: boolean
+  /** When the last submission landed — a draft older than it is discarded. */
+  submittedAt: string | null
   expiryLabel: string
 }) {
   const [lightbox, setLightbox] = useState<{ image: RfqFormImage; name: string } | null>(null)
-  const [entries, setEntries] = useState<Record<string, Entry>>(() =>
+  // The sheet as the server sent it. Kept so "discard my draft" has something
+  // to go back to, and so an untouched sheet never writes a draft at all.
+  const [initialEntries] = useState<Record<string, Entry>>(() =>
     Object.fromEntries(
       items.map(it => [
         it.specId,
@@ -135,6 +186,7 @@ export function RfqPricingForm({
       ])
     )
   )
+  const [entries, setEntries] = useState<Record<string, Entry>>(initialEntries)
   const [overallMessage, setOverallMessage] = useState(initialSubmissionMessage)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -153,6 +205,104 @@ export function RfqPricingForm({
   const [revisionReason, setRevisionReason] = useState('')
   const lockable = alreadySubmitted && anyPriceOnRecord
   const locked = lockable && !unlocked
+
+  // Draft autosave. Nothing is read until after mount — the server renders
+  // the sheet without the browser's copy, and reading it any earlier would
+  // make the first client render disagree with the server's.
+  const [draftLoaded, setDraftLoaded] = useState(false)
+  const [restoredAt, setRestoredAt] = useState<string | null>(null)
+
+  // Against the sheet as it arrived, not as last saved: typing a price and
+  // deleting it again leaves nothing worth keeping, or warning about.
+  const dirty = useMemo(
+    () =>
+      JSON.stringify(entries) !== JSON.stringify(initialEntries) ||
+      overallMessage !== initialSubmissionMessage ||
+      revisionReason.trim() !== '',
+    [entries, initialEntries, overallMessage, initialSubmissionMessage, revisionReason]
+  )
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(draftKey(token))
+      if (raw) {
+        const d = JSON.parse(raw) as RfqDraft
+        // A submission made since the draft — from this device or another —
+        // is the newer truth. Restoring over it would quietly roll it back.
+        if (d?.v === 1 && d.basedOn === submittedAt && d.entries) {
+          // Restoring saved input is the one thing this effect is for, and
+          // localStorage cannot be read during the server render.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setEntries(prev => mergeDraft(prev, d.entries))
+          setOverallMessage(typeof d.overallMessage === 'string' ? d.overallMessage : initialSubmissionMessage)
+          setRevisionReason(typeof d.revisionReason === 'string' ? d.revisionReason : '')
+          if (d.unlocked) setUnlocked(true)
+          setRestoredAt(d.savedAt)
+        } else {
+          window.localStorage.removeItem(draftKey(token))
+        }
+      }
+    } catch {
+      // Private mode, storage full, or a draft we can't parse: carry on without one
+    }
+    setDraftLoaded(true)
+  }, [token, submittedAt, initialSubmissionMessage])
+
+  // Written on every change rather than debounced: a debounce is exactly the
+  // window in which closing the tab loses the last thing typed.
+  useEffect(() => {
+    if (!draftLoaded || done) return
+    try {
+      if (!dirty) {
+        window.localStorage.removeItem(draftKey(token))
+        return
+      }
+      const draft: RfqDraft = {
+        v: 1,
+        basedOn: submittedAt,
+        savedAt: new Date().toISOString(),
+        entries,
+        overallMessage,
+        revisionReason,
+        unlocked,
+      }
+      window.localStorage.setItem(draftKey(token), JSON.stringify(draft))
+    } catch {
+      // Best effort — the form still works, it just won't survive a closed tab
+    }
+  }, [draftLoaded, done, dirty, token, submittedAt, entries, overallMessage, revisionReason, unlocked])
+
+  // Saved is not sent. A supplier closing the tab on a sheet they've typed
+  // into gets the browser's own "leave this page?" prompt as a reminder.
+  useEffect(() => {
+    if (!dirty || done) return
+    const onBeforeUnload = (ev: BeforeUnloadEvent) => {
+      ev.preventDefault()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty, done])
+
+  const restoredLabel = useMemo(() => {
+    if (!restoredAt) return ''
+    const d = new Date(restoredAt)
+    return Number.isNaN(d.getTime())
+      ? ''
+      : d.toLocaleString('en-ZA', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+  }, [restoredAt])
+
+  function discardDraft() {
+    try {
+      window.localStorage.removeItem(draftKey(token))
+    } catch {}
+    setEntries(initialEntries)
+    setOverallMessage(initialSubmissionMessage)
+    setRevisionReason('')
+    setUnlocked(false)
+    setRestoredAt(null)
+    setNoPriceAck(false)
+    setError(null)
+  }
 
   function update(specId: string, patch: Partial<Entry>) {
     setEntries(prev => ({ ...prev, [specId]: { ...prev[specId], ...patch } }))
@@ -383,6 +533,10 @@ export function RfqPricingForm({
         setSubmitting(false)
         return
       }
+      // Sent, so the server now holds it — reopening the link prefills from there
+      try {
+        window.localStorage.removeItem(draftKey(token))
+      } catch {}
       setEmailedCopy(json.emailedCopy === true)
       setDone(true)
     } catch {
@@ -435,6 +589,23 @@ export function RfqPricingForm({
             {expiryLabel}{' '}
             to change anything.
           </p>
+        )}
+        {restoredAt && dirty && (
+          <div className="mt-3 rounded-lg px-3 py-3" style={{ backgroundColor: '#EAF3EC' }}>
+            <p className="text-xs" style={{ color: '#2F5A3A' }}>
+              We&apos;ve brought back what you were entering{restoredLabel ? ` on ${restoredLabel}` : ''}.{' '}
+              <strong>It hasn&apos;t been sent yet</strong> — press <strong>Submit pricing</strong> at the
+              bottom when you&apos;re done.
+            </p>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="mt-2 text-xs font-semibold underline underline-offset-2 cursor-pointer rounded hover:opacity-80 active:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ color: '#2F5A3A', outlineColor: '#2F5A3A' }}
+            >
+              Discard it and start again
+            </button>
+          </div>
         )}
         {message.trim() && (
           <p className="text-sm mt-3 pt-3 border-t whitespace-pre-line" style={{ color: '#4A4A47', borderColor: '#EDE9E1' }}>
@@ -961,6 +1132,11 @@ export function RfqPricingForm({
             </>
           )}
         </button>
+        {draftLoaded && dirty && (
+          <p className="text-center text-[11px] mt-2" style={{ color: '#4A4A47' }}>
+            Your progress is saved on this device, but <strong>not sent</strong> until you press Submit
+          </p>
+        )}
         <p className="text-center text-[11px] mt-2" style={{ color: '#8A877F' }}>
           Link valid until {expiryLabel} · come back any time to add or change prices
         </p>

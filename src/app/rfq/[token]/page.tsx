@@ -232,6 +232,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             items={items}
             initialSubmissionMessage={request.submission_message ?? ''}
             alreadySubmitted={!!request.submitted_at}
+            submittedAt={request.submitted_at ?? null}
             expiryLabel={expiryLabel}
           />
         )}
