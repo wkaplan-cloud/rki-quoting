@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { QuickDeleteButton } from './[id]/DeleteStudioButton'
 import { AssignRepCell } from './AssignRepCell'
 import { IncompleteSignups, type IncompleteSignup } from './IncompleteSignups'
+import { PendingConfirmations, type PendingConfirmation } from './PendingConfirmations'
+import { isPendingSelfSignup } from '@/lib/signup-confirmation'
+import type { User } from '@supabase/supabase-js'
 import { TestNudge } from './TestNudge'
 import { SendWelcomeButton } from './SendWelcomeButton'
 import { TrialNudgeButton } from './TrialNudgeButton'
@@ -45,11 +48,21 @@ function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string
   return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#E5DFD5] text-[#6E6B63]">{status}</span>
 }
 
-async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+/** Self-signups who never clicked their confirmation link, newest first. */
+function getPendingConfirmations(allUsers: User[]): PendingConfirmation[] {
+  return allUsers
+    .filter(isPendingSelfSignup)
+    .map(u => ({
+      user_id: u.id,
+      email: u.email!,
+      full_name: (u.user_metadata?.full_name as string | null) ?? null,
+      signed_up_at: u.created_at,
+    }))
+    .sort((a, b) => b.signed_up_at.localeCompare(a.signed_up_at))
+}
 
-  const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
-  const allUsers = authData?.users ?? []
+async function getIncompleteSignups(allUsers: User[]): Promise<IncompleteSignup[]> {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const confirmed = allUsers.filter(u =>
     u.email_confirmed_at && u.email_confirmed_at >= cutoff
@@ -131,7 +144,7 @@ export default async function StudiosPage() {
     { data: allAuditData },
     { data: allClientsData },
     { data: welcomeSentData },
-    incompleteSignups,
+    { data: authData },
   ] = await Promise.all([
     supabaseAdmin.from('org_members').select('org_id').eq('status', 'active').in('org_id', orgIds),
     supabaseAdmin.from('org_members').select('org_id, user_id, full_name, invited_email').eq('role', 'admin').in('org_id', orgIds).order('status', { ascending: true }),
@@ -140,8 +153,12 @@ export default async function StudiosPage() {
     supabaseAdmin.from('audit_logs').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }).limit(1000),
     supabaseAdmin.from('clients').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }),
     supabaseAdmin.from('platform_welcome_emails').select('org_id').in('org_id', orgIds),
-    getIncompleteSignups(),
+    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
   ])
+
+  const allAuthUsers = authData?.users ?? []
+  const incompleteSignups = await getIncompleteSignups(allAuthUsers)
+  const pendingConfirmations = getPendingConfirmations(allAuthUsers)
 
   // Build lookup maps from bulk data
   const memberCountByOrg = new Map<string, number>()
@@ -250,6 +267,7 @@ export default async function StudiosPage() {
         </div>
       )}
 
+      <PendingConfirmations signups={pendingConfirmations} />
       <IncompleteSignups signups={incompleteSignups} />
       <TestNudge />
     </div>

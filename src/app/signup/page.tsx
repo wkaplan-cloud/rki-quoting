@@ -17,6 +17,7 @@ export default function SignupPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const widgetRef = useRef<HTMLDivElement>(null)
   const widgetId = useRef<string | null>(null)
 
@@ -89,6 +90,22 @@ export default function SignupPage() {
     } else {
       setDone(true)
     }
+  }
+
+  async function handleResend() {
+    setResendState('sending')
+    const res = await fetch('/api/auth/resend-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => null)
+    if (!res?.ok) {
+      setResendState('error')
+      return
+    }
+    setResendState('sent')
+    // Hold the button for a minute so it can't be hammered.
+    setTimeout(() => setResendState('idle'), 60_000)
   }
 
   return (
@@ -183,6 +200,25 @@ export default function SignupPage() {
               <p className="text-xs text-[#C4BFB5] leading-relaxed">
                 Click the link in the email to activate your account. Check your spam folder if you don&apos;t see it.
               </p>
+              <div className="pt-1">
+                {resendState === 'sent' ? (
+                  <p className="text-xs text-[#6E6B63]">Sent again. It can take a minute to arrive, so check your junk folder too.</p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resendState === 'sending'}
+                      className="text-sm text-[#9A7B4F] hover:underline focus-visible:underline outline-none disabled:opacity-50 cursor-pointer"
+                    >
+                      {resendState === 'sending' ? 'Sending…' : 'Didn\u2019t get it? Resend email'}
+                    </button>
+                    {resendState === 'error' && (
+                      <p className="text-xs text-red-500 mt-1.5">Couldn&apos;t resend just now. Please try again in a few minutes.</p>
+                    )}
+                  </>
+                )}
+              </div>
               <Link href="/login" className="inline-block mt-4 text-sm text-[#9A7B4F] hover:underline">
                 Back to sign in →
               </Link>
