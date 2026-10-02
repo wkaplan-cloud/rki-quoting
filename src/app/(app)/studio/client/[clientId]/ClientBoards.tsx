@@ -6,6 +6,13 @@ import { Plus, Presentation, Pencil, Trash2, Loader2, FolderInput, X } from 'luc
 import { createClient } from '@/lib/supabase/client'
 import { createStudioBoard } from '@/lib/studio/createBoard'
 import { Combobox } from '@/components/ui/Combobox'
+import {
+  OfflineBadge,
+  OfflineDownloadButton,
+  UnsyncedBoards,
+  useOfflineBoards,
+  useStudioOfflineSync,
+} from '@/components/studio/OfflineControls'
 
 interface BoardRow {
   id: string
@@ -51,6 +58,18 @@ export function ClientBoards({
   const [busy, setBusy] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [movingBoard, setMovingBoard] = useState<BoardRow | null>(null)
+  const offlineBoards = useOfflineBoards()
+  // null: this page lists one client's boards, too narrow a view to decide a
+  // downloaded board elsewhere no longer exists
+  const { pendingBoards, unsyncedIds } = useStudioOfflineSync(orgId, null)
+  const clientPending = pendingBoards.filter(b => b.clientId === clientId)
+  const unsyncedNames = boards.filter(b => unsyncedIds.includes(b.id)).map(b => ({ id: b.id, name: b.name }))
+
+  // A fresh server list (router.refresh after an offline board syncs) must
+  // replace the copy held here, or the synced board would not appear
+  useEffect(() => {
+    setBoards(initialBoards)
+  }, [initialBoards])
 
   // Creating a board asks for one thing only: its name — the cover slide
   // (logo + client name + this name centred) and first content slide are
@@ -60,7 +79,7 @@ export function ClientBoards({
     if (!name.trim()) return
     setBusy(true)
     try {
-      const boardId = await createStudioBoard({
+      const { href, offline } = await createStudioBoard({
         orgId,
         clientId,
         clientName,
@@ -69,7 +88,11 @@ export function ClientBoards({
         createdBy: userId,
         createdByName: userName,
       })
-      router.push(`/studio/board/${boardId}`)
+      // A board made offline opens with a full page load: the service worker
+      // answers that from cache, and the board id rides in the hash, which an
+      // in-app navigation that fails over to a page load is not certain to keep
+      if (offline) window.location.assign(href)
+      else router.push(href)
     } catch (e) {
       toast.error((e as Error).message || 'Could not create board')
       setBusy(false)
@@ -116,7 +139,7 @@ export function ClientBoards({
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 flex items-start gap-3 flex-wrap">
         {creating ? (
           <NewBoardInput clientName={clientName} onDone={name => void createBoard(name)} />
         ) : (
@@ -129,7 +152,16 @@ export function ClientBoards({
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} New board
           </button>
         )}
+        {!creating && (
+          <OfflineDownloadButton
+            boardIds={boards.map(b => b.id)}
+            clientIds={[clientId]}
+            label="Make these boards available offline"
+          />
+        )}
       </div>
+
+      <UnsyncedBoards pendingBoards={clientPending} unsyncedNames={unsyncedNames} />
 
       {boards.length === 0 && !creating ? (
         <div className="text-center py-16">
@@ -198,6 +230,11 @@ export function ClientBoards({
               </p>
               {b.createdByName && (
                 <p className="text-[11px] text-[#8A877F] mt-0.5">Filed here by {b.createdByName}</p>
+              )}
+              {offlineBoards[b.id] && (
+                <div className="mt-1.5">
+                  <OfflineBadge />
+                </div>
               )}
             </div>
           ))}

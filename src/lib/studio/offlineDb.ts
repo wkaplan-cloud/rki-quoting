@@ -168,3 +168,21 @@ export async function getUpload(id: string): Promise<QueuedUpload | null> {
 export function deleteUpload(id: string): Promise<void> {
   return run(UPLOADS, 'readwrite', store => store.delete(id)).then(() => undefined)
 }
+
+// Boards with edits or photos that only this device holds. The editor flushes
+// them when the board is next opened online; the Studio lists use this to say
+// so. Queued uploads carry no org, so callers match ids against boards they
+// already know belong to the org.
+export async function listUnsyncedBoardIds(orgId: string): Promise<string[]> {
+  const [snapshots, uploads] = await Promise.all([
+    run<BoardSnapshot[]>(BOARDS, 'readonly', store => store.getAll()),
+    run<QueuedUpload[]>(UPLOADS, 'readonly', store => store.getAll()),
+  ])
+  const ids = new Set<string>()
+  for (const rec of snapshots ?? []) {
+    const dirty = rec.dirtySlideIds?.length || rec.dirtySpecIds?.length || rec.masterLayoutDirty
+    if (rec.schema === SNAPSHOT_SCHEMA && rec.orgId === orgId && dirty) ids.add(rec.boardId)
+  }
+  for (const up of uploads ?? []) ids.add(up.boardId)
+  return Array.from(ids)
+}

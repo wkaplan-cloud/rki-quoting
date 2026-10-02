@@ -2,6 +2,7 @@
 import { useStudioStore } from './store'
 import { listUploads, putUpload, deleteUpload, getUpload, type QueuedUpload } from './offlineDb'
 import { assetFromRow, type StudioAssetRow } from './types'
+import { ensureBoardCreated } from './offlineBoards'
 
 // ── Offline image uploads ───────────────────────────────────────────────────
 // Storage writes have to go through the API route, so an image dropped onto the
@@ -91,6 +92,9 @@ export async function processUploadQueue(): Promise<void> {
 
   processing = true
   try {
+    // The upload route rejects a board it cannot find, and enough rejections
+    // discard the photo — so a board created offline goes up first
+    if (!(await ensureBoardCreated(boardId))) return
     const queued = await listUploads(boardId)
     for (const upload of queued) {
       // The board can change under us if the queue is still draining when the

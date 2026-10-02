@@ -16,17 +16,31 @@ export function registerOfflineWorker(): void {
   void pruneBoardSnapshots()
 }
 
-// Called on sign-out. Drops the cached Studio pages and images so the next
-// person on a shared iPad can't pull the previous designer's board out of
-// cache. Deliberately does NOT touch IndexedDB: that holds work which has not
-// reached the server yet, and signing out must never be the thing that
-// destroys it.
+// Where "Make available offline" keeps downloaded boards (offlineDownload.ts).
+// Must match PINNED_CACHE in public/sw.js.
+export const OFFLINE_CACHE = 'qh-offline'
+export const OFFLINE_REGISTRY_KEY = 'qh-studio-offline'
+
+// Called on sign-out. Drops the cached Studio pages, images and downloaded
+// boards so the next person on a shared iPad can't pull the previous
+// designer's board out of cache. Deliberately does NOT touch IndexedDB or the
+// boards created offline: that is work which has not reached the server yet,
+// and signing out must never be the thing that destroys it.
 export async function clearStudioOfflineCaches(): Promise<void> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+  // Downloaded boards are dropped from the page as well as by the worker: the
+  // form submit navigates away immediately, and a worker still on an older
+  // version would not know this cache existed
+  let dropped: Promise<unknown> = Promise.resolve()
+  try {
+    localStorage.removeItem(OFFLINE_REGISTRY_KEY)
+    dropped = caches.delete(OFFLINE_CACHE).catch(() => false)
+  } catch {}
   try {
     const reg = await navigator.serviceWorker.getRegistration()
     reg?.active?.postMessage({ type: 'QH_CLEAR_CACHES' })
   } catch {
     // Nothing to clean up if the worker was never installed
   }
+  await dropped
 }

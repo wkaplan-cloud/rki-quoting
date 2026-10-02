@@ -3,6 +3,13 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Search, Presentation, Plus, UserPlus } from 'lucide-react'
 import { NewBoardModal } from './NewBoardModal'
+import {
+  OfflineBadge,
+  OfflineDownloadButton,
+  UnsyncedBoards,
+  useOfflineBoards,
+  useStudioOfflineSync,
+} from '@/components/studio/OfflineControls'
 
 interface ClientOption {
   id: string
@@ -46,6 +53,10 @@ export function StudioHome({
 }) {
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
+  const offlineBoards = useOfflineBoards()
+  const { pendingBoards, unsyncedIds } = useStudioOfflineSync(orgId, boards.map(b => b.id))
+  const unsyncedNames = boards.filter(b => unsyncedIds.includes(b.id)).map(b => ({ id: b.id, name: b.name }))
+  const boardClientIds = useMemo(() => Array.from(new Set(boards.map(b => b.clientId))), [boards])
 
   const q = query.trim().toLowerCase()
   const filtered = q
@@ -90,7 +101,15 @@ export function StudioHome({
         >
           <Plus size={13} /> New board
         </button>
+        <OfflineDownloadButton
+          boardIds={boards.map(b => b.id)}
+          clientIds={boardClientIds}
+          label="Make all boards available offline"
+          allowRemove
+        />
       </div>
+
+      <UnsyncedBoards pendingBoards={pendingBoards} unsyncedNames={unsyncedNames} />
 
       {filtered.length === 0 ? (
         <div className="text-center py-16">
@@ -102,13 +121,13 @@ export function StudioHome({
       ) : showSplit ? (
         <>
           <SectionHeading>Recent</SectionHeading>
-          <BoardGrid boards={recent} />
+          <BoardGrid boards={recent} offline={offlineBoards} />
           <div className="h-px bg-[#D8D3C8] my-6" />
           <SectionHeading>All boards</SectionHeading>
-          <BoardGrid boards={rest} />
+          <BoardGrid boards={rest} offline={offlineBoards} />
         </>
       ) : (
-        <BoardGrid boards={rest} />
+        <BoardGrid boards={rest} offline={offlineBoards} />
       )}
 
       {creating && (
@@ -131,7 +150,7 @@ function SectionHeading({ children }: { children: string }) {
   )
 }
 
-function BoardGrid({ boards }: { boards: BoardRow[] }) {
+function BoardGrid({ boards, offline }: { boards: BoardRow[]; offline: Record<string, number> }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {boards.map(b => (
@@ -157,6 +176,11 @@ function BoardGrid({ boards }: { boards: BoardRow[] }) {
             {b.editedBy && <> by {b.editedBy}</>}
             {b.sizeBytes > 0 && <> · {formatSize(b.sizeBytes)}</>}
           </p>
+          {offline[b.id] && (
+            <div className="mt-1.5">
+              <OfflineBadge />
+            </div>
+          )}
         </div>
       ))}
     </div>

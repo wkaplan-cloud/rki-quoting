@@ -69,6 +69,7 @@ export async function proxy(request: NextRequest) {
     // login page: the manifest then fails to parse as JSON and the service
     // worker fails to register on an HTML response.
     pathname === '/manifest.json' ||
+    pathname === '/studio-manifest.json' ||
     pathname === '/sw.js' ||
     pathname.startsWith('/api/contact') ||
     // One-click unsubscribe: Gmail and Yahoo POST here with no session, and the

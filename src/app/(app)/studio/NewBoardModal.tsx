@@ -40,6 +40,12 @@ export function NewBoardModal({
   const nameRef = useRef<HTMLInputElement>(null)
 
   async function handleCreateClient(name: string) {
+    // Clients are org records other pages depend on, so they are only ever
+    // created on the server — boards can be made offline, clients cannot
+    if (!navigator.onLine) {
+      toast.error('No connection — pick an existing client while offline')
+      return
+    }
     const supabase = createClient()
     const { data, error } = await supabase
       .from('clients')
@@ -68,7 +74,7 @@ export function NewBoardModal({
     setCreating(true)
     try {
       const client = localClients.find(c => c.id === clientId)
-      const boardId = await createStudioBoard({
+      const { href, offline } = await createStudioBoard({
         orgId,
         clientId,
         clientName: client?.clientName ?? clientLabel,
@@ -77,7 +83,11 @@ export function NewBoardModal({
         createdBy: userId,
         createdByName: userName,
       })
-      router.push(`/studio/board/${boardId}`)
+      // A board made offline opens with a full page load: the service worker
+      // answers that from cache, and the board id rides in the hash, which an
+      // in-app navigation that fails over to a page load is not certain to keep
+      if (offline) window.location.assign(href)
+      else router.push(href)
     } catch (e) {
       toast.error((e as Error).message || 'Could not create board')
       setCreating(false)

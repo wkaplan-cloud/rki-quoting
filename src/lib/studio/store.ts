@@ -24,6 +24,7 @@ import {
   STUDIO_CLIPBOARD_PREFIX,
 } from './constants'
 import { putBoardSnapshot, getBoardSnapshot } from './offlineDb'
+import { ensureBoardCreated } from './offlineBoards'
 
 interface Snapshot {
   slides: StudioSlide[]
@@ -290,6 +291,12 @@ async function saveMasterLayout(): Promise<boolean> {
   const s = useStudioStore.getState()
   if (!s.boardId) return true
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    scheduleRetry()
+    return false
+  }
+  // An update against a board that only exists on this device matches zero
+  // rows and reports success — the theme change would be silently dropped
+  if (!(await ensureBoardCreated(s.boardId))) {
     scheduleRetry()
     return false
   }
@@ -1030,6 +1037,20 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
 
   flushSave: async () => {
+    // A board created offline must exist on the server before anything can be
+    // written under it (see offlineBoards.ts). Resolves immediately for every
+    // other board. State is read only after this, so edits made while it ran
+    // are part of this flush rather than cleared by it.
+    const gateId = get().boardId
+    if (gateId && !(await ensureBoardCreated(gateId))) {
+      const st = get()
+      if (st.dirtySlideIds.length || st.dirtySpecIds.length || st.masterLayoutDirty) {
+        set({ saveState: 'error' })
+        scheduleRetry()
+        void persistLocal()
+      }
+      return
+    }
     const s = get()
     if (
       !s.boardId ||

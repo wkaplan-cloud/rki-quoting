@@ -26,6 +26,12 @@ const IMAGE_CACHE = `qh-images-${VERSION}`
 const MODEL_CACHE = 'qh-model'
 const MODEL_CACHE_MAX = 40
 const OURS = /^qh-(shell|rsc|static|images)-/
+// Boards the designer downloaded on purpose ("Make available offline" in
+// Studio — src/lib/studio/offlineDownload.ts writes it, from the page). Never
+// trimmed, and NOT version-stamped or matched by OURS, so a worker update
+// can't silently empty an iPad that was prepared for site. Every handler below
+// falls back to it when its own cache misses. Sign-out still clears it.
+const PINNED_CACHE = 'qh-offline'
 
 // Board images are content-addressed and never change, so they can be cached
 // hard. Trimmed oldest-first so a heavy board can't fill the device.
@@ -60,7 +66,11 @@ self.addEventListener('message', function (event) {
   if (!event.data || event.data.type !== 'QH_CLEAR_CACHES') return
   event.waitUntil(
     caches.keys().then(function (keys) {
-      return Promise.all(keys.map(function (key) { return OURS.test(key) ? caches.delete(key) : undefined }))
+      return Promise.all(
+        keys.map(function (key) {
+          return OURS.test(key) || key === PINNED_CACHE ? caches.delete(key) : undefined
+        })
+      )
     })
   )
 })
@@ -159,6 +169,27 @@ async function trimCache(cacheName, max) {
   for (let i = 0; i < keys.length - max; i++) await cache.delete(keys[i])
 }
 
+// The downloaded copy of a request, if the designer pinned it. ignoreVary:
+// the page stored these with its own fetch(), whose headers never line up with
+// a navigation's or an <img>'s, and each URL here only ever holds one thing.
+async function matchPinned(request) {
+  try {
+    const cache = await caches.open(PINNED_CACHE)
+    return await cache.match(request, { ignoreVary: true })
+  } catch {
+    return undefined
+  }
+}
+
+// Of two cached copies of a page, the one the server produced last
+function newer(a, b) {
+  if (!a) return b
+  if (!b) return a
+  const at = Date.parse(a.headers.get('date') || '') || 0
+  const bt = Date.parse(b.headers.get('date') || '') || 0
+  return bt > at ? b : a
+}
+
 // Studio pages: network first, so an online designer always gets fresh server
 // data, with the last good copy kept as the offline fallback. Falling back to a
 // stale page is safe — the editor merges anything unsynced from IndexedDB over
@@ -176,8 +207,13 @@ async function networkFirst(request, cacheName) {
     }
     return response
   } catch (err) {
+    // Pages also have a downloaded copy; RSC payloads never do (their URLs
+    // carry a per-navigation hash). Whichever is fresher wins — the last
+    // online visit, or a download made after it.
     const cached = await cache.match(request)
-    if (cached) return cached
+    const pinned = cacheName === SHELL_CACHE ? await matchPinned(request) : undefined
+    const best = newer(cached, pinned)
+    if (best) return best
     throw err
   }
 }
@@ -186,7 +222,7 @@ async function networkFirst(request, cacheName) {
 // response here is always `basic` — never opaque.
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName)
-  const cached = await cache.match(request)
+  const cached = (await cache.match(request)) || (await matchPinned(request))
   if (cached) return cached
   const response = await fetch(request)
   if (response && response.ok) {
@@ -223,7 +259,8 @@ async function cacheFirst(request, cacheName) {
 // and never let a caching problem take the image down with it.
 async function imageCacheFirst(request) {
   const cache = await caches.open(IMAGE_CACHE)
-  const cached = await cache.match(request)
+  // Downloaded images are always CORS copies, so they satisfy either mode
+  const cached = (await cache.match(request)) || (await matchPinned(request))
   // A `cors` or `basic` cached response satisfies both kinds of request; an
   // opaque one satisfies only no-cors, so re-fetch rather than hand it to the
   // canvas and have the load fail.
