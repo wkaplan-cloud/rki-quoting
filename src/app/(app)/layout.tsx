@@ -6,8 +6,19 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { SessionExpiredHandler } from '@/components/SessionExpiredHandler'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { getImpersonationStash } from '@/lib/impersonation'
+import type { Metadata } from 'next'
 
 const GRACE_DAYS = 3
+
+// Designers get their own app manifest. The site-wide one starts at the
+// supplier portal login (it was made for supplier staff), so a designer who
+// added QuotingHub to their Home Screen opened it onto "Wrong account type".
+// This one starts at /studio: cached for offline use, and it forwards anyone
+// without Studio to their dashboard. iOS fixes the start page at install time,
+// so an icon added before this must be deleted and added again.
+export const metadata: Metadata = {
+  manifest: '/designer-manifest.json',
+}
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   // Both are memoised for the request, so the page rendering inside this layout

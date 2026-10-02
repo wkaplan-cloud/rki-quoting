@@ -1,8 +1,8 @@
 {
-  "name": "QuotingHub Studio",
-  "short_name": "Studio",
-  "description": "Presentation boards for your clients — works offline once boards are downloaded",
-  "id": "/studio",
+  "name": "QuotingHub",
+  "short_name": "QuotingHub",
+  "description": "Quoting and Studio boards for interior designers — Studio works offline once boards are downloaded",
+  "id": "/designer",
   "start_url": "/studio",
   "scope": "/",
   "display": "standalone",
