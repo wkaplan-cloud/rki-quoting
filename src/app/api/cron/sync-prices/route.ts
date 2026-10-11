@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getHomeFabricsListId } from '@/lib/home-fabrics-list'
 
 export const maxDuration = 300
 
@@ -61,7 +62,10 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    // Load all product IDs + current prices from price_list_items (paginate past 1000 row limit)
+    const priceListId = await getHomeFabricsListId(supabase)
+    if (!priceListId) throw new Error('Home Fabrics price list not found.')
+
+    // Load Home Fabrics product IDs + current prices (paginate past 1000 row limit)
     const items: { id: string; product_id: string; price_zar: number | null; price_list_id: string }[] = []
     const PAGE = 1000
     let from = 0
@@ -69,7 +73,9 @@ export async function GET(req: NextRequest) {
       const { data, error: fetchErr } = await supabase
         .from('price_list_items')
         .select('id, product_id, price_zar, price_list_id')
+        .eq('price_list_id', priceListId)
         .not('product_id', 'is', null)
+        .order('id')
         .range(from, from + PAGE - 1)
       if (fetchErr) throw new Error(fetchErr.message)
       if (!data?.length) break

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getHomeFabricsListId } from '@/lib/home-fabrics-list'
 
 // GET  ?year=2000  → scan one year, return active productIds for that year
 // POST { activeProductIds: number[] } → compare against DB, return discontinued count + ids
@@ -93,16 +94,23 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
+  const priceListId = await getHomeFabricsListId(supabase)
+  if (!priceListId) {
+    return NextResponse.json({ error: 'Home Fabrics price list not found.' }, { status: 400 })
+  }
+
   const activeSet = new Set(activeProductIds)
 
-  // Load all product_ids from DB
+  // Load Home Fabrics product_ids from DB
   const dbIds: string[] = []
   let from = 0
   while (true) {
     const { data } = await supabase
       .from('price_list_items')
       .select('product_id')
+      .eq('price_list_id', priceListId)
       .not('product_id', 'is', null)
+      .order('id')
       .range(from, from + 999)
     if (!data?.length) break
     for (const r of data) dbIds.push(r.product_id)
@@ -134,6 +142,11 @@ export async function DELETE(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
+  const priceListId = await getHomeFabricsListId(supabase)
+  if (!priceListId) {
+    return NextResponse.json({ error: 'Home Fabrics price list not found.' }, { status: 400 })
+  }
+
   // Delete in batches of 500
   let deleted = 0
   for (let i = 0; i < productIds.length; i += 500) {
@@ -141,27 +154,18 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supabase
       .from('price_list_items')
       .delete()
+      .eq('price_list_id', priceListId)
       .in('product_id', batch)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     deleted += batch.length
   }
 
-  // Update item_count on the global price list
-  const { data: priceList } = await supabase
-    .from('price_lists')
-    .select('id')
-    .eq('is_global', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
-
-  if (priceList) {
-    const { count } = await supabase
-      .from('price_list_items')
-      .select('id', { count: 'exact', head: true })
-      .not('product_id', 'is', null)
-    await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceList.id)
-  }
+  // Update item_count on the Home Fabrics price list
+  const { count } = await supabase
+    .from('price_list_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('price_list_id', priceListId)
+  await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
 
   await supabase.from('twinbru_sync_log').insert({
     sync_type: 'discontinued',

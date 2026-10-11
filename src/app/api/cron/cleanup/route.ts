@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getHomeFabricsListId } from '@/lib/home-fabrics-list'
 
 // Nightly cleanup: scan all active product IDs from Twinbru, compare against DB,
 // delete any that are no longer active (discontinued).
@@ -82,14 +83,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Scan returned 0 active products — aborting to avoid accidental mass delete' }, { status: 400 })
   }
 
-  // ── Step 2: Load all product_ids from DB ────────────────────────────────────
+  const priceListId = await getHomeFabricsListId(supabase)
+  if (!priceListId) {
+    return NextResponse.json({ error: 'Home Fabrics price list not found.' }, { status: 400 })
+  }
+
+  // ── Step 2: Load Home Fabrics product_ids from DB ───────────────────────────
   const dbIds: string[] = []
   let from = 0
   while (true) {
     const { data } = await supabase
       .from('price_list_items')
       .select('product_id')
+      .eq('price_list_id', priceListId)
       .not('product_id', 'is', null)
+      .order('id')
       .range(from, from + 999)
     if (!data?.length) break
     for (const r of data) dbIds.push(r.product_id)
@@ -110,27 +118,18 @@ export async function GET(req: NextRequest) {
     const { error } = await supabase
       .from('price_list_items')
       .delete()
+      .eq('price_list_id', priceListId)
       .in('product_id', batch)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     deleted += batch.length
   }
 
-  // ── Step 4: Update item_count on the global price list ──────────────────────
-  const { data: priceList } = await supabase
-    .from('price_lists')
-    .select('id')
-    .eq('is_global', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
-
-  if (priceList) {
-    const { count } = await supabase
-      .from('price_list_items')
-      .select('id', { count: 'exact', head: true })
-      .not('product_id', 'is', null)
-    await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceList.id)
-  }
+  // ── Step 4: Update item_count on the Home Fabrics price list ────────────────
+  const { count } = await supabase
+    .from('price_list_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('price_list_id', priceListId)
+  await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
 
   return NextResponse.json({ ok: true, scanned: activeIds.size, totalInDb: dbIds.length, deleted })
 }

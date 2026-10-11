@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getHomeFabricsListId } from '@/lib/home-fabrics-list'
 
 export const maxDuration = 300
 
@@ -80,19 +81,11 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  // Find the global Twinbru price list
-  const { data: priceList } = await supabase
-    .from('price_lists')
-    .select('id')
-    .eq('is_global', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single()
+  const priceListId = await getHomeFabricsListId(supabase)
 
-  if (!priceList) {
-    return NextResponse.json({ error: 'No global price list found.' }, { status: 400 })
+  if (!priceListId) {
+    return NextResponse.json({ error: 'Home Fabrics price list not found.' }, { status: 400 })
   }
-  const priceListId = priceList.id
 
   // Insert running log entry
   const { data: logRow } = await supabase
