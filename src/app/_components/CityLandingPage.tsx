@@ -80,7 +80,7 @@ export function CityLandingPage({ config }: { config: CityConfig }) {
       <div className="border-y border-[#D8D3C8] bg-white py-5 px-6">
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
           {[
-            'Real-time supplier pricing',
+            'Supplier price lists in every quote',
             'Automatic deposit calculations',
             'Instant PDF generation',
             'Purchase orders per supplier',
@@ -108,8 +108,8 @@ export function CityLandingPage({ config }: { config: CityConfig }) {
             {[
               {
                 icon: Zap,
-                title: 'Real-time pricing',
-                desc: `Access live supplier price lists directly in your quotes. No more calling suppliers or checking spreadsheets — pricing updates automatically.`,
+                title: 'Supplier pricing in your quotes',
+                desc: `Import your suppliers' price lists and pick items straight into a quote. When a supplier issues new prices, re-import the list — prices already on a quote stay fixed until you change them.`,
               },
               {
                 icon: FileText,

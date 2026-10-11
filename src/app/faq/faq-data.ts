@@ -17,6 +17,23 @@ export const faqs = [
     ],
   },
   {
+    category: 'Supplier Pricing',
+    items: [
+      {
+        q: 'Where do supplier prices in QuotingHub come from?',
+        a: 'Three places. First, price lists you import yourself from a CSV (brand, collection, design, colour, SKU and price). This works on every plan and with any supplier. Second, a small number of South African supplier catalogues that QuotingHub loads and maintains. Third, prices a supplier sends back when you request a price through QuotingHub. You can also type a cost price directly on any line item.',
+      },
+      {
+        q: 'Are supplier catalogues built in?',
+        a: 'Not open by default. QuotingHub maintains catalogues for a small number of South African fabric and furnishing suppliers, but each one is locked until your studio requests access from inside the app and we approve it. QuotingHub is not a marketplace of every supplier, so for most suppliers you import their price list yourself.',
+      },
+      {
+        q: 'Do prices update in real time?',
+        a: 'Not instantly, and it depends on the source. Price lists you import change when you re-import or edit them. One supplier catalogue syncs automatically once a night from the supplier’s feed. Other catalogues are updated by hand when the supplier publishes a new trade price list. Once a price is on a quote it stays fixed. If the catalogue price for a synced item changes later, the line is flagged “Price updated” so you can check it before sending. For that synced catalogue, stock and lead times are checked with the supplier live when you open the project.',
+      },
+    ],
+  },
+  {
     category: 'Billing',
     items: [
       {

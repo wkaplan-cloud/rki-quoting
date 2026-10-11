@@ -64,7 +64,7 @@ export default function ProgramaVsQuotingHub() {
 
       <p><strong>Product library / trade portal</strong></p>
       <ul>
-        <li>QuotingHub: Import your own supplier price lists. No built-in product catalogue.</li>
+        <li>QuotingHub: Import your own supplier price lists (CSV), on any plan. A small number of South African supplier catalogues are maintained by QuotingHub and unlocked per studio on request. There is no open catalogue of every brand.</li>
         <li>Programa: Trade portal with international brand catalogues. SA-specific brands are limited.</li>
       </ul>
 

@@ -4,7 +4,7 @@ import { PublicLayout } from '@/components/layout/PublicLayout'
 export const metadata = {
   title: 'Privacy Policy – QuotingHub',
   description: 'Read the QuotingHub Privacy Policy to understand how we collect, use, and protect your personal information.',
-  alternates: { canonical: 'https://quotinghub.co.za/privacy' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/privacy' },
   robots: { index: false },
 }
 

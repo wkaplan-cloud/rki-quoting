@@ -60,7 +60,7 @@ export default function TradeAccounts() {
 
       <h3>Do I need to be VAT registered to open a trade account?</h3>
       <p>
-        Usually no — a registered business and evidence you work in the industry is typically enough. A VAT number strengthens the application, and once your turnover approaches R1 million registration becomes compulsory anyway. See our <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT guide for designers</Link>.
+        Usually no — a registered business and evidence you work in the industry is typically enough. A VAT number strengthens the application, and once your turnover approaches R2.3 million registration becomes compulsory anyway. See our <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT guide for designers</Link>.
       </p>
 
       <div className="cta-block">

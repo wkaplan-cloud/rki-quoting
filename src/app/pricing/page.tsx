@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   title: 'Pricing — Quoting Software for Interior Designers',
   description: 'Solo from R699/month. Studio from R1,499/month. Agency from R2,499/month. Unlimited quotes, invoices, and purchase orders. 30-day free trial. No credit card required.',
   alternates: {
-    canonical: 'https://quotinghub.co.za/pricing',
+    canonical: 'https://www.quotinghub.co.za/pricing',
   },
   openGraph: {
     title: 'Pricing — QuotingHub for Interior Designers',
     description: 'Solo from R699/month. Studio from R1,499/month. 30-day free trial, no credit card required.',
-    url: 'https://quotinghub.co.za/pricing',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/pricing',
+    images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
 }
 
@@ -21,7 +21,7 @@ const pricingSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'QuotingHub',
-  url: 'https://quotinghub.co.za',
+  url: 'https://www.quotinghub.co.za',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'All',
   offers: [
@@ -64,7 +64,7 @@ const plans = [
       'Client-ready PDF quotes & invoices',
       'Purchase orders sent directly to suppliers',
       'Clients, suppliers & price list management',
-      'Supplier fabric catalogue access',
+      'Selected SA supplier catalogues, unlocked on request',
       'Request Price — send sourcing requests to suppliers',
       'Design fee calculations built in',
       'Basic dashboard: project count, pipeline & revenue',

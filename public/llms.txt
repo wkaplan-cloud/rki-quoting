@@ -4,11 +4,11 @@ QuotingHub is quoting and project management software built specifically for int
 
 ## What QuotingHub Does
 
-QuotingHub helps interior designers create professional quotes, invoices, and purchase orders without spreadsheets. It handles real-time supplier pricing, automatic VAT and deposit calculations, PDF generation, and email delivery — all in one place.
+QuotingHub helps interior designers create professional quotes, invoices, and purchase orders without spreadsheets. It handles supplier price lists, automatic VAT and deposit calculations, PDF generation, and email delivery — all in one place.
 
 ## Key Features
 
-- Itemised quote and invoice creation with real-time pricing
+- Itemised quote and invoice creation from imported supplier price lists
 - Automatic VAT (15%) and deposit calculations
 - Professionally branded PDF generation for quotes, invoices, and purchase orders
 - Supplier management with per-supplier markup settings

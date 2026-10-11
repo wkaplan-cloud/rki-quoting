@@ -13,18 +13,18 @@ import { PublicFooter } from '@/components/layout/PublicFooter'
 export const metadata: Metadata = {
   title: 'Quoting Software for Home Automation, AV & CCTV Installers | QuotingHub',
   description: 'Room-by-room quotes with kits and price-list import, good/better/best options, device registers, handover packs and support contracts that invoice themselves. Built for South African installers. 30-day free trial.',
-  alternates: { canonical: 'https://quotinghub.co.za/trades/installer' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/trades/installer' },
   openGraph: {
     title: 'Quoting Software for Home Automation, AV & CCTV Installers | QuotingHub',
     description: 'Quote room by room, hand over every device, and bill support plans automatically — the business system for South African installers.',
-    url: 'https://quotinghub.co.za/trades/installer',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/trades/installer',
+    images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Quoting Software for Home Automation, AV & CCTV Installers | QuotingHub',
     description: 'Quote room by room, hand over every device, and bill support plans automatically — the business system for South African installers.',
-    images: ['https://quotinghub.co.za/og-image.png'],
+    images: ['https://www.quotinghub.co.za/og-image.png'],
   },
 }
 
@@ -32,12 +32,12 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'QuotingHub for Installers',
-  url: 'https://quotinghub.co.za/trades/installer',
+  url: 'https://www.quotinghub.co.za/trades/installer',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'All',
   description: 'Quoting, device registers, handover packs and support contracts for home automation, AV, CCTV and networking installers in South Africa.',
   areaServed: { '@type': 'Country', name: 'South Africa' },
-  creator: { '@type': 'Organization', name: 'QuotingHub', url: 'https://quotinghub.co.za' },
+  creator: { '@type': 'Organization', name: 'QuotingHub', url: 'https://www.quotinghub.co.za' },
 }
 
 const SIGNUP = '/supplier-portal/register?type=installer'

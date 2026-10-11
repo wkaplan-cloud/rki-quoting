@@ -9,12 +9,12 @@ import { PublicFooter } from '@/components/layout/PublicFooter'
 export const metadata: Metadata = {
   title: 'QuotingHub for Trades — Quoting Software for South African Contractors',
   description: 'Professional quoting, invoicing, job cards, and business management for South African electricians, plumbers, and contractors. Built for the way tradespeople actually work.',
-  alternates: { canonical: 'https://quotinghub.co.za/trades' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/trades' },
   openGraph: {
     title: 'QuotingHub for Trades | Quoting Software for South African Contractors',
     description: 'Quotes, invoices, job cards, and COCs — built for South African electricians and tradespeople.',
-    url: 'https://quotinghub.co.za/trades',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/trades',
+    images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
 }
 

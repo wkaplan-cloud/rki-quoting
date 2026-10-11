@@ -45,7 +45,7 @@ export function CapitalHotelsClient({ initialRequests, initialArchivedRequests, 
   const [editingHotel, setEditingHotel] = useState<{ id: string; name: string } | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [copied, setCopied] = useState(false)
-  const portalUrl = 'https://quotinghub.co.za/capital-portal'
+  const portalUrl = 'https://www.quotinghub.co.za/capital-portal'
 
   function copyPortalUrl() {
     navigator.clipboard.writeText(portalUrl).then(() => {

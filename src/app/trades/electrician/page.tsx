@@ -14,18 +14,18 @@ import { PublicFooter } from '@/components/layout/PublicFooter'
 export const metadata: Metadata = {
   title: 'Quoting Software for South African Electricians | QuotingHub',
   description: 'Professional quoting, invoicing, COCs, job cards, and GPS staff management for South African electricians. SANS 10142-1 compliant COC. 30-day free trial.',
-  alternates: { canonical: 'https://quotinghub.co.za/trades/electrician' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/trades/electrician' },
   openGraph: {
     title: 'Quoting Software for South African Electricians | QuotingHub',
     description: 'Quotes, claims, COCs, job cards, and GPS clock-in — the complete business system for South African electricians.',
-    url: 'https://quotinghub.co.za/trades/electrician',
-    images: [{ url: 'https://quotinghub.co.za/og-electrician.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/trades/electrician',
+    images: [{ url: 'https://www.quotinghub.co.za/og-electrician.png', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Quoting Software for South African Electricians | QuotingHub',
     description: 'Quotes, claims, COCs, job cards, and GPS clock-in — the complete business system for South African electricians.',
-    images: ['https://quotinghub.co.za/og-electrician.png'],
+    images: ['https://www.quotinghub.co.za/og-electrician.png'],
   },
 }
 
@@ -33,12 +33,12 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'QuotingHub for Electricians',
-  url: 'https://quotinghub.co.za/trades/electrician',
+  url: 'https://www.quotinghub.co.za/trades/electrician',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'All',
   description: 'Professional quoting, invoicing, COC, job cards, and staff management for South African electricians.',
   areaServed: { '@type': 'Country', name: 'South Africa' },
-  creator: { '@type': 'Organization', name: 'QuotingHub', url: 'https://quotinghub.co.za' },
+  creator: { '@type': 'Organization', name: 'QuotingHub', url: 'https://www.quotinghub.co.za' },
 }
 
 const FEATURES = [

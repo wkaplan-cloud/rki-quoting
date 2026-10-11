@@ -4,7 +4,7 @@ import { PublicLayout } from '@/components/layout/PublicLayout'
 export const metadata = {
   title: 'Terms of Service – QuotingHub',
   description: 'Read the QuotingHub Terms of Service outlining the rules and conditions for using our quoting software.',
-  alternates: { canonical: 'https://quotinghub.co.za/terms' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/terms' },
   robots: { index: false },
 }
 

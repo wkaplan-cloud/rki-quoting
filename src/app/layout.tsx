@@ -50,13 +50,13 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://quotinghub.co.za'),
+  metadataBase: new URL('https://www.quotinghub.co.za'),
   title: {
     default: 'QuotingHub — Quoting Software for Interior Designers',
     template: '%s | QuotingHub',
   },
   description:
-    'QuotingHub helps South African interior designers create professional quotes, invoices, and purchase orders with real-time pricing, automatic VAT calculations, PDF generation, and supplier management. No more spreadsheets.',
+    'QuotingHub helps South African interior designers create professional quotes, invoices, and purchase orders from supplier price lists, with automatic VAT calculations, PDF generation, and supplier management. No more spreadsheets.',
   keywords: [
     'quoting software interior designers',
     'interior design quotes South Africa',
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     'interior design billing software',
     'quote generator interior design',
   ],
-  authors: [{ name: 'QuotingHub', url: 'https://quotinghub.co.za' }],
+  authors: [{ name: 'QuotingHub', url: 'https://www.quotinghub.co.za' }],
   creator: 'QuotingHub',
   publisher: 'QuotingHub',
   manifest: '/manifest.json',
@@ -86,19 +86,19 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
   },
   alternates: {
-    canonical: 'https://quotinghub.co.za',
+    canonical: 'https://www.quotinghub.co.za',
   },
   openGraph: {
     type: 'website',
     locale: 'en_ZA',
-    url: 'https://quotinghub.co.za',
+    url: 'https://www.quotinghub.co.za',
     siteName: 'QuotingHub',
     title: 'QuotingHub — Quoting Software for Interior Designers',
     description:
       'Create professional quotes, invoices, and purchase orders. Built for South African interior designers.',
     images: [
       {
-        url: 'https://quotinghub.co.za/og-image.png',
+        url: 'https://www.quotinghub.co.za/og-image.png',
         width: 1200,
         height: 630,
         alt: 'QuotingHub — Quoting Software for Interior Designers',
@@ -110,7 +110,7 @@ export const metadata: Metadata = {
     title: 'QuotingHub — Quoting Software for Interior Designers',
     description:
       'Professional quoting, invoicing, and purchase orders for South African interior designers.',
-    images: ['https://quotinghub.co.za/og-image.png'],
+    images: ['https://www.quotinghub.co.za/og-image.png'],
   },
   robots: {
     index: true,
@@ -129,10 +129,10 @@ const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'QuotingHub',
-  url: 'https://quotinghub.co.za',
-  logo: 'https://quotinghub.co.za/logo.png',
+  url: 'https://www.quotinghub.co.za',
+  logo: 'https://www.quotinghub.co.za/logo.png',
   description:
-    'QuotingHub is quoting and project management software for interior designers in South Africa. Create professional quotes, invoices, and purchase orders with real-time pricing and PDF generation.',
+    'QuotingHub is quoting and project management software for interior designers in South Africa. Create professional quotes, invoices, and purchase orders built from supplier price lists, with PDF generation.',
   address: {
     '@type': 'PostalAddress',
     addressCountry: 'ZA',
@@ -143,8 +143,8 @@ const localBusinessSchema = {
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
   name: 'QuotingHub',
-  url: 'https://quotinghub.co.za',
-  logo: 'https://quotinghub.co.za/logo.png',
+  url: 'https://www.quotinghub.co.za',
+  logo: 'https://www.quotinghub.co.za/logo.png',
   description: 'Quoting and project management software for interior designers in South Africa.',
   areaServed: [
     { '@type': 'City', name: 'Johannesburg' },
@@ -156,21 +156,21 @@ const localBusinessSchema = {
     '@type': 'PostalAddress',
     addressCountry: 'ZA',
   },
-  sameAs: ['https://quotinghub.co.za'],
+  sameAs: ['https://www.quotinghub.co.za'],
 }
 
 const webApplicationSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: 'QuotingHub',
-  url: 'https://quotinghub.co.za',
+  url: 'https://www.quotinghub.co.za',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'All',
   browserRequirements: 'Requires JavaScript and a modern browser',
   description:
-    'Quoting and project management software for interior designers in South Africa. Create professional quotes, invoices, and purchase orders with real-time supplier pricing, automatic VAT calculations, and instant PDF generation.',
+    'Quoting and project management software for interior designers in South Africa. Create professional quotes, invoices, and purchase orders from your supplier price lists, with automatic VAT calculations, and instant PDF generation.',
   featureList: [
-    'Real-time supplier pricing',
+    'Supplier price lists in every quote',
     'PDF quote and invoice generation',
     'Purchase order management per supplier',
     'Supplier and client management',
@@ -184,7 +184,7 @@ const webApplicationSchema = {
   creator: {
     '@type': 'Organization',
     name: 'QuotingHub',
-    url: 'https://quotinghub.co.za',
+    url: 'https://www.quotinghub.co.za',
   },
 }
 

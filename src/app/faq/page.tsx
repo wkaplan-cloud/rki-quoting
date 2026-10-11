@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   title: 'FAQ — QuotingHub for Interior Designers',
   description: 'Common questions about QuotingHub: setup, billing, features, and how it works for interior designers and decorators in South Africa.',
   alternates: {
-    canonical: 'https://quotinghub.co.za/faq',
+    canonical: 'https://www.quotinghub.co.za/faq',
   },
   openGraph: {
     title: 'FAQ — QuotingHub for Interior Designers',
     description: 'Common questions about QuotingHub: setup, billing, features, and how it works for interior designers in South Africa.',
-    url: 'https://quotinghub.co.za/faq',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/faq',
+    images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
 }
 

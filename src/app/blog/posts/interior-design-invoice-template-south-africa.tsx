@@ -73,7 +73,7 @@ export default function InvoiceTemplate() {
 
       <h3>Do non-VAT-registered designers issue tax invoices?</h3>
       <p>
-        No — if you are not VAT registered you issue a standard invoice with no VAT line and no &quot;Tax Invoice&quot; wording. Charging VAT without being registered is unlawful. Once your turnover approaches R1 million in 12 months, plan your registration — see our <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT guide</Link>.
+        No — if you are not VAT registered you issue a standard invoice with no VAT line and no &quot;Tax Invoice&quot; wording. Charging VAT without being registered is unlawful. Once your turnover approaches R2.3 million in 12 months, plan your registration — see our <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT guide</Link>.
       </p>
 
       <h3>Is there a free invoice template for SA interior designers?</h3>

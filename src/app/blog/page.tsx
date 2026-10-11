@@ -6,12 +6,12 @@ import { blogPosts } from './blog-data'
 export const metadata: Metadata = {
   title: 'Blog — Interior Design Business Guides for South Africa',
   description: 'Practical guides for South African interior designers: quoting, pricing, VAT, invoicing, purchase orders, and running a more profitable studio.',
-  alternates: { canonical: 'https://quotinghub.co.za/blog' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/blog' },
   openGraph: {
     title: 'Blog — QuotingHub',
     description: 'Practical guides for South African interior designers on quoting, pricing, VAT, and running a more profitable studio.',
-    url: 'https://quotinghub.co.za/blog',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/blog',
+    images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
 }
 

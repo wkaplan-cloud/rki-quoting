@@ -17,14 +17,15 @@ export async function generateMetadata(
   return {
     title: post.title,
     description: post.description,
-    alternates: { canonical: `https://quotinghub.co.za/blog/${post.slug}` },
+    alternates: { canonical: `https://www.quotinghub.co.za/blog/${post.slug}` },
     openGraph: {
       title: post.title,
       description: post.description,
-      url: `https://quotinghub.co.za/blog/${post.slug}`,
+      url: `https://www.quotinghub.co.za/blog/${post.slug}`,
       type: 'article',
       publishedTime: post.date,
-      images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+      modifiedTime: post.updated ?? post.date,
+      images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
     },
   }
 }
@@ -42,10 +43,12 @@ export default async function BlogPostPage(
     headline: post.title,
     description: post.description,
     datePublished: post.date,
-    dateModified: post.date,
-    author: { '@type': 'Organization', name: 'QuotingHub', url: 'https://quotinghub.co.za' },
-    publisher: { '@type': 'Organization', name: 'QuotingHub', url: 'https://quotinghub.co.za', logo: 'https://quotinghub.co.za/logo.png' },
-    mainEntityOfPage: { '@type': 'WebPage', '@id': `https://quotinghub.co.za/blog/${post.slug}` },
+    dateModified: post.updated ?? post.date,
+    author: post.reviewedBy
+      ? { '@type': 'Person', name: post.reviewedBy.name, jobTitle: post.reviewedBy.role }
+      : { '@type': 'Organization', name: 'QuotingHub', url: 'https://www.quotinghub.co.za' },
+    publisher: { '@type': 'Organization', name: 'QuotingHub', url: 'https://www.quotinghub.co.za', logo: 'https://www.quotinghub.co.za/logo.png' },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `https://www.quotinghub.co.za/blog/${post.slug}` },
   }
 
   const faqSchema = post.faqs && post.faqs.length > 0 ? {
@@ -59,6 +62,7 @@ export default async function BlogPostPage(
   } : null
 
   const Content = post.content
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <PublicLayout>
@@ -93,8 +97,11 @@ export default async function BlogPostPage(
             {post.title}
           </h1>
           <p className="text-[#8A877F] text-lg leading-relaxed mb-4">{post.description}</p>
-          <p className="text-xs text-[#C4BFB5]">
-            {new Date(post.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
+          <p className="text-xs text-[#8A877F]">
+            {post.updated && post.updated !== post.date
+              ? <>Updated {formatDate(post.updated)} · First published {formatDate(post.date)}</>
+              : formatDate(post.date)}
+            {post.reviewedBy && <> · Reviewed by {post.reviewedBy.name}, {post.reviewedBy.role}</>}
           </p>
         </header>
 

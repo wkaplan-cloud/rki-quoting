@@ -24,6 +24,6 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'Bingbot',         allow: '/' },
       { userAgent: 'cohere-ai',       allow: '/' },
     ],
-    sitemap: 'https://quotinghub.co.za/sitemap.xml',
+    sitemap: 'https://www.quotinghub.co.za/sitemap.xml',
   }
 }

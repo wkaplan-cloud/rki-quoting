@@ -244,7 +244,7 @@ export default function LandingPage() {
               {
                 icon: Zap,
                 title: 'Quote faster, close sooner',
-                desc: 'Import supplier price lists once — every quote updates automatically. Spend minutes on quotes, not hours.',
+                desc: 'Import a supplier price list once and pick items straight into every quote. Spend minutes on quotes, not hours.',
               },
               {
                 icon: FileText,

@@ -32,7 +32,7 @@ export default async function NotASupplierPage() {
             Sign out &amp; go to supplier login
           </a>
           <Link
-            href="https://quotinghub.co.za/dashboard"
+            href="https://www.quotinghub.co.za/dashboard"
             className="w-full py-2.5 text-sm font-medium rounded-lg"
             style={{ background: '#F4F4F5', color: '#52525B' }}
           >

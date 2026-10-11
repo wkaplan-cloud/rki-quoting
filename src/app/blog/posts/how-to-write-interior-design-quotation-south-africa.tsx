@@ -115,7 +115,7 @@ export default function HowToWriteQuotation() {
 
       <h3>If you are not VAT-registered</h3>
       <p>
-        Businesses with taxable turnover below R1 million per year are not required to register for VAT. If this is you, do not charge VAT and state clearly on your quotation: &quot;Prices exclude VAT — not a VAT vendor.&quot; This avoids confusion and any appearance of charging VAT you are not entitled to collect.
+        Businesses with taxable turnover below R2.3 million per year are not required to register for VAT. If this is you, do not charge VAT and state clearly on your quotation: &quot;Prices exclude VAT — not a VAT vendor.&quot; This avoids confusion and any appearance of charging VAT you are not entitled to collect.
       </p>
 
       <h2>Deposit terms: what is standard in South Africa?</h2>

@@ -13,12 +13,12 @@ import { MANUFACTURER_PLAN } from '@/lib/plan-features'
 export const metadata: Metadata = {
   title: 'QuotingHub for Manufacturers — Quoting Software for South African Furniture Makers',
   description: 'Professional quoting, invoicing, and client management for South African furniture manufacturers and wood workshops. Quote custom jobs, manage your price book, and invoice from one system.',
-  alternates: { canonical: 'https://quotinghub.co.za/manufacturer' },
+  alternates: { canonical: 'https://www.quotinghub.co.za/manufacturer' },
   openGraph: {
     title: 'QuotingHub for Manufacturers | Furniture & Wood Workshop Software',
     description: 'Quote custom manufacturing jobs, manage clients, and invoice professionally — built for South African furniture makers and wood workshops.',
-    url: 'https://quotinghub.co.za/manufacturer',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    url: 'https://www.quotinghub.co.za/manufacturer',
+    images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
 }
 

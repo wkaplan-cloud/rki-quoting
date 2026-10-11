@@ -7,6 +7,10 @@ export type BlogPost = {
   title: string
   description: string
   date: string
+  // Last substantive review — drives dateModified and the visible "Updated" line
+  updated?: string
+  // Named person who wrote or fact-checked the post; omit to credit QuotingHub
+  reviewedBy?: { name: string; role: string }
   category: string
   readTime: number
   content: ComponentType
@@ -42,6 +46,7 @@ export const blogPosts: BlogPost[] = [
     title: 'How to Write an Interior Design Quotation in South Africa',
     description: 'A step-by-step guide for South African interior designers: what to include, how to structure pricing, VAT rules, deposit terms, and common mistakes to avoid.',
     date: '2026-04-27',
+    updated: '2026-10-11',
     category: 'Business Guides',
     readTime: 7,
     content: HowToWriteQuotation,
@@ -57,6 +62,7 @@ export const blogPosts: BlogPost[] = [
     title: 'Interior Design Fee Structure in South Africa: What to Charge in 2026',
     description: 'The three main fee models for SA interior designers — percentage, flat fee, and hourly — with real 2026 rand figures, markup guidance, and advice on which structure suits your studio.',
     date: '2026-04-27',
+    updated: '2026-10-11',
     category: 'Business Guides',
     readTime: 8,
     content: FeeStructure,
@@ -100,12 +106,13 @@ export const blogPosts: BlogPost[] = [
     title: 'VAT on Interior Design Services in South Africa: A Practical Guide',
     description: 'When to register, what rate applies, VAT on deposits, how to issue a tax invoice, and what SA interior designers must know about SARS requirements.',
     date: '2026-04-27',
+    updated: '2026-10-11',
     category: 'Business Guides',
     readTime: 8,
     content: VatGuide,
     faqs: [
-      { q: 'Do interior designers charge VAT in South Africa?', a: 'Interior designers in South Africa must charge VAT at 15% once their taxable turnover exceeds R1 million in any 12-month period. Below that threshold, VAT registration is voluntary (available from R50,000 per year). Both design fees and goods procured on behalf of clients are typically subject to VAT once the designer is VAT-registered.' },
-      { q: 'When must an interior designer register for VAT in South Africa?', a: 'VAT registration becomes compulsory in South Africa when your taxable turnover exceeds R1 million in any consecutive 12-month period. You must register within 21 days of crossing this threshold. Voluntary registration is available from R50,000 per year. SARS requires registration before the threshold is reached, not after.' },
+      { q: 'Do interior designers charge VAT in South Africa?', a: 'Interior designers in South Africa must charge VAT at 15% once their taxable turnover exceeds R2.3 million in any 12-month period. Below that threshold, VAT registration is voluntary (available from R120,000 per year). Both design fees and goods procured on behalf of clients are typically subject to VAT once the designer is VAT-registered.' },
+      { q: 'When must an interior designer register for VAT in South Africa?', a: 'VAT registration becomes compulsory in South Africa when your taxable turnover exceeds R2.3 million in any consecutive 12-month period. You must register within 21 days of crossing this threshold. Voluntary registration is available from R120,000 per year. You must also register if you reasonably expect to cross it within the next 12 months.' },
       { q: 'How is VAT calculated on an interior design deposit?', a: 'Under South African VAT law, a deposit creates a tax point when received — meaning output VAT is due on the deposit amount in the period it was received, not when the project is completed. A VAT-registered designer receiving a R57,500 deposit (R50,000 + R7,500 VAT) must declare the R7,500 as output VAT in that VAT period.' },
       { q: 'What is a tax invoice for interior design services in South Africa?', a: 'A valid South African tax invoice must include the words "Tax Invoice", the supplier\'s name and VAT registration number, the invoice date and number, a description of goods or services supplied, the quantity and price, the VAT amount as a separate line, and the total including VAT. SARS requires this format for a VAT-registered designer\'s clients to claim input tax.' },
     ],
@@ -159,14 +166,15 @@ export const blogPosts: BlogPost[] = [
     title: 'How to Start an Interior Design Business in South Africa (2026 Guide)',
     description: 'Step-by-step guide to starting an interior design studio in South Africa — CIPC registration, IID membership, SARS, branding, first clients, and the tools you need from day one.',
     date: '2026-04-27',
+    updated: '2026-10-11',
     category: 'Business Guides',
     readTime: 9,
     content: HowToStart,
     faqs: [
       { q: 'Do you need a qualification to start an interior design business in South Africa?', a: 'No — there is no legal requirement for a formal qualification to trade as an interior designer or decorator in South Africa. Unlike architecture, interior design is not a regulated profession requiring registration to practise. However, IID (Institute of Interior Design Professions) registration, which does require a recognised qualification and experience, is a meaningful professional signal for commercial clients.' },
-      { q: 'How much does it cost to start an interior design business in South Africa?', a: 'The minimum viable setup for a South African interior design studio is surprisingly affordable: CIPC company registration costs approximately R500, a professional logo R2,000–R8,000, a basic website R3,000–R10,000 (or DIY on Squarespace), and quoting software from R699/month. A professional studio can be launched for under R20,000 in initial setup costs.' },
+      { q: 'How much does it cost to start an interior design business in South Africa?', a: 'The minimum viable setup for a South African interior design studio is surprisingly affordable: CIPC company registration costs under R200 in official fees, a professional logo R2,000–R8,000, a basic website R3,000–R10,000 (or DIY on Squarespace), and quoting software from R699/month. A professional studio can be launched for under R20,000 in initial setup costs.' },
       { q: 'Do I need a physical studio space to start an interior design business?', a: 'No — most early-stage South African interior design studios operate from home or shared co-working spaces. A physical studio becomes valuable when you are meeting clients frequently, have employees, or want a showroom for finishes and samples. Many successful SA designers never operate from a dedicated studio space.' },
-      { q: 'When should an interior designer register for VAT in South Africa?', a: 'VAT registration becomes compulsory once your taxable turnover exceeds R1 million in any 12-month period. Voluntary registration is available from R50,000 per year. It is advisable to register before hitting the compulsory threshold — retroactive VAT registration is more administratively complex than proactive registration.' },
+      { q: 'When should an interior designer register for VAT in South Africa?', a: 'VAT registration becomes compulsory once your taxable turnover exceeds R2.3 million in any 12-month period. Voluntary registration is available from R120,000 per year. It is advisable to register before hitting the compulsory threshold — retroactive VAT registration is more administratively complex than proactive registration.' },
       { q: 'How should an interior designer price their services when starting out?', a: 'Start with an hourly rate model to understand your true time cost before committing to flat or percentage fees. Track every hour on your first three or four projects. You will quickly learn where your time actually goes — typically more on procurement management and client communication than on design — and can price future projects accordingly.' },
     ],
   },
@@ -184,6 +192,7 @@ export const blogPosts: BlogPost[] = [
     title: 'Programa vs QuotingHub: Which Is Better for South African Interior Designers?',
     description: 'An honest comparison of Programa and QuotingHub for South African interior design studios — features, SA-specific fit, pricing in ZAR vs AUD, and which to choose.',
     date: '2026-04-27',
+    updated: '2026-10-11',
     category: 'Software Reviews',
     readTime: 7,
     content: ProgramaVsQuotingHub,
@@ -256,12 +265,13 @@ export const blogPosts: BlogPost[] = [
     title: 'Interior Design Invoice Template for South Africa: What It Must Include',
     description: 'The eight sections every SA interior design invoice needs — SARS tax invoice fields, deposit vs final invoices, VAT lines, banking details, and the mistakes that slow payment.',
     date: '2026-07-17',
+    updated: '2026-10-11',
     category: 'Templates & Tools',
     readTime: 6,
     content: InvoiceTemplate,
     faqs: [
       { q: 'What must an interior design invoice include in South Africa?', a: 'For VAT-registered studios: the words "Tax Invoice", your business details and VAT number, the client\'s details, a unique sequential invoice number and date, itemised descriptions with quantities and prices, VAT at 15% as a separate line, the total payable, plus banking details and payment terms.' },
-      { q: 'Do non-VAT-registered designers issue tax invoices?', a: 'No — a designer who is not VAT registered issues a standard invoice with no VAT line and no "Tax Invoice" wording. Charging VAT without being registered is unlawful in South Africa. Registration becomes compulsory once taxable turnover exceeds R1 million in any 12-month period.' },
+      { q: 'Do non-VAT-registered designers issue tax invoices?', a: 'No — a designer who is not VAT registered issues a standard invoice with no VAT line and no "Tax Invoice" wording. Charging VAT without being registered is unlawful in South Africa. Registration becomes compulsory once taxable turnover exceeds R2.3 million in any 12-month period.' },
       { q: 'Is there a free invoice template for South African interior designers?', a: 'Yes — QuotingHub\'s 30-day free trial includes full invoicing with SA-compliant formatting, sequential numbering, deposit handling, and automatic 15% VAT, and can be used to issue real invoices before paying anything. No credit card is required.' },
     ],
   },
@@ -284,13 +294,14 @@ export const blogPosts: BlogPost[] = [
     title: 'How to Open Trade Accounts with South African Furniture & Fabric Suppliers',
     description: 'What SA suppliers look for, the documents you need, typical trade discounts, and a five-step application process for new interior design studios.',
     date: '2026-07-17',
+    updated: '2026-10-11',
     category: 'Business Guides',
     readTime: 6,
     content: TradeAccounts,
     faqs: [
       { q: 'Can a new interior designer without clients get trade accounts in South Africa?', a: 'Yes — most SA suppliers accept new designers who present professionally: a registered business, a portfolio or credible online presence, and a completed trade application. New studios often start on cash-with-order terms at trade pricing, with credit terms following once a payment history exists.' },
       { q: 'What trade discount do SA suppliers give interior designers?', a: 'Commonly between 10% and 30% off retail depending on the supplier and category, and some trade-only suppliers price exclusively for the trade. Terms are confidential between designer and supplier — always confirm current terms directly.' },
-      { q: 'Do I need to be VAT registered to open a trade account in South Africa?', a: 'Usually no — a registered business and evidence you work in the industry is typically enough. A VAT number strengthens the application, and registration becomes compulsory anyway once taxable turnover exceeds R1 million in any 12-month period.' },
+      { q: 'Do I need to be VAT registered to open a trade account in South Africa?', a: 'Usually no — a registered business and evidence you work in the industry is typically enough. A VAT number strengthens the application, and registration becomes compulsory anyway once taxable turnover exceeds R2.3 million in any 12-month period.' },
     ],
   },
   {
@@ -324,16 +335,17 @@ export const blogPosts: BlogPost[] = [
   {
     slug: 'south-african-interior-design-industry-statistics-2026',
     title: 'South African Interior Design Industry: Key Figures & Benchmarks (2026)',
-    description: 'The key 2026 numbers for the SA interior design industry in one citable page — hourly rates, markups, deposits, VAT thresholds, IID registration, and studio startup costs.',
+    description: 'The key 2026 numbers for SA interior design studios: VAT thresholds and CIPC fees with official sources, plus clearly labelled estimates for rates, markups, deposits and startup costs.',
     date: '2026-07-17',
+    updated: '2026-10-11',
     category: 'Industry Guides',
     readTime: 5,
     content: IndustryStatistics,
     faqs: [
-      { q: 'How much does an interior designer cost in South Africa in 2026?', a: 'Typical hourly rates run R800–R1,500 for mid-level designers and R1,500–R2,500+ for senior designers, or 10–15% of project budget on a percentage model. Most designers additionally apply a 15–30% markup on items procured for the client, with 20% the most common figure.' },
-      { q: 'Is interior design a regulated profession in South Africa?', a: 'No — no licence or registration is legally required to practise interior design in South Africa. The IID (Institute of Interior Design Professions) provides voluntary professional registration, which functions as a credibility signal, particularly for commercial and corporate work.' },
-      { q: 'What deposit do interior designers take in South Africa?', a: '50% upfront is the industry standard before any items are ordered, with higher splits such as 60/40 or 70/30 used on projects heavy in custom, non-refundable items.' },
-      { q: 'When must an interior designer register for VAT in South Africa?', a: 'Registration is compulsory once taxable turnover exceeds R1 million in any consecutive 12-month period, with registration required within 21 days of crossing the threshold. Voluntary registration is available from R50,000 per year. The VAT rate is 15%.' },
+      { q: 'How much does an interior designer cost in South Africa in 2026?', a: 'By QuotingHub’s estimate (not a survey), mid-level designers charge around R800–R1,500 an hour and senior designers R1,500–R2,500+, or 10–15% of project budget on a percentage model. Most also mark up items they procure, commonly by 15–30%.' },
+      { q: 'Is interior design a regulated profession in South Africa?', a: 'We are not aware of any statutory licence requirement to practise interior design or decorating in South Africa. The IID (Institute of Interior Design Professions) offers voluntary membership, which many designers use as a credibility signal, particularly for commercial work.' },
+      { q: 'What deposit do interior designers take in South Africa?', a: 'In our experience 50% upfront is common before any items are ordered, with higher splits such as 60/40 or 70/30 on projects with many custom, non-refundable items. This is a QuotingHub estimate, not survey data.' },
+      { q: 'When must an interior designer register for VAT in South Africa?', a: 'Registration is compulsory once taxable turnover exceeds R2.3 million in any consecutive 12-month period, with registration required within 21 days of crossing the threshold. Voluntary registration is available from R120,000 per year. The VAT rate is 15%.' },
     ],
   },
   {

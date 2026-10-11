@@ -12,12 +12,12 @@ export default function VatOnInteriorDesignSouthAfrica() {
         VAT registration in South Africa is governed by the Value-Added Tax Act (89 of 1991). The rule is straightforward:
       </p>
       <ul>
-        <li><strong>Compulsory registration:</strong> If your taxable turnover exceeds or is reasonably expected to exceed <strong>R1 million in any 12-month period</strong>, you must register for VAT with SARS. This threshold applies to all taxable supplies — your design fees, product markups, and any other business income combined.</li>
-        <li><strong>Voluntary registration:</strong> If your turnover is below R1 million but above R50,000 per year, you may voluntarily register for VAT. This can be advantageous if your main clients are VAT-registered businesses who can claim input tax — it makes you more competitive against VAT-registered suppliers.</li>
-        <li><strong>Not required to register:</strong> If your turnover is below R1 million and you have not voluntarily registered, you must not charge VAT and must not include a VAT number on your invoices.</li>
+        <li><strong>Compulsory registration:</strong> If your taxable turnover exceeds or is reasonably expected to exceed <strong>R2.3 million in any 12-month period</strong>, you must register for VAT with SARS. This threshold applies to all taxable supplies — your design fees, product markups, and any other business income combined.</li>
+        <li><strong>Voluntary registration:</strong> If your turnover is below R2.3 million but above R120,000 per year, you may voluntarily register for VAT. This can be advantageous if your main clients are VAT-registered businesses who can claim input tax — it makes you more competitive against VAT-registered suppliers.</li>
+        <li><strong>Not required to register:</strong> If your turnover is below R2.3 million and you have not voluntarily registered, you must not charge VAT and must not include a VAT number on your invoices.</li>
       </ul>
       <p>
-        Many growing SA interior design studios hit the R1 million threshold sooner than expected — especially once product procurement is included in turnover. If you are approaching this level, register before you cross the threshold rather than after. Compulsory registration that has been missed attracts interest and penalties.
+        Many growing SA interior design studios hit the R2.3 million threshold sooner than expected — especially once product procurement is included in turnover. If you are approaching this level, register before you cross the threshold rather than after. Compulsory registration that has been missed attracts interest and penalties.
       </p>
 
       <h2>What rate of VAT applies to interior design services?</h2>
@@ -108,7 +108,7 @@ export default function VatOnInteriorDesignSouthAfrica() {
 
       <h3>What is the VAT threshold for interior designers in South Africa?</h3>
       <p>
-        Compulsory VAT registration is required once taxable turnover exceeds R1 million in any 12-month period. Voluntary registration is available from R50,000 per year. Below R50,000, registration is not permitted.
+        Compulsory VAT registration is required once taxable turnover exceeds R2.3 million in any 12-month period. Voluntary registration is available from R120,000 per year. Below R120,000, voluntary registration is not available.
       </p>
 
       <h3>Do I charge VAT on a deposit from a client?</h3>

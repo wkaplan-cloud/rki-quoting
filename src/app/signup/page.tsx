@@ -341,7 +341,7 @@ export default function SignupPage() {
                   Already part of a studio on QuotingHub?{' '}
                   <span className="text-[#8A877F]">Ask your studio admin to invite you — don&apos;t create a new account.</span>
                   {' '}Need help?{' '}
-                  <a href="https://quotinghub.co.za/#contact" className="text-[#9A7B4F] hover:underline">Contact us</a>
+                  <a href="https://www.quotinghub.co.za/#contact" className="text-[#9A7B4F] hover:underline">Contact us</a>
                 </p>
               </div>
               <p className="mt-4 text-center">

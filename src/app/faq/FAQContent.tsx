@@ -1,13 +1,11 @@
-'use client'
-import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 import { faqs } from './faq-data'
 
+// Native <details> keeps every answer in the server-rendered HTML, so crawlers
+// read the full Q&A without running JS. A shared `name` makes it single-open.
 export function FAQContent() {
-  const [open, setOpen] = useState<string | null>(null)
-
   return (
     <PublicLayout>
       <div className="max-w-3xl mx-auto px-6 pt-10 sm:pt-16 pb-24">
@@ -21,24 +19,15 @@ export function FAQContent() {
             <div key={cat.category}>
               <h2 className="text-xs font-semibold text-[#9A7B4F] uppercase tracking-widest mb-4">{cat.category}</h2>
               <div className="divide-y divide-[#EDE9E1] border-t border-[#EDE9E1]">
-                {cat.items.map(item => {
-                  const key = `${cat.category}-${item.q}`
-                  const isOpen = open === key
-                  return (
-                    <div key={item.q}>
-                      <button
-                        onClick={() => setOpen(isOpen ? null : key)}
-                        className="w-full text-left py-4 flex items-start justify-between gap-4 cursor-pointer"
-                      >
-                        <span className="text-sm font-medium text-[#1A1A18]">{item.q}</span>
-                        <ChevronDown size={16} className={`flex-shrink-0 mt-0.5 text-[#8A877F] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                      </button>
-                      {isOpen && (
-                        <p className="text-sm text-[#4A4A47] leading-relaxed pb-4">{item.a}</p>
-                      )}
-                    </div>
-                  )
-                })}
+                {cat.items.map(item => (
+                  <details key={item.q} name="faq" className="group">
+                    <summary className="w-full text-left py-4 flex items-start justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                      <h3 className="text-sm font-medium text-[#1A1A18]">{item.q}</h3>
+                      <ChevronDown size={16} className="flex-shrink-0 mt-0.5 text-[#8A877F] transition-transform group-open:rotate-180" />
+                    </summary>
+                    <p className="text-sm text-[#4A4A47] leading-relaxed pb-4">{item.a}</p>
+                  </details>
+                ))}
               </div>
             </div>
           ))}

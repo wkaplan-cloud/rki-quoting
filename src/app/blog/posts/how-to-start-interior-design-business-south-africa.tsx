@@ -23,7 +23,7 @@ export default function HowToStartInteriorDesignBusinessSouthAfrica() {
         A private company is a separate legal entity from you personally. Registering a (Pty) Ltd limits your personal liability to what you have invested in the company.
       </p>
       <p>
-        CIPC registration costs R175 for a name reservation plus R125 for the company registration — under R500 total via the CIPC e-Services portal. Annual returns are required (R100–R450 per year depending on turnover).
+        CIPC charges R50 to reserve a name and R125 to register a private company (R175 if you register with a name in one step on BizPortal), so official fees come to under R200. Annual returns are required (R100–R450 per year depending on turnover).
       </p>
       <p><strong>Best for:</strong> Designers who plan to grow, take on employees, or work with corporate or commercial clients who prefer to contract with a legal entity rather than an individual.</p>
 
@@ -59,7 +59,7 @@ export default function HowToStartInteriorDesignBusinessSouthAfrica() {
 
       <h3>Register for VAT if required</h3>
       <p>
-        VAT registration becomes compulsory once your taxable turnover exceeds R1 million in any 12-month period. If you are growing quickly, register before you hit the threshold. See our full guide on <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT on interior design services in South Africa</Link>.
+        VAT registration becomes compulsory once your taxable turnover exceeds R2.3 million in any 12-month period. If you are growing quickly, register before you hit the threshold. See our full guide on <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT on interior design services in South Africa</Link>.
       </p>
 
       <h3>Register for income tax with SARS</h3>
@@ -117,7 +117,7 @@ export default function HowToStartInteriorDesignBusinessSouthAfrica() {
 
       <h3>How much does it cost to start an interior design business in South Africa?</h3>
       <p>
-        The minimum viable setup is surprisingly affordable: CIPC registration (~R500), a logo (R2,000–R8,000 from a good designer), a website (R3,000–R10,000 or DIY on Squarespace), and quoting software (R699/month). You can start a professional SA interior design studio for under R20,000 in initial setup costs.
+        The minimum viable setup is surprisingly affordable: CIPC registration (under R200 in official fees), a logo (R2,000–R8,000 from a good designer), a website (R3,000–R10,000 or DIY on Squarespace), and quoting software (R699/month). You can start a professional SA interior design studio for under R20,000 in initial setup costs.
       </p>
 
       <h3>Do I need a physical studio space?</h3>
@@ -127,7 +127,7 @@ export default function HowToStartInteriorDesignBusinessSouthAfrica() {
 
       <h3>When should I register for VAT?</h3>
       <p>
-        Compulsory registration kicks in at R1 million in taxable annual turnover. Voluntary registration is available from R50,000 per year. Register before you hit the compulsory threshold — retroactive VAT registration is more complex than doing it proactively. See our full <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT guide for SA interior designers</Link>.
+        Compulsory registration kicks in at R2.3 million in taxable annual turnover. Voluntary registration is available from R120,000 per year. Register before you hit the compulsory threshold — retroactive VAT registration is more complex than doing it proactively. See our full <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT guide for SA interior designers</Link>.
       </p>
 
       <h3>How do I price my services when starting out?</h3>

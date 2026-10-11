@@ -117,7 +117,7 @@ export default function FeeStructureSouthAfrica() {
 
       <h3>Do interior designers charge VAT in South Africa?</h3>
       <p>
-        Only if they are registered for VAT with SARS — which is mandatory once annual taxable turnover exceeds R1 million. VAT-registered designers must charge 15% VAT on all taxable supplies. For a detailed breakdown, see our guide on <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT on interior design services in South Africa</Link>.
+        Only if they are registered for VAT with SARS — which is mandatory once annual taxable turnover exceeds R2.3 million. VAT-registered designers must charge 15% VAT on all taxable supplies. For a detailed breakdown, see our guide on <Link href="/blog/vat-on-interior-design-services-south-africa" className="text-[#9A7B4F] hover:underline">VAT on interior design services in South Africa</Link>.
       </p>
 
       <h3>Should I include my markup in the quotation or keep it confidential?</h3>
