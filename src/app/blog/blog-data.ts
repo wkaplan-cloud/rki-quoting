@@ -39,8 +39,24 @@ import BestSuppliers from './posts/best-fabric-and-furniture-suppliers-for-inter
 import SupplierLeadTimes from './posts/how-to-manage-supplier-lead-times-south-africa'
 import IndustryStatistics from './posts/south-african-interior-design-industry-statistics-2026'
 import InteriorDesignCourses from './posts/interior-design-courses-south-africa'
+import Walkthrough from './posts/quotinghub-walkthrough-price-list-to-purchase-orders'
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: 'quotinghub-walkthrough-price-list-to-purchase-orders',
+    title: 'QuotingHub Walkthrough: From Supplier Price List to Quote, Invoice and Purchase Orders',
+    description: 'One project followed through QuotingHub with real screens: importing a price list, building the quote, client approval, invoicing and per-supplier purchase orders, plus limitations and plan differences.',
+    date: '2026-10-12',
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    category: 'Product Guides',
+    readTime: 6,
+    content: Walkthrough,
+    faqs: [
+      { q: 'Do supplier prices in QuotingHub update in real time?', a: 'No. Prices change when you re-import a price list or when a supplier catalogue is updated. Prices already on a quote stay fixed. For items from the automatically synced catalogue, a line is flagged "Price updated" if the supplier price has changed since you added it.' },
+      { q: 'Can QuotingHub send purchase orders to suppliers?', a: 'Yes. From one project, QuotingHub generates a separate purchase order for each supplier, showing only that supplier\'s items at cost, and can email each supplier their own order.' },
+      { q: 'Which QuotingHub plan includes quotes, invoices and purchase orders?', a: 'All of them, including Solo at R699/month. Studio and Agency add team members, analytics, bulk import, the Job Cost Sheet and, on Agency, Sage integration and custom-branded PDFs.' },
+    ],
+  },
   {
     slug: 'how-to-write-interior-design-quotation-south-africa',
     title: 'How to Write an Interior Design Quotation in South Africa',
