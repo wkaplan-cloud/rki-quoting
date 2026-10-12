@@ -77,6 +77,9 @@ export default function FeeStructureSouthAfrica() {
       <p>
         Transparency matters. Disclose your markup policy in your letter of engagement upfront — clients who discover markups after the fact feel misled, even if the practice is standard. Framing it as a procurement and project management fee is accurate and far better received.
       </p>
+      <p>
+        Markup is not the same as margin: a 30% markup keeps 23.1% of the selling price. See <Link href="/blog/markup-vs-margin-interior-designers-south-africa" className="text-[#9A7B4F] hover:underline">markup vs margin for interior designers</Link>.
+      </p>
 
       <h2>Which fee model should you use?</h2>
       <p>

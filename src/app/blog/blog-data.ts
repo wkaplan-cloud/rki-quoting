@@ -40,8 +40,53 @@ import SupplierLeadTimes from './posts/how-to-manage-supplier-lead-times-south-a
 import IndustryStatistics from './posts/south-african-interior-design-industry-statistics-2026'
 import InteriorDesignCourses from './posts/interior-design-courses-south-africa'
 import Walkthrough from './posts/quotinghub-walkthrough-price-list-to-purchase-orders'
+import VatThreshold2026 from './posts/vat-threshold-r2-3-million-interior-designers-2026'
+import MarkupVsMargin from './posts/markup-vs-margin-interior-designers-south-africa'
+import FabricQuantities from './posts/how-to-calculate-fabric-quantities-interior-designers'
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: 'vat-threshold-r2-3-million-interior-designers-2026',
+    title: 'VAT Threshold Raised to R2.3 Million: What It Means for SA Interior Designers (2026)',
+    description: 'From 1 April 2026 VAT registration is compulsory only above R2.3 million. What changed, worked numbers for residential and commercial clients, and what deregistering involves.',
+    date: '2026-10-12',
+    category: 'Business Guides',
+    readTime: 6,
+    content: VatThreshold2026,
+    faqs: [
+      { q: 'What is the VAT registration threshold in South Africa in 2026?', a: 'From 1 April 2026, VAT registration is compulsory once taxable supplies exceed R2.3 million a year (up from R1 million), and voluntary registration is available above R120,000 (up from R50,000), according to the SARS Budget 2026 FAQ.' },
+      { q: 'Can I deregister for VAT if my turnover is under R2.3 million?', a: 'Yes, you may apply to SARS to cancel your registration. You must account for exit VAT on goods and assets you claimed input VAT on, calculated on the lower of cost or open market value, and SARS allows it to be paid in six equal monthly instalments.' },
+      { q: 'Is it cheaper for clients if an interior designer is not VAT registered?', a: 'For residential clients, usually yes, because they do not pay VAT on the designer\'s fee and markup. VAT-registered commercial clients can claim back VAT, so for them a registered designer is often cheaper.' },
+    ],
+  },
+  {
+    slug: 'markup-vs-margin-interior-designers-south-africa',
+    title: 'Markup vs Margin for Interior Designers: Formulas, Table and Rand Examples',
+    description: 'The difference between markup and margin, conversion formulas and table, and worked rand examples covering VAT, trade discounts and client discounts.',
+    date: '2026-10-12',
+    category: 'Business Guides',
+    readTime: 6,
+    content: MarkupVsMargin,
+    faqs: [
+      { q: 'Is a 30% markup the same as a 30% margin?', a: 'No. A 30% markup gives a 23.1% margin. To make a 30% margin you need a 42.9% markup.' },
+      { q: 'Should interior designers calculate markup before or after VAT?', a: 'VAT-registered designers should apply markup to the supplier price excluding VAT, then add 15% VAT. Designers who are not VAT registered should treat the VAT they pay suppliers as part of their cost and must not add VAT to their selling price.' },
+      { q: 'How do I convert markup to margin?', a: 'Margin = markup ÷ (1 + markup). For example, a 25% markup is 0.25 ÷ 1.25 = 20% margin. To go the other way, markup = margin ÷ (1 − margin).' },
+    ],
+  },
+  {
+    slug: 'how-to-calculate-fabric-quantities-interior-designers',
+    title: 'How to Calculate Fabric Quantities for Curtains and Cushions',
+    description: 'A step-by-step method for estimating curtain and cushion fabric in metres, with fullness, usable width, pattern repeats, wide-width fabrics and a worked example.',
+    date: '2026-10-12',
+    category: 'Business Guides',
+    readTime: 7,
+    content: FabricQuantities,
+    faqs: [
+      { q: 'How many metres of fabric do I need for curtains?', a: 'Multiply the track width by the fullness (about 2 to 2.5 times for pleated headings), add side allowances, divide by the fabric\'s usable width and round up to get the number of widths. Multiply that by the finished drop plus about 25 to 30 cm for heading and hem. A 3 m track with a 2.6 m drop in 140 cm plain fabric needs about 17.4 m. Always confirm with your workroom.' },
+      { q: 'How does a pattern repeat change fabric quantity?', a: 'Round each cut drop up to the next whole repeat, then add one extra repeat so the first cut starts at the right point. In a worked example, a 64 cm repeat took a curtain order from 17.4 m to about 20 m.' },
+      { q: 'What is usable fabric width?', a: 'The width between the selvedges that can be used in the finished curtain or cover. It is often a few centimetres narrower than the full width on the label.' },
+    ],
+  },
   {
     slug: 'quotinghub-walkthrough-price-list-to-purchase-orders',
     title: 'QuotingHub Walkthrough: From Supplier Price List to Quote, Invoice and Purchase Orders',

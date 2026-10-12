@@ -17,7 +17,7 @@ export default function VatOnInteriorDesignSouthAfrica() {
         <li><strong>Not required to register:</strong> If your turnover is below R2.3 million and you have not voluntarily registered, you must not charge VAT and must not include a VAT number on your invoices.</li>
       </ul>
       <p>
-        Many growing SA interior design studios hit the R2.3 million threshold sooner than expected — especially once product procurement is included in turnover. If you are approaching this level, register before you cross the threshold rather than after. Compulsory registration that has been missed attracts interest and penalties.
+        The threshold rose from R1 million on 1 April 2026; see <Link href="/blog/vat-threshold-r2-3-million-interior-designers-2026" className="text-[#9A7B4F] hover:underline">what the R2.3 million threshold means for designers</Link>. Many growing SA interior design studios hit the R2.3 million threshold sooner than expected — especially once product procurement is included in turnover. If you are approaching this level, register before you cross the threshold rather than after. Compulsory registration that has been missed attracts interest and penalties.
       </p>
 
       <h2>What rate of VAT applies to interior design services?</h2>
