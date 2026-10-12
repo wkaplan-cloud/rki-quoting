@@ -156,7 +156,7 @@ const localBusinessSchema = {
     '@type': 'PostalAddress',
     addressCountry: 'ZA',
   },
-  sameAs: ['https://www.quotinghub.co.za'],
+  sameAs: ['https://www.capterra.co.za/software/1107816/QuotingHub'],
 }
 
 const webApplicationSchema = {

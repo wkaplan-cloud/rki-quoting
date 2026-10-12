@@ -58,7 +58,7 @@ export default function ProgramaVsQuotingHub() {
 
       <p><strong>FF&amp;E scheduling and specification</strong></p>
       <ul>
-        <li>QuotingHub: Not available. QuotingHub is a business management tool, not a specification platform.</li>
+        <li>QuotingHub: Not part of current plans. QuotingHub focuses on quoting, invoicing and ordering rather than specification.</li>
         <li>Programa: Core strength — detailed FF&amp;E schedules, spec sheets, product approvals, and client dashboards built around specification workflows.</li>
       </ul>
 

@@ -1146,7 +1146,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           />
                           {priceChanged && (
                             <div
-                              title={`Twinbru price updated to R${currentCataloguePrice?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} — verify before sending`}
+                              title={`Home Fabrics price updated to R${currentCataloguePrice?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} — verify before sending`}
                               className="absolute -top-1.5 -right-1 flex items-center gap-0.5 text-amber-500 cursor-help"
                             >
                               <AlertTriangle size={11} />
