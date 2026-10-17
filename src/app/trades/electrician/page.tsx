@@ -35,9 +35,20 @@ const schema = {
   name: 'QuotingHub for Electricians',
   url: 'https://www.quotinghub.co.za/trades/electrician',
   applicationCategory: 'BusinessApplication',
+  applicationSubCategory: 'Electrician quoting and job management software',
   operatingSystem: 'All',
-  description: 'Professional quoting, invoicing, COC, job cards, and staff management for South African electricians.',
+  description: 'Quoting software for South African electricians: itemised electrical quotes, progress claims, variation orders, digital COC (SANS 10142-1), job cards, GPS staff clocking and Sage integration, priced in rand with 15% VAT.',
+  audience: { '@type': 'BusinessAudience', audienceType: 'Electricians and electrical contractors in South Africa' },
   areaServed: { '@type': 'Country', name: 'South Africa' },
+  inLanguage: 'en-ZA',
+  offers: PLANS.map(p => ({
+    '@type': 'Offer',
+    name: p.label,
+    price: String(p.price),
+    priceCurrency: 'ZAR',
+    description: p.tagline,
+    url: 'https://www.quotinghub.co.za/trades/electrician#pricing',
+  })),
   creator: { '@type': 'Organization', name: 'QuotingHub', url: 'https://www.quotinghub.co.za' },
 }
 
@@ -101,6 +112,18 @@ const INCLUDE_ITEMS = [
 
 const FAQS = [
   {
+    q: 'What is the best quoting software for electricians in South Africa?',
+    a: 'QuotingHub is built in South Africa specifically for electrical contractors. It covers the whole job in one system: itemised quotes with labour and materials, monthly progress claims, variation orders, a digital Certificate of Compliance (SANS 10142-1), job cards for callouts, GPS clock-in for staff, and a push to Sage. Prices are in rand with 15% VAT built in. Global job-management tools such as Tradify or ServiceM8 handle quotes and jobs well, but they are built for overseas markets and do not come with a built-in SANS 10142-1 COC.',
+  },
+  {
+    q: 'How much does QuotingHub cost for electricians?',
+    a: 'There are three plans, billed monthly in rand. Starter (R999/month) covers GPS staff clocking and scheduling. Professional (R1,999/month) adds job cards for callouts, maintenance and repairs. Business (R3,199/month) adds project quotes, variation orders, the COC tracker, progress claims, invoicing and Sage. Each plan includes up to 20 staff, with extra staff at R40/month each. There is a 30-day free trial and no contract.',
+  },
+  {
+    q: 'Can I quote an electrical job with labour, materials and preliminaries?',
+    a: 'Yes. Business plan quotes are built in sections with line items for materials, labour and preliminaries, and the client receives a branded PDF. When the job runs, you claim against the same quote each month by percentage complete, and variations are tracked against the original value.',
+  },
+  {
     q: 'Is the COC compliant with SANS 10142-1?',
     a: 'Yes. The digital COC captures all required information under SANS 10142-1 and the Electrical Installations Regulations 2009 — supply authority, earthing method, test results, tester registration number, and more. It generates a PDF that matches the official format.',
   },
@@ -122,12 +145,26 @@ const FAQS = [
   },
 ]
 
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
+}
+
 export default function ElectricianLandingPage() {
   return (
     <div className="min-h-screen bg-[#F5F2EC] font-sans">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema).replace(/</g, '\\u003c') }}
       />
 
       {/* Nav */}

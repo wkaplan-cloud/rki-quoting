@@ -34,9 +34,20 @@ const schema = {
   name: 'QuotingHub for Installers',
   url: 'https://www.quotinghub.co.za/trades/installer',
   applicationCategory: 'BusinessApplication',
+  applicationSubCategory: 'Quoting and project software for home automation, AV, CCTV and networking installers',
   operatingSystem: 'All',
-  description: 'Quoting, device registers, handover packs and support contracts for home automation, AV, CCTV and networking installers in South Africa.',
+  description: 'Quoting software for South African home automation, AV, CCTV, security and networking installers: room-by-room quotes with kits and distributor price-list import, good/better/best options, job cards and GPS clocking, a device register per site, handover packs and support contracts that invoice automatically. Priced in rand, with Sage integration.',
+  audience: { '@type': 'BusinessAudience', audienceType: 'Home automation, smart home, AV, CCTV, security and networking installers in South Africa' },
   areaServed: { '@type': 'Country', name: 'South Africa' },
+  inLanguage: 'en-ZA',
+  offers: INSTALLER_PLANS.map(p => ({
+    '@type': 'Offer',
+    name: p.label,
+    price: String(p.price),
+    priceCurrency: 'ZAR',
+    description: p.tagline,
+    url: 'https://www.quotinghub.co.za/trades/installer#pricing',
+  })),
   creator: { '@type': 'Organization', name: 'QuotingHub', url: 'https://www.quotinghub.co.za' },
 }
 
@@ -86,6 +97,14 @@ const FEATURES = [
 ]
 
 const FAQS = [
+  {
+    q: 'What is the best quoting software for home automation and CCTV installers in South Africa?',
+    a: 'QuotingHub is built in South Africa for equipment installers: home automation (Control4 and other brands), AV, CCTV, security and networking. It quotes room by room with reusable kits and good/better/best options, imports your distributor price lists in rand, registers every device on site, produces a handover pack, and bills support contracts automatically. International system-integrator tools such as D-Tools are powerful but are priced in US dollars per user and aimed at larger projects.',
+  },
+  {
+    q: 'How much does QuotingHub cost for installers?',
+    a: 'Installer is R2,999/month and covers quoting, projects, variation orders, progress claims, Sage, job cards, GPS clocking, the device register and handover packs, for up to 20 staff. Installer Pro is R4,499/month and adds support contracts with automatic recurring invoices. Extra staff over 20 are R40/month each, and setup and training is R2,500 once-off. There is a 30-day free trial and no contract.',
+  },
   {
     q: 'Can I bring in my distributor price lists?',
     a: 'Yes. Upload the CSV or Excel file you get from your distributor, match the columns, and set a markup. Items keep their SKU and brand, and re-importing next month’s list updates prices rather than creating duplicates.',
@@ -164,12 +183,26 @@ function QuoteMock() {
   )
 }
 
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map(({ q, a }) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
+}
+
 export default function InstallerLandingPage() {
   return (
     <div className="min-h-screen bg-[#F5F2EC] font-sans">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema).replace(/</g, '\\u003c') }}
       />
 
       {/* Nav */}

@@ -43,8 +43,55 @@ import Walkthrough from './posts/quotinghub-walkthrough-price-list-to-purchase-o
 import VatThreshold2026 from './posts/vat-threshold-r2-3-million-interior-designers-2026'
 import MarkupVsMargin from './posts/markup-vs-margin-interior-designers-south-africa'
 import FabricQuantities from './posts/how-to-calculate-fabric-quantities-interior-designers'
+import BestElectricianSoftware from './posts/best-quoting-software-for-electricians-south-africa'
+import ElectricalQuotation from './posts/how-to-write-an-electrical-quotation-south-africa'
+import BestInstallerSoftware from './posts/best-quoting-software-for-home-automation-cctv-installers-south-africa'
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: 'best-quoting-software-for-electricians-south-africa',
+    title: 'Best Quoting Software for Electricians in South Africa (2026)',
+    description: 'An honest comparison of quoting and job software for SA electricians: QuotingHub, Tradify, ServiceM8, simple local apps and Excel. Rand pricing, VAT, COCs, progress claims and job cards.',
+    date: '2026-10-17',
+    category: 'Trades Guides',
+    readTime: 7,
+    content: BestElectricianSoftware,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'What is the best quoting software for electricians in South Africa?', a: 'For electrical contractors who quote projects, claim monthly and issue COCs, QuotingHub is built in South Africa for exactly that: itemised quotes, progress claims, variation orders, a digital SANS 10142-1 COC, job cards, GPS staff clocking and Sage integration, priced in rand. Sole traders who only need simple quotes can use a lighter quoting app.' },
+      { q: 'How much does electrician quoting software cost in South Africa?', a: 'QuotingHub for electricians is R999/month for staff clocking, R1,999/month with job cards, and R3,199/month for the full quoting, claims, COC and Sage suite, each with up to 20 staff. Per-user tools such as Tradify are listed on Capterra South Africa at roughly R400 to R480 per user per month.' },
+      { q: 'Is there software that does electrical COCs in South Africa?', a: 'Yes. QuotingHub includes a digital Certificate of Compliance that captures the SANS 10142-1 fields, test results and tester registration, links it to the job, and sends it to the client as a PDF.' },
+    ],
+  },
+  {
+    slug: 'how-to-write-an-electrical-quotation-south-africa',
+    title: 'How to Write an Electrical Quotation in South Africa',
+    description: 'What to put on an electrical quote in South Africa: scope, itemised materials and labour, preliminaries, exclusions, validity, VAT, deposits, variations and the COC.',
+    date: '2026-10-17',
+    category: 'Trades Guides',
+    readTime: 6,
+    content: ElectricalQuotation,
+    faqs: [
+      { q: 'What should an electrical quotation include?', a: 'Your business and VAT details, client and site details, a quote number and validity date, a scope of work broken into sections, itemised materials, labour and preliminaries, the COC and testing as its own line, exclusions, payment terms, how variations are handled, and an acceptance line.' },
+      { q: 'How long should an electrical quote be valid for?', a: 'Many South African electrical contractors keep quotes valid for 14 to 30 days because cable and copper prices change often, and state that prices may be adjusted after the validity date.' },
+      { q: 'Do electricians have to charge VAT in South Africa?', a: 'Only if they are VAT vendors. From 1 April 2026, VAT registration is compulsory once taxable supplies exceed R2.3 million a year. Registered contractors add 15% VAT; unregistered contractors should state on the quote that they are not a VAT vendor.' },
+    ],
+  },
+  {
+    slug: 'best-quoting-software-for-home-automation-cctv-installers-south-africa',
+    title: 'Best Quoting Software for Home Automation, AV & CCTV Installers in South Africa (2026)',
+    description: 'Quoting and project software for SA smart-home, AV, CCTV and networking installers compared: QuotingHub, D-Tools, general trades apps and Sage with spreadsheets.',
+    date: '2026-10-17',
+    category: 'Trades Guides',
+    readTime: 6,
+    content: BestInstallerSoftware,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'What is the best quoting software for home automation installers in South Africa?', a: 'QuotingHub is built in South Africa for home automation, AV, CCTV and networking installers: room-by-room quotes with kits and good/better/best options, distributor price lists in rand, a device register, handover packs and support contracts that invoice automatically. Large integrators needing engineering drawings may prefer D-Tools, which is priced in US dollars per user.' },
+      { q: 'How much does installer quoting software cost in South Africa?', a: 'QuotingHub Installer is R2,999/month and Installer Pro, which adds support contracts with recurring invoicing, is R4,499/month, each with up to 20 staff. D-Tools publishes its System Integrator tier from US$150 per user per month.' },
+      { q: 'Can CCTV installers track devices and support contracts?', a: 'Yes. QuotingHub keeps a device register per site with serial, MAC, IP, firmware and warranty for each device, produces a client handover pack, and on Installer Pro bills support contracts monthly or annually with renewal reminders.' },
+    ],
+  },
   {
     slug: 'vat-threshold-r2-3-million-interior-designers-2026',
     title: 'VAT Threshold Raised to R2.3 Million: What It Means for SA Interior Designers (2026)',

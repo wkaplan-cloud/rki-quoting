@@ -4,7 +4,7 @@ export const faqs = [
     items: [
       {
         q: 'What is QuotingHub?',
-        a: 'QuotingHub is a business system built specifically for interior designers. It helps you quote faster, look more professional, reduce admin, and win more projects — with quotes, invoices, purchase orders, and supplier management all in one place.',
+        a: 'QuotingHub is South African quoting and business software for three kinds of business. Interior designers and decorators use it for quotes, invoices, purchase orders and supplier price lists. Electricians use it for quotes, progress claims, variation orders, digital COCs, job cards and GPS staff clocking. Home automation, AV, CCTV and networking installers use it for room-by-room quotes with kits, device registers, handover packs and support contracts.',
       },
       {
         q: 'Do I need to install anything?',
@@ -13,6 +13,19 @@ export const faqs = [
       {
         q: 'Is there a free trial?',
         a: 'Yes. New accounts get a free trial period to explore the platform fully before committing to a subscription. No credit card is required to start.',
+      },
+    ],
+  },
+  {
+    category: 'Electricians & Installers',
+    items: [
+      {
+        q: 'Does QuotingHub work for electricians?',
+        a: 'Yes. QuotingHub has a dedicated electrician product with itemised quotes, monthly progress claims, variation orders, a digital Certificate of Compliance (SANS 10142-1), job cards and GPS clock-in for staff, with Sage integration. Plans are R999, R1,999 and R3,199 per month; full quoting and claims are on the R3,199 Business plan.',
+      },
+      {
+        q: 'Does QuotingHub work for home automation, AV and CCTV installers?',
+        a: 'Yes. The installer product quotes room by room with kits and good/better/best options, imports distributor price lists, keeps a device register per site, produces client handover packs and bills support contracts automatically. Installer is R2,999/month and Installer Pro is R4,499/month.',
       },
     ],
   },

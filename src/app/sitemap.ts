@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://www.quotinghub.co.za/trades', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/trades/electrician', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/trades/installer', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://www.quotinghub.co.za/manufacturer', changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://www.quotinghub.co.za/faq', changeFrequency: 'monthly', priority: 0.7 },
     ...blogPosts.map(post => ({
       url: `https://www.quotinghub.co.za/blog/${post.slug}`,
