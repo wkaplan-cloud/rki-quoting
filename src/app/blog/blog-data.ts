@@ -46,8 +46,52 @@ import FabricQuantities from './posts/how-to-calculate-fabric-quantities-interio
 import BestElectricianSoftware from './posts/best-quoting-software-for-electricians-south-africa'
 import ElectricalQuotation from './posts/how-to-write-an-electrical-quotation-south-africa'
 import BestInstallerSoftware from './posts/best-quoting-software-for-home-automation-cctv-installers-south-africa'
+import ElectricalCocGuide from './posts/electrical-coc-guide-for-electricians-south-africa'
+import CctvQuotation from './posts/how-to-quote-a-cctv-installation-south-africa'
+import TradifyVsQuotingHub from './posts/tradify-vs-quotinghub-south-africa'
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: 'electrical-coc-guide-for-electricians-south-africa',
+    title: 'Electrical COC Guide for South African Electricians (2026)',
+    description: 'When an electrical Certificate of Compliance is required, who may issue one, what it records, the two-year rule on property sales, and how to manage COCs digitally.',
+    date: '2026-10-18',
+    category: 'Trades Guides',
+    readTime: 6,
+    content: ElectricalCocGuide,
+    faqs: [
+      { q: 'When is an electrical COC required in South Africa?', a: 'Under the Electrical Installation Regulations, 2009, every user or lessor must have a valid COC for the electrical installation. A COC is issued for new installations and for additions or alterations, and regulation 7(5) says a change of ownership may not be allowed if the COC is older than two years.' },
+      { q: 'Who can issue an electrical COC?', a: 'Only a registered person registered with the Chief Inspector of the Department of Employment and Labour: an electrical tester for single phase (single-phase installations), an installation electrician (any installation except specialised ones), or a master installation electrician (any installation, including specialised ones).' },
+      { q: 'Is there software for issuing electrical COCs?', a: 'Yes. QuotingHub includes a digital COC for South African electricians that records the supply, earthing and test results and the tester\'s registration details, links it to the job, and sends it to the client as a PDF.' },
+    ],
+  },
+  {
+    slug: 'how-to-quote-a-cctv-installation-south-africa',
+    title: 'How to Quote a CCTV Installation in South Africa',
+    description: 'A practical structure for CCTV quotations: survey, area-by-area coverage, itemised equipment, labour and configuration, good/better/best options, exclusions, support plans and handover.',
+    date: '2026-10-18',
+    category: 'Trades Guides',
+    readTime: 5,
+    content: CctvQuotation,
+    faqs: [
+      { q: 'What should a CCTV quotation include?', a: 'Coverage by area, itemised cameras, recorder, storage, switch, cabling and backup power, separate installation labour and configuration, two or three options, exclusions such as electrical and builder\'s work, validity, deposit and VAT, and an optional support plan.' },
+      { q: 'How should CCTV installers price support?', a: 'Offer a monthly or annual support plan with health checks, firmware updates and a set number of callouts, and charge separately for work outside it. QuotingHub Installer Pro invoices these plans automatically and marks each callout as covered or chargeable.' },
+    ],
+  },
+  {
+    slug: 'tradify-vs-quotinghub-south-africa',
+    title: 'Tradify vs QuotingHub for South African Electricians and Installers',
+    description: 'Tradify and QuotingHub compared for SA trades: per-user vs per-business pricing, Xero and QuickBooks vs Sage, COCs, progress claims, device registers and support contracts.',
+    date: '2026-10-18',
+    category: 'Trades Guides',
+    readTime: 5,
+    content: TradifyVsQuotingHub,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'Is Tradify or QuotingHub better for South African electricians?', a: 'Tradify is a strong general job app, priced per user and integrated with Xero and QuickBooks. QuotingHub is built in South Africa, priced per business with up to 20 staff included, integrates with Sage, and adds a digital SANS 10142-1 COC, progress claims and variation orders. Contractors who quote projects and issue COCs tend to fit QuotingHub better.' },
+      { q: 'How much does Tradify cost in South Africa?', a: 'Tradify charges per user per month; its South African Xero app listing shows the Lite plan at R480 per user per month at the time of writing.' },
+    ],
+  },
   {
     slug: 'best-quoting-software-for-electricians-south-africa',
     title: 'Best Quoting Software for Electricians in South Africa (2026)',

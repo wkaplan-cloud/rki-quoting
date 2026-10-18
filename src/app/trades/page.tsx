@@ -7,12 +7,12 @@ import { NavDropdown } from '../_components/NavDropdown'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 
 export const metadata: Metadata = {
-  title: 'QuotingHub for Trades — Quoting Software for South African Contractors',
-  description: 'Professional quoting, invoicing, job cards, and business management for South African electricians, plumbers, and contractors. Built for the way tradespeople actually work.',
+  title: 'QuotingHub for Trades — Quoting Software for SA Electricians & Installers',
+  description: 'Quoting, invoicing, job cards and staff management for South African electricians and home automation, AV, CCTV and networking installers. Rand pricing, 15% VAT, Sage integration. 30-day free trial.',
   alternates: { canonical: 'https://www.quotinghub.co.za/trades' },
   openGraph: {
-    title: 'QuotingHub for Trades | Quoting Software for South African Contractors',
-    description: 'Quotes, invoices, job cards, and COCs — built for South African electricians and tradespeople.',
+    title: 'QuotingHub for Trades | Quoting Software for SA Electricians & Installers',
+    description: 'Quotes, claims, COCs, job cards, device registers and support contracts — built for South African electricians and installers.',
     url: 'https://www.quotinghub.co.za/trades',
     images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },

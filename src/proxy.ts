@@ -64,6 +64,8 @@ export async function proxy(request: NextRequest) {
     pathname === '/sitemap.xml' ||
     pathname === '/robots.txt' ||
     pathname === '/llms.txt' ||
+    // IndexNow key file (scripts/indexnow.mjs) — search engines fetch it to verify submissions
+    pathname === '/83530f6271d41e872aa4050adf33f979.txt' ||
     // Browsers fetch the manifest without credentials and register the service
     // worker before there is a session, so gating these redirects them to the
     // login page: the manifest then fails to parse as JSON and the service
