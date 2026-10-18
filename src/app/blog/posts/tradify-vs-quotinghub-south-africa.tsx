@@ -47,7 +47,7 @@ export default function TradifyVsQuotingHubSouthAfrica() {
 
       <h2>Verdict</h2>
       <p>
-        For a South African electrical contractor or installer with a growing team, QuotingHub's per-business pricing gets cheaper than per-user pricing as the team grows, and it covers COCs, claims, device registers and Sage. For a small service business on Xero that wants a general job app, Tradify is a solid choice.
+        For a South African electrical contractor or installer with a growing team, QuotingHub&apos;s per-business pricing gets cheaper than per-user pricing as the team grows, and it covers COCs, claims, device registers and Sage. For a small service business on Xero that wants a general job app, Tradify is a solid choice.
       </p>
       <p>
         See <Link href="/trades/electrician" className="text-[#9A7B4F] hover:underline">QuotingHub for electricians</Link>, <Link href="/trades/installer" className="text-[#9A7B4F] hover:underline">QuotingHub for installers</Link>, or the wider comparison of <Link href="/blog/best-quoting-software-for-electricians-south-africa" className="text-[#9A7B4F] hover:underline">quoting software for electricians in South Africa</Link>.
