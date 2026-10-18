@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 
 // Every Studio webfont (Playfair, Inter, and the content-font choices in
-// contentFonts.ts) is already loaded app-wide via next/font/google
+// contentFonts.ts) is already loaded app-wide via next/font/local
 // (src/app/layout.tsx), but only as CSS variables — nothing on the Studio
 // route necessarily REFERENCES a given variable, so its @font-face is never
 // actually fetched until something does. Passing next/font's plain family

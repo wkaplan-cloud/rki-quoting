@@ -1,19 +1,24 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, Inter, Roboto, Montserrat, Lato } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
+// Fonts are self-hosted (latin subset, from Fontsource) rather than loaded via
+// next/font/google: fetching them from Google during the Vercel build failed
+// intermittently under Turbopack and broke deploys.
+
+const playfair = localFont({
+  src: [
+    { path: './fonts/playfair-display-latin-wght-normal.woff2', weight: '400 700', style: 'normal' },
+    { path: './fonts/playfair-display-latin-wght-italic.woff2', weight: '400 700', style: 'italic' },
+  ],
   variable: '--font-playfair',
   display: 'swap',
 })
 
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
+const inter = localFont({
+  src: './fonts/inter-latin-wght-normal.woff2',
+  weight: '300 600',
   variable: '--font-inter',
   display: 'swap',
 })
@@ -21,23 +26,25 @@ const inter = Inter({
 // Studio's board-wide "content font" choices (src/lib/studio/contentFonts.ts)
 // — the 4 most popular free Google Fonts, applied to every text object on
 // every slide of a board.
-const roboto = Roboto({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
+const roboto = localFont({
+  src: './fonts/roboto-latin-wght-normal.woff2',
+  weight: '400 700',
   variable: '--font-roboto',
   display: 'swap',
 })
 
-const montserrat = Montserrat({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+const montserrat = localFont({
+  src: './fonts/montserrat-latin-wght-normal.woff2',
+  weight: '400 700',
   variable: '--font-montserrat',
   display: 'swap',
 })
 
-const lato = Lato({
-  subsets: ['latin'],
-  weight: ['400', '700'],
+const lato = localFont({
+  src: [
+    { path: './fonts/lato-latin-400-normal.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/lato-latin-700-normal.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-lato',
   display: 'swap',
 })
