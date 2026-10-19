@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getHomeFabricsListId } from '@/lib/home-fabrics-list'
 
-export const maxDuration = 300
+export const maxDuration = 800
 
 const TWINBRU_BASE = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
 const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
@@ -17,8 +17,11 @@ const PAGE_SIZE    = 50  // confirmed API max
 const START_YEAR = 2000
 const END_YEAR   = new Date().getFullYear()
 
-// 50s time budget — safe inside Vercel Hobby's 60s function limit, leaving room for DB writes.
-const TIME_LIMIT_MS = 240_000
+// Nightly cron: 12-minute budget inside Vercel Pro's 800s limit. A full scan (~15.8k fabrics)
+// takes ~4–5 min, so it finishes in one invocation; the self-chain below is only a safety net.
+// Button-driven runs (manual/continue) keep short chunks so the panel can show progress.
+const CRON_TIME_LIMIT_MS   = 720_000
+const BUTTON_TIME_LIMIT_MS = 240_000
 
 function twinbruHeaders() {
   return {
@@ -163,6 +166,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Year-by-year scan (newest → oldest) ──────────────────────────────────
+    const timeLimitMs   = triggeredBy === 'cron' ? CRON_TIME_LIMIT_MS : BUTTON_TIME_LIMIT_MS
     const startTime     = Date.now()
     let totalFetched    = 0
     let added           = 0
@@ -176,7 +180,7 @@ export async function GET(req: NextRequest) {
       let totalPageCount = 0
 
       while (true) {
-        if (Date.now() - startTime > TIME_LIMIT_MS) {
+        if (Date.now() - startTime > timeLimitMs) {
           timedOut = true
           resumeToken = `RESUME:${year}:${page}`
           break
