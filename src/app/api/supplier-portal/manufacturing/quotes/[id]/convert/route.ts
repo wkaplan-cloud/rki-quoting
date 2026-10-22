@@ -20,6 +20,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .single()
   if (!quote) return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
 
+  // Option lines sit outside the quote total until the client picks one, and
+  // nothing records that pick — so they must be settled before invoicing.
+  const { count: optionLines } = await supabase
+    .from('mfg_quote_line_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('quote_id', id)
+    .not('option_label', 'is', null)
+  if ((optionLines ?? 0) > 0) {
+    return NextResponse.json({ error: 'This quote still has option lines. Keep the option the client chose as a normal line, delete the others, then invoice.' }, { status: 400 })
+  }
+
   const { data: settings } = await supabase
     .from('mfg_settings')
     .select('invoice_prefix, default_deposit_percentage')
@@ -61,9 +72,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } else if (invoice_type === 'deposit') {
     const pct = deposit_percentage ?? settings?.default_deposit_percentage ?? 50
 
-    // Split on ex-VAT subtotal — SARS requires VAT on each portion separately
-    const depositSubtotal = Math.round(quote.subtotal * pct / 100 * 100) / 100
-    const finalSubtotal   = Math.round((quote.subtotal - depositSubtotal) * 100) / 100
+    // Split on the ex-VAT amount, delivery and installation included — SARS
+    // requires VAT on each portion separately
+    const taxable         = (quote.subtotal ?? 0) + (quote.delivery_cost ?? 0) + (quote.installation_cost ?? 0)
+    const depositSubtotal = Math.round(taxable * pct / 100 * 100) / 100
+    const finalSubtotal   = Math.round((taxable - depositSubtotal) * 100) / 100
     const depositVat      = quote.apply_vat ? Math.round(depositSubtotal * quote.vat_rate) / 100 : 0
     const finalVat        = quote.apply_vat ? Math.round(finalSubtotal   * quote.vat_rate) / 100 : 0
     const depositTotal    = Math.round((depositSubtotal + depositVat) * 100) / 100

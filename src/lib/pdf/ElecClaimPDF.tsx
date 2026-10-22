@@ -1,6 +1,7 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { BLUE_PALETTE, recolorStyles, type PdfPalette } from './palette'
+import { claimTotals } from '@/lib/claim-totals'
 import type { ElecClaim, ElecQuote, ElecQuoteSection, ElecClient, ElecSettings } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -134,14 +135,8 @@ export function ElecClaimPDF({
     ? (['invoiced', 'paid'].includes(claim.status) ? 'TAX INVOICE' : 'RETENTION RELEASE')
     : (['invoiced', 'paid'].includes(claim.status) ? 'TAX INVOICE' : 'PAYMENT CLAIM')
   const contractLabel = (isReMeasure || isCostPlus) ? 'Estimated Value' : 'Contract Value'
-  const thisClaimed  = claim.total_claimed ?? 0
-  const retentionPct = (!isRetention && quote.retention_percentage > 0) ? quote.retention_percentage : 0
-  const retentionAmt = retentionPct > 0 ? Math.round(thisClaimed * retentionPct) / 100 : 0
-  const netThisClaim = thisClaimed - retentionAmt
-  const vatRate      = quote.vat_rate ?? settings?.default_vat_rate ?? 15
-  const vatAmount    = thisClaimed * (vatRate / 100)
-  const totalPayable = netThisClaim + vatAmount
-  const cumulativeTotal = prevTotalClaimed + thisClaimed
+  const t = claimTotals(claim, quote.retention_percentage, quote.vat_rate ?? settings?.default_vat_rate ?? 15)
+  const cumulativeTotal = prevTotalClaimed + t.billed
 
   const freeItems = lineItems.filter(li => li.section_id === null)
 
@@ -272,28 +267,40 @@ export function ElecClaimPDF({
             )}
             <View style={s.tRow}>
               <Text style={s.tLabel}>This claim (excl. VAT)</Text>
-              <Text style={s.tVal}>{fmtR(thisClaimed)}</Text>
+              <Text style={s.tVal}>{fmtR(t.claimed)}</Text>
             </View>
-            {retentionAmt > 0 && (
+            {t.notCertified > 0 && (
               <>
                 <View style={s.tRow}>
-                  <Text style={[s.tLabel, { color: GOLD }]}>Less retention ({retentionPct}%)</Text>
-                  <Text style={[s.tVal, { color: GOLD }]}>– {fmtR(retentionAmt)}</Text>
+                  <Text style={s.tLabel}>Less not certified (carried forward)</Text>
+                  <Text style={s.tVal}>– {fmtR(t.notCertified)}</Text>
+                </View>
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Certified (excl. VAT)</Text>
+                  <Text style={s.tVal}>{fmtR(t.billed)}</Text>
+                </View>
+              </>
+            )}
+            {t.retention > 0 && (
+              <>
+                <View style={s.tRow}>
+                  <Text style={[s.tLabel, { color: GOLD }]}>Less retention ({t.retentionPct}%)</Text>
+                  <Text style={[s.tVal, { color: GOLD }]}>– {fmtR(t.retention)}</Text>
                 </View>
                 <View style={s.tRow}>
                   <Text style={s.tLabel}>Net this claim (excl. VAT)</Text>
-                  <Text style={s.tVal}>{fmtR(netThisClaim)}</Text>
+                  <Text style={s.tVal}>{fmtR(t.net)}</Text>
                 </View>
               </>
             )}
             <View style={s.tRow}>
-              <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
-              <Text style={s.tVal}>{fmtR(vatAmount)}</Text>
+              <Text style={s.tLabel}>VAT ({t.vatRate}%)</Text>
+              <Text style={s.tVal}>{fmtR(t.vat)}</Text>
             </View>
             <View style={s.tDivider} />
             <View style={s.tBig}>
               <Text style={s.tBigLabel}>TOTAL PAYABLE</Text>
-              <Text style={s.tBigVal}>{fmtR(totalPayable)}</Text>
+              <Text style={s.tBigVal}>{fmtR(t.total)}</Text>
             </View>
           </View>
         </View>

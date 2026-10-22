@@ -106,7 +106,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   if (updatedQuote) {
     const taxable  = (updatedQuote.subtotal ?? 0) + (updatedQuote.delivery_cost ?? 0) + (updatedQuote.installation_cost ?? 0)
-    const vatAmt   = updatedQuote.apply_vat ? taxable * ((updatedQuote.vat_rate ?? 15) / 100) : 0
+    const vatAmt   = updatedQuote.apply_vat ? Math.round(taxable * (updatedQuote.vat_rate ?? 15)) / 100 : 0
     await supabase
       .from('mfg_quotes')
       .update({ vat_amount: vatAmt, total: taxable + vatAmt })

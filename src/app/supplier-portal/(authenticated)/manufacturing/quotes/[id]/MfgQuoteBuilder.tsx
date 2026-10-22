@@ -202,13 +202,15 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   const [convertType, setConvertType] = useState<'full' | 'deposit'>('full')
   const [converting, setConverting] = useState(false)
 
-  const itemsSubtotal = lineItems.reduce((s, li) => s + li.line_total, 0)
+  // Option lines sit outside the total until the client picks one, as on the PDF.
+  const baseItems     = lineItems.filter(li => !li.option_label)
+  const itemsSubtotal = baseItems.reduce((s, li) => s + li.line_total, 0)
   const grossSubtotal = itemsSubtotal + deliveryCost + installationCost
-  const vatAmt        = applyVat ? grossSubtotal * (vatRate / 100) : 0
+  const vatAmt        = applyVat ? Math.round(grossSubtotal * vatRate) / 100 : 0
   const total         = grossSubtotal + vatAmt
   // Lines with no cost captured are left out of both sides of the margin sum —
   // counting them at R0 cost would report their full selling price as profit.
-  const costedItems   = lineItems.filter(li => li.cost_per_unit !== null)
+  const costedItems   = baseItems.filter(li => li.cost_per_unit !== null)
   const uncostedCount = lineItems.filter(li => li.cost_per_unit === null && li.line_total > 0).length
   const pendingCount  = lineItems.filter(li => li.cost_per_unit === null && hasPending(li)).length
   const totalCost     = costedItems.reduce((s, li) => s + (li.cost_per_unit ?? 0) * li.quantity, 0)

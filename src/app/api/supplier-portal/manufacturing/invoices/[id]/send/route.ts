@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const [{ data: invoice }, { data: settings }] = await Promise.all([
     supabase
       .from('mfg_invoices')
-      .select('*, job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name, client_type, contact_person, email, phone, address, vat_number)), quote:mfg_quotes(id, quote_number, revision_number, subtotal, vat_amount, total)')
+      .select('*, job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name, client_type, contact_person, email, phone, address, vat_number)), quote:mfg_quotes(id, quote_number, revision_number, subtotal, vat_amount, total, delivery_cost, installation_cost)')
       .eq('id', id)
       .eq('portal_account_id', auth.portalAccountId)
       .single(),
@@ -72,6 +72,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     lineItems:       lineItems as Parameters<typeof MfgQuotePDF>[0]['lineItems'],
     subtotal:        invoice.subtotal,
     vatAmount:       invoice.vat_amount,
+    // A full invoice carries the quote's delivery and installation in its
+    // total; deposit and final invoices already fold them into their subtotal.
+    deliveryCost:     invoice.invoice_type === 'full' ? (invoice as { quote?: { delivery_cost?: number } | null }).quote?.delivery_cost ?? 0 : 0,
+    installationCost: invoice.invoice_type === 'full' ? (invoice as { quote?: { installation_cost?: number } | null }).quote?.installation_cost ?? 0 : 0,
     total:           invoice.total,
     applyVat:        invoice.apply_vat,
     vatRate:         invoice.vat_rate,

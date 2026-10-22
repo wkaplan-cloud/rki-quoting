@@ -55,10 +55,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle(),
       supabaseAdmin
         .from('elec_claim_line_items')
-        .select('quote_line_item_id, amount_claimed, claim:elec_claims!inner(id, status, quote_id)')
+        .select('quote_line_item_id, amount_claimed, amount_certified, claim:elec_claims!inner(id, status, quote_id, created_at)')
         .eq('claim.quote_id', claim.quote_id)
         .neq('claim.id', claimId)
-        .neq('claim.status', 'draft'),
+        .neq('claim.status', 'draft')
+        .lt('claim.created_at', claim.created_at),
     ])
     if (!quoteRaw) return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
 
@@ -67,7 +68,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const prevClaimedMap: Record<string, number> = {}
     for (const li of (prevClaims ?? [])) {
       const id = li.quote_line_item_id
-      prevClaimedMap[id] = (prevClaimedMap[id] ?? 0) + (li.amount_claimed ?? 0)
+      // A QS cut on a settled claim is carried forward, so only the certified part counts as claimed
+      const status = (Array.isArray(li.claim) ? li.claim[0] : li.claim)?.status
+      const settled = ['certified', 'invoiced', 'paid'].includes(status ?? '') && li.amount_certified != null
+      prevClaimedMap[id] = (prevClaimedMap[id] ?? 0) + ((settled ? li.amount_certified : li.amount_claimed) ?? 0)
     }
     const prevTotalClaimed = Object.values(prevClaimedMap).reduce((s, v) => s + v, 0)
 

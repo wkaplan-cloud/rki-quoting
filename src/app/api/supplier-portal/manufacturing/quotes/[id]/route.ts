@@ -82,7 +82,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const deliveryCost     = 'delivery_cost'     in patch ? (patch.delivery_cost     as number)  : (cur.delivery_cost ?? 0)
       const installationCost = 'installation_cost' in patch ? (patch.installation_cost as number)  : (cur.installation_cost ?? 0)
       const taxable          = (cur.subtotal ?? 0) + deliveryCost + installationCost
-      const vatAmt           = applyVat ? taxable * (vatRate / 100) : 0
+      const vatAmt           = applyVat ? Math.round(taxable * vatRate) / 100 : 0
       patch.vat_amount = vatAmt
       patch.total      = taxable + vatAmt
     }

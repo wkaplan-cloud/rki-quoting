@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { claimTotals } from '@/lib/claim-totals'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getElecPortalAccount } from '@/lib/sage-elec'
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     const [{ data: claim }, { data: settings }] = await Promise.all([
       supabaseAdmin
         .from('elec_claims')
-        .select('*, quote:elec_quotes(quote_number, project_name, vat_rate)')
+        .select('*, quote:elec_quotes(quote_number, project_name, vat_rate, retention_percentage)')
         .eq('id', claimId)
         .eq('portal_account_id', account.id)
         .single(),
@@ -50,8 +51,9 @@ export async function POST(req: NextRequest) {
     const projectName: string = (quote as { project_name?: string } | null)?.project_name ?? 'Project'
     const quoteNumber: string = (quote as { quote_number?: string } | null)?.quote_number ?? ''
 
-    const invoiceAmount = claim.total_invoiced ?? claim.total_claimed
-    const amountExclVat = parseFloat((invoiceAmount / (1 + vatRate / 100)).toFixed(2))
+    // Claim amounts are excl. VAT; Sage adds the VAT. Retention comes off here
+    // and is billed when the retention claim releases it.
+    const totals = claimTotals(claim, (quote as { retention_percentage?: number } | null)?.retention_percentage, vatRate)
 
     const description = `${projectName} – ${claim.claim_number}`
     const invoice = await pushSageInvoice({
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
       reference: claim.claim_number,
       description,
       lineDescription: `${projectName}${quoteNumber ? ` (${quoteNumber})` : ''} – ${claim.claim_number}`,
-      amountExclVat,
+      amountExclVat: totals.net,
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       existingSageId: claim.sage_invoice_id,
     })
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
       sage_customer_id: String(sageCustomerId),
       sage_customer_name: sageCustomerName,
       status: 'invoiced',
-      total_invoiced: invoiceAmount,
+      total_invoiced: totals.billed,
     }).eq('id', claimId)
 
     return NextResponse.json({ ok: true, sage_invoice_id: sageId, status: sageStatus })
