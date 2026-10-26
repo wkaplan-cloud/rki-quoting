@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getElecPortalAccount, elecSageGet, elecSagePost } from '@/lib/sage-elec'
 import { apiError } from '@/lib/api-error'
+import { jobCardTotals } from '@/lib/job-card-totals'
 
 export const maxDuration = 30
 
@@ -34,14 +35,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'This invoice has already been paid in Sage.' }, { status: 400 })
     }
 
-    const materials: { qty: number; unit_price: number | null }[] = jobCard.materials ?? []
-    const totalExclVat = materials.reduce((s: number, m: { qty: number; unit_price: number | null }) =>
-      s + m.qty * (m.unit_price ?? 0), 0
-    )
-    if (totalExclVat <= 0) {
-      return NextResponse.json({ error: 'Add material prices before pushing to Sage — total is R0.' }, { status: 400 })
-    }
-
     const { data: settings } = await supabaseAdmin
       .from('elec_settings')
       .select('sage_item_id, default_vat_rate')
@@ -50,6 +43,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const vatRate: number = settings?.default_vat_rate ?? 15
     const selectionId: number = settings?.sage_item_id ?? 1
+
+    // Same figures as the job card PDF and email: call-out + labour + materials
+    const t = jobCardTotals(jobCard, vatRate)
+    if (t.subtotal <= 0) {
+      return NextResponse.json({ error: 'Add a call-out fee, labour or material prices before pushing to Sage — total is R0.' }, { status: 400 })
+    }
 
     const [taxTypesResp, customerRaw] = await Promise.all([
       elecSageGet(account.id, '/TaxType/Get'),
@@ -85,8 +84,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const description = `${jobCard.title} – ${jobCard.job_number}`
-    const amountExclVat = parseFloat(totalExclVat.toFixed(2))
-    const vatAmt = parseFloat((amountExclVat * vatRate / 100).toFixed(2))
+    const round2 = (n: number) => Math.round(n * 100) / 100
+    const charges = [
+      { label: 'Call-out fee', amount: round2(t.calloutFee) },
+      { label: 'Labour',       amount: round2(t.labourCharge) },
+      { label: 'Materials',    amount: round2(t.materialsSubtotal) },
+    ].filter(c => c.amount > 0)
+    const amountExclVat = round2(charges.reduce((s, c) => s + c.amount, 0))
+    const vatAmt = round2(amountExclVat * vatRate / 100)
 
     const payload: Record<string, unknown> = {
       CustomerID: Number(sageCustomerId),
@@ -95,14 +100,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       Inclusive: false,
       Reference: jobCard.job_number,
       Description: description.length > 100 ? description.slice(0, 97) + '…' : description,
-      Lines: [{
+      Lines: charges.map(c => ({
         SelectionId: selectionId,
         LineType: 0,
-        Description: `${jobCard.title} (${jobCard.job_number})`,
+        Description: `${c.label} – ${jobCard.title} (${jobCard.job_number})`,
         Quantity: 1,
-        UnitPriceExclusive: amountExclVat,
+        UnitPriceExclusive: c.amount,
         TaxTypeId: taxTypeId,
-      }],
+      })),
       ...customerFields,
     }
 
