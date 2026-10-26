@@ -41,6 +41,57 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       variation_order_id?: string | null
     }
 
+    // A VO is billed either whole ("Invoice VO") or line by line on progress
+    // claims — never both — and only once it is approved.
+    const { data: vos } = await supabaseAdmin
+      .from('elec_variation_orders')
+      .select('id, status')
+      .eq('quote_id', quoteId)
+    const voStatus = new Map((vos ?? []).map(v => [v.id as string, v.status as string]))
+    const { data: wholeVOClaims } = await supabaseAdmin
+      .from('elec_claims')
+      .select('variation_order_id')
+      .eq('quote_id', quoteId)
+      .not('variation_order_id', 'is', null)
+    const wholeBilled = new Set((wholeVOClaims ?? []).map(c => c.variation_order_id as string))
+
+    if (body.variation_order_id) {
+      if (voStatus.get(body.variation_order_id) !== 'approved') {
+        return NextResponse.json({ error: 'Only an approved VO can be invoiced' }, { status: 400 })
+      }
+      if (wholeBilled.has(body.variation_order_id)) {
+        return NextResponse.json({ error: 'This VO has already been invoiced' }, { status: 400 })
+      }
+      const { data: voLines } = await supabaseAdmin
+        .from('elec_quote_line_items')
+        .select('id')
+        .eq('quote_id', quoteId)
+        .eq('variation_order_id', body.variation_order_id)
+      const voLineIds = (voLines ?? []).map(l => l.id as string)
+      if (voLineIds.length > 0) {
+        const { count } = await supabaseAdmin
+          .from('elec_claim_line_items')
+          .select('id', { count: 'exact', head: true })
+          .in('quote_line_item_id', voLineIds)
+        if (count) {
+          return NextResponse.json({ error: 'This VO is already being claimed line by line on a progress claim' }, { status: 400 })
+        }
+      }
+    }
+
+    if (body.line_items.length > 0) {
+      const { data: lines } = await supabaseAdmin
+        .from('elec_quote_line_items')
+        .select('id, variation_order_id')
+        .eq('quote_id', quoteId)
+        .in('id', body.line_items.map(li => li.quote_line_item_id))
+      const blocked = (lines ?? []).some(l => l.variation_order_id &&
+        (voStatus.get(l.variation_order_id) !== 'approved' || wholeBilled.has(l.variation_order_id)))
+      if (blocked) {
+        return NextResponse.json({ error: 'A VO line on this claim is not approved yet, or its VO has already been invoiced' }, { status: 400 })
+      }
+    }
+
     const claimNumber = await nextClaimNumber(account.id, account.company_name)
 
     const totalClaimed = body.claim_type === 'retention'

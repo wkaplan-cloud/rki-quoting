@@ -40,7 +40,7 @@ interface Props {
   quoteId: string
   portalAccountId: string
   initialVOs: ElecVariationOrder[]
-  initialClaims: VOClaim[]
+  initialClaims: (VOClaim & { line_items?: Pick<ElecClaimLineItem, 'quote_line_item_id'>[] })[]
   voPrefix: string
   companyCode: string
   sections: ElecQuoteSection[]
@@ -138,6 +138,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
+  // VOs whose lines are already on a progress claim can't also be invoiced whole
+  const lineClaimedItemIds = new Set(initialClaims.flatMap(c => c.line_items ?? []).map(li => li.quote_line_item_id))
   const [showAdd, setShowAdd] = useState(false)
   const [quoteItemsExpanded, setQuoteItemsExpanded] = useState(false)
   const [invoicingVoId, setInvoicingVoId] = useState<string | null>(null)
@@ -747,6 +749,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           {vos.map((vo, i) => {
             const st = VO_STATUS[vo.status]
             const linkedClaim = voClaims.find(c => c.variation_order_id === vo.id)
+            const claimedByLine = items.some(i => i.variation_order_id === vo.id && lineClaimedItemIds.has(i.id))
             const isInvoicing = invoicingVoId === vo.id
             const isEditing = editingVOId === vo.id
             const voItems = getVOItems(vo.id)
@@ -799,7 +802,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                           </button>
                         </>
                       )}
-                      {vo.status === 'approved' && !linkedClaim && !isInvoicing && !isEditing && (
+                      {vo.status === 'approved' && !linkedClaim && !claimedByLine && !isInvoicing && !isEditing && (
                         <button onClick={() => { setInvoicingVoId(vo.id); setVOError('') }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                           style={{ background: 'rgba(var(--qh-accent-rgb),0.08)', color: S.accent, border: `1px solid rgba(var(--qh-accent-rgb),0.2)` }}>
