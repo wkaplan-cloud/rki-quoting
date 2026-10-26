@@ -3,6 +3,9 @@
 -- stored subtotal counted every option, so the builder, the quotes list and
 -- any invoice converted from the quote billed all of them. They are now left
 -- out of the subtotal and the margin figures alike.
+-- Delivery and installation are taxed and added to the total here too, the
+-- same as the quote PATCH route does — without them, editing any line item
+-- dropped both from the stored total.
 create or replace function recalculate_mfg_quote_totals(p_quote_id uuid)
 returns void
 language plpgsql
@@ -15,6 +18,7 @@ declare
   v_vat_rate       numeric;
   v_apply_vat      boolean;
   v_vat_amount     numeric;
+  v_taxable        numeric;
 begin
   select
     coalesce(sum(line_total), 0),
@@ -25,17 +29,18 @@ begin
   where quote_id = p_quote_id
     and option_label is null;
 
-  select vat_rate, apply_vat
-  into v_vat_rate, v_apply_vat
+  select vat_rate, apply_vat,
+         v_subtotal + coalesce(delivery_cost, 0) + coalesce(installation_cost, 0)
+  into v_vat_rate, v_apply_vat, v_taxable
   from mfg_quotes
   where id = p_quote_id;
 
-  v_vat_amount := case when v_apply_vat then round(v_subtotal * v_vat_rate / 100, 2) else 0 end;
+  v_vat_amount := case when v_apply_vat then round(v_taxable * v_vat_rate / 100, 2) else 0 end;
 
   update mfg_quotes
      set subtotal     = v_subtotal,
          vat_amount   = v_vat_amount,
-         total        = v_subtotal + v_vat_amount,
+         total        = v_taxable + v_vat_amount,
          total_cost   = v_total_cost,
          total_profit = v_costed_revenue - v_total_cost,
          updated_at   = now()
