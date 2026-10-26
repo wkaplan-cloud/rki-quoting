@@ -8,6 +8,7 @@ import { ElecClaimPDF } from '@/lib/pdf/ElecClaimPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import type { ElecClaim, ElecClaimLineItem, ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
+import { lineContractValue } from '@/lib/claim-totals'
 import type { ClaimLineItemForPDF } from '@/lib/pdf/ElecClaimPDF'
 import { getTradeType } from '@/lib/trade-type'
 import { pdfPalette } from '@/lib/pdf/palette'
@@ -103,7 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const cli = claimLineItemMap[qi.id]
         if (!cli) return null
         const qli = qi as ElecQuoteLineItem
-        const contractValue = (qli.quoted_quantity ?? 0) * ((qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0))
+        const contractValue = lineContractValue(qli)
         return {
           id:             cli.id,
           description:    (qi as ElecQuoteLineItem).description,
@@ -116,10 +117,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       })
       .filter((li): li is ClaimLineItemForPDF => li !== null)
 
-    const contractTotal = (quoteItems ?? []).reduce((s, qi) => {
-      const qli = qi as ElecQuoteLineItem
-      return s + (qli.quoted_quantity ?? 0) * ((qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0))
-    }, 0)
+    // Contract = original lines plus approved VOs only; pending/rejected VO lines don't count
+    const { data: approvedVOs } = await supabaseAdmin
+      .from('elec_variation_orders')
+      .select('id')
+      .eq('quote_id', claim.quote_id)
+      .eq('status', 'approved')
+    const approvedVOIds = new Set((approvedVOs ?? []).map(v => v.id as string))
+    const contractTotal = (quoteItems ?? [])
+      .map(qi => qi as ElecQuoteLineItem)
+      .filter(qi => !qi.variation_order_id || approvedVOIds.has(qi.variation_order_id))
+      .reduce((s, qi) => s + lineContractValue(qi), 0)
 
     const companyName = account.company_name ?? account.email ?? 'Company'
     const logoUrl = await fetchLogoBase64(account.logo_url)

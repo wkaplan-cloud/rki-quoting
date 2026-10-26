@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const { data: claim } = await supabaseAdmin
       .from('elec_claims')
-      .select('sage_invoice_id, portal_account_id')
+      .select('sage_invoice_id, portal_account_id, total_claimed, total_certified, total_invoiced')
       .eq('id', claimId)
       .eq('portal_account_id', account.id)
       .single()
@@ -38,16 +38,23 @@ export async function POST(req: NextRequest) {
       sage_invoice_status: status,
     }
 
+    // total_paid is kept on the same footing as the rest of the claim — the
+    // billed amount excl. VAT, before retention — the way "Mark Paid" records
+    // it. Sage's figures include VAT with retention off, so a part-payment is
+    // carried over as the same share of the billed amount.
+    const billed = claim.total_invoiced ?? claim.total_certified ?? claim.total_claimed ?? 0
+    let totalPaid: number | null = null
     if ((status === 'Paid' || status === 'PAID') && invTotal > 0) {
       updates.status = 'paid'
-      updates.total_paid = invTotal
+      totalPaid = billed
     } else if (amountPaid > 0) {
-      updates.total_paid = amountPaid
+      totalPaid = Math.round(billed * Math.min(1, amountPaid / invTotal) * 100) / 100
     }
+    if (totalPaid != null) updates.total_paid = totalPaid
 
     await supabaseAdmin.from('elec_claims').update(updates).eq('id', claimId)
 
-    return NextResponse.json({ status, amount_paid: amountPaid, total: invTotal })
+    return NextResponse.json({ status, amount_paid: amountPaid, total: invTotal, total_paid: totalPaid })
   } catch (e) {
     return apiError(e)
   }

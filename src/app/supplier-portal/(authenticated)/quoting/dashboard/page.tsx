@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { excludedSectionIds, lineCounts } from '@/lib/quote-options'
+import { lineContractValue } from '@/lib/claim-totals'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
@@ -68,6 +69,7 @@ interface QuoteLineItemRow {
   as_built_quantity: number | null
   as_built_unit_rate: number | null
   section_id: string | null
+  variation_order_id: string | null
   is_optional?: boolean | null
   optional_selected?: boolean | null
 }
@@ -188,8 +190,8 @@ export default async function QuotingDashboardPage() {
     const lis = q.line_items ?? []
     const vos = q.variation_orders ?? []
     const excluded = excludedSectionIds(q.sections ?? [])
-    const contract_value = lis.filter(li => lineCounts(li, excluded)).reduce((s, li) =>
-      s + (li.quoted_quantity ?? 0) * ((li.quoted_unit_rate ?? 0) + (li.labour_rate ?? 0)), 0)
+    // VO lines are left out — approved_vo_value carries approved VOs, and pending/rejected ones don't count
+    const contract_value = lis.filter(li => !li.variation_order_id && lineCounts(li, excluded)).reduce((s, li) => s + lineContractValue(li), 0)
     const approved_vo_value = vos.filter(v => v.status === 'approved').reduce((s, v) => s + (v.value ?? 0), 0)
     const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
     return {
@@ -220,9 +222,12 @@ export default async function QuotingDashboardPage() {
   const allClaims   = allClaimRows
   const paidYTD     = allClaims.filter(c => c.status !== 'draft' && c.period_month?.startsWith(year)).reduce((s, c) => s + (c.total_paid ?? 0), 0)
   const nonDraft    = allClaims.filter(c => c.status !== 'draft')
-  const totalSent   = nonDraft.reduce((s, c) => s + (c.total_claimed ?? 0), 0)
-  const totalPaid   = nonDraft.reduce((s, c) => s + (c.total_paid ?? 0), 0)
-  const outstanding = totalSent - totalPaid
+  // What's been billed (a QS cut is carried to the next claim, not owed now) less what's been paid
+  const billedOf    = (c: ClaimRollupRow) => c.total_invoiced ?? c.total_certified ?? c.total_claimed ?? 0
+  const totalBilled = nonDraft.reduce((s, c) => s + billedOf(c), 0)
+  // A claim marked paid with no amount recorded was paid in full
+  const totalPaid   = nonDraft.reduce((s, c) => s + (c.total_paid ?? (c.status === 'paid' ? billedOf(c) : 0)), 0)
+  const outstanding = totalBilled - totalPaid
 
   // ── Job cards ─────────────────────────────────────────────────────────────
   const jobCards: JobCardRow[] = ((jobCardsRaw ?? []) as unknown as DashboardJobCardRow[]).map(jc => {

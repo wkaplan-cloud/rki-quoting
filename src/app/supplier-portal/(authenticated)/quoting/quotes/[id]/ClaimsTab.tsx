@@ -1086,7 +1086,7 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
     setSageSyncing(null)
     if (!res.ok) return
     setClaims(prev => prev.map(c => c.id === claimId
-      ? { ...c, sage_invoice_status: data.status, ...(data.status === 'Paid' || data.status === 'PAID' ? { status: 'paid', total_paid: data.total } : data.amount_paid > 0 ? { total_paid: data.amount_paid } : {}) }
+      ? { ...c, sage_invoice_status: data.status, ...(data.status === 'Paid' || data.status === 'PAID' ? { status: 'paid', total_paid: data.total_paid } : data.total_paid != null ? { total_paid: data.total_paid } : {}) }
       : c))
   }
 
