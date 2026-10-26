@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, Loader2, CheckCircle, ChevronDown, ChevronUp, Trash2, Pencil } from 'lucide-react'
+import { lineContractValue } from '@/lib/claim-totals'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
 
 const S = {
@@ -484,10 +485,10 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   const originalItems = items.filter(i => !i.is_variation)
   const voLineItems   = items.filter(i => i.is_variation)
 
-  const quoteContractTotal = originalItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+  const quoteContractTotal = originalItems.reduce((s, i) => s + lineContractValue(i), 0)
 
   function renderQuoteItemRow(item: ElecQuoteLineItem) {
-    const val = item.quoted_quantity * item.quoted_unit_rate
+    const val = lineContractValue(item)
     return (
       <div key={item.id} className="grid items-center px-3 py-1.5 rounded-lg mb-1"
         style={{ gridTemplateColumns: '1fr 50px 70px 80px 85px', gap: '6px', background: S.bg }}>

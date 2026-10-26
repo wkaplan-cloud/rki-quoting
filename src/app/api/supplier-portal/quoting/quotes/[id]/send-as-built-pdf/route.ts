@@ -11,6 +11,7 @@ import { resolvePortalAccount } from '@/lib/portal-account'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest } from '@/lib/elec-types'
 import { getTradeType } from '@/lib/trade-type'
 import { pdfPalette } from '@/lib/pdf/palette'
+import { lineAsBuiltValue } from '@/lib/claim-totals'
 
 export const maxDuration = 60
 
@@ -60,12 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       logoUrl,
     }))
 
-    const asBuiltTotal = (items ?? []).reduce((s, i) => {
-      const item = i as ElecQuoteLineItem
-      const qty = item.as_built_quantity ?? item.quoted_quantity
-      const rate = item.as_built_unit_rate ?? item.quoted_unit_rate
-      return s + qty * rate
-    }, 0)
+    const asBuiltTotal = (items ?? []).reduce((s, i) => s + lineAsBuiltValue(i as ElecQuoteLineItem), 0)
     const totalInclVat = asBuiltTotal * (1 + quoteRaw.vat_rate / 100)
 
     await sendEmail({

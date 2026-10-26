@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Loader2, AlertCircle, Download, Printer, Send, X } from 'lucide-react'
+import { lineContractValue, lineAsBuiltValue } from '@/lib/claim-totals'
 import type { ElecQuoteLineItem, ElecQuoteSection, ElecMaterialRequest } from '@/lib/elec-types'
 
 const S = {
@@ -23,14 +24,6 @@ interface Props {
   clientEmail?: string | null
 }
 
-function itemContractVal(i: ElecQuoteLineItem): number {
-  return i.quoted_quantity * i.quoted_unit_rate + i.quoted_quantity * (i.labour_rate ?? 0)
-}
-function itemAsBuiltVal(i: ElecQuoteLineItem): number {
-  const qty  = i.as_built_quantity  ?? i.quoted_quantity
-  const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
-  return qty * rate + qty * (i.labour_rate ?? 0)
-}
 
 export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, approvedVOTotal, clientEmail }: Props) {
   const supabase = createClient()
@@ -77,7 +70,7 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
     }
   }
 
-  const asBuiltTotal   = items.reduce((sum, i) => sum + itemAsBuiltVal(i), 0)
+  const asBuiltTotal   = items.reduce((sum, i) => sum + lineAsBuiltValue(i), 0)
   const revisedContract = contractTotal + approvedVOTotal
   const variance        = asBuiltTotal - revisedContract
   const completionPct   = revisedContract > 0 ? Math.round((asBuiltTotal / revisedContract) * 100) : 0
@@ -121,8 +114,8 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
   // the standalone groups pass nothing.
   function renderGroup(title: string | null, groupItems: ElecQuoteLineItem[], key?: string) {
     if (groupItems.length === 0) return null
-    const contractGroup = groupItems.reduce((s, i) => s + itemContractVal(i), 0)
-    const asBuiltGroup  = groupItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
+    const contractGroup = groupItems.reduce((s, i) => s + lineContractValue(i), 0)
+    const asBuiltGroup  = groupItems.reduce((s, i) => s + lineAsBuiltValue(i), 0)
 
     return (
       <div key={key} className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
@@ -149,12 +142,13 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
             <span className="text-right">AB Value</span>
           </div>
           {groupItems.map(item => {
-            const contractVal = item.quoted_quantity * item.quoted_unit_rate
+            // Values include labour so the rows add up to the totals below
+            const contractVal = lineContractValue(item)
             const abQtySet  = item.as_built_quantity !== null
             const abRateSet = item.as_built_unit_rate !== null
             const abQty  = item.as_built_quantity ?? item.quoted_quantity
             const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
-            const abVal  = abQty * abRate
+            const abVal  = lineAsBuiltValue(item)
             const diff   = abVal - contractVal
             return (
               <div key={item.id} className="rounded-lg mb-1.5 px-2 py-2"

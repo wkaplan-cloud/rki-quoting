@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronLeft, ChevronRight, AlertCircle, Download, Printer, Send, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
+import { lineContractValue, lineAsBuiltValue, certifiedAmount } from '@/lib/claim-totals'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
 
 type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
@@ -111,7 +112,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
   const lineItems = items
     .filter(item => !(item.is_variation && item.variation_order_id && invoicedVOIds.has(item.variation_order_id)))
     .map(item => {
-      const contractVal = (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)
+      const contractVal = lineContractValue(item)
       const prev = prevPct(item.id, claims)
       const thisPct = getPct(item.id)
       const thisAmt = contractVal * thisPct / 100
@@ -124,7 +125,8 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
     })
 
   const totalThisClaim = lineItems.reduce((s, l) => s + l.thisAmt, 0)
-  const totalContract = items.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0) + (i.quoted_quantity ?? 0) * (i.labour_rate ?? 0), 0)
+  // Same lines as the table, so a VO invoiced on its own doesn't inflate the % of contract
+  const totalContract = lineItems.reduce((s, l) => s + l.contractVal, 0)
   const itemsWithClaim = lineItems.filter(l => l.thisPct > 0)
 
   async function handleSubmit(submitFlag: boolean) {
@@ -568,6 +570,8 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
   }
 
   const itemMap = Object.fromEntries(items.map(i => [i.id, i]))
+  const certTotal = claim.line_items.reduce((s, li) =>
+    s + certifiedAmount(li, parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0), 0)
 
   async function advance(status: ElecClaimStatus, extra?: Partial<ElecClaim>) {
     setLoading(true)
@@ -591,9 +595,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
       // Build per-item certified values
       const lineUpdates = claim.line_items.map(li => {
         const pct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
-        const qi = itemMap[li.quote_line_item_id]
-        const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
-        return { id: li.id, percentage_certified: pct, amount_certified: contractVal * pct / 100 }
+        return { id: li.id, percentage_certified: pct, amount_certified: certifiedAmount(li, pct) }
       })
       const totalCertified = lineUpdates.reduce((s, u) => s + u.amount_certified, 0)
 
@@ -709,7 +711,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
                 </div>
                 {claim.line_items.map(li => {
                   const qi = itemMap[li.quote_line_item_id]
-                  const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
+                  const contractVal = qi ? lineContractValue(qi) : 0
                   return (
                     <div key={li.id} className="grid px-3 py-2 items-center"
                       style={{ gridTemplateColumns: '1fr 90px 70px 90px', gap: 8, borderTop: `1px solid ${S.border}` }}>
@@ -790,9 +792,8 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
             </div>
             {claim.line_items.map(li => {
               const qi = itemMap[li.quote_line_item_id]
-              const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
               const certPct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
-              const certAmt = contractVal * certPct / 100
+              const certAmt = certifiedAmount(li, certPct)
               const reduced = certPct < li.percentage_claimed - 0.01
               return (
                 <div key={li.id} className="grid px-4 py-2 items-center"
@@ -819,20 +820,10 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
             <div className="text-sm">
               <span style={{ color: S.muted }}>Total certified: </span>
               <strong style={{ color: S.gold }}>
-                {fmtR(claim.line_items.reduce((s, li) => {
-                  const qi = itemMap[li.quote_line_item_id]
-                  const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
-                  const pct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
-                  return s + contractVal * pct / 100
-                }, 0))}
+                {fmtR(certTotal)}
               </strong>
               {(() => {
-                const uncert = claim.total_claimed - claim.line_items.reduce((s, li) => {
-                  const qi = itemMap[li.quote_line_item_id]
-                  const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
-                  const pct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
-                  return s + contractVal * pct / 100
-                }, 0)
+                const uncert = claim.total_claimed - certTotal
                 return uncert > 0.01
                   ? <span className="ml-3 text-xs" style={{ color: S.danger }}>{fmtR(uncert)} carried forward</span>
                   : null
@@ -1106,11 +1097,8 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
   const totalPaid      = claims.filter(c => c.status === 'paid').reduce((s, c) => s + (c.total_paid ?? c.total_claimed), 0)
   // Re-measurement: billable value is as-built total, not the original quoted amount
   const adjustedContract = contractType === 're_measurement'
-    ? items.reduce((s, i) => {
-        const qty = i.as_built_quantity ?? i.quoted_quantity
-        const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
-        return s + qty * rate
-      }, 0) + approvedVOTotal
+    // VO lines are left out here — approvedVOTotal already carries them
+    ? items.filter(i => !i.is_variation).reduce((s, i) => s + lineAsBuiltValue(i), 0) + approvedVOTotal
     : contractTotal + approvedVOTotal
   const balance = adjustedContract - totalClaimed
 

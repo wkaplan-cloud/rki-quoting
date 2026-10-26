@@ -37,6 +37,35 @@ export interface ClaimTotals {
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+export interface ValuedLine {
+  quoted_quantity: number | null
+  quoted_unit_rate: number | null
+  labour_rate?: number | null
+  as_built_quantity?: number | null
+  as_built_unit_rate?: number | null
+}
+
+/** A quote line's full contract value — materials plus labour, excl. VAT. */
+export function lineContractValue(i: ValuedLine): number {
+  const qty = i.quoted_quantity ?? 0
+  return qty * (i.quoted_unit_rate ?? 0) + qty * (i.labour_rate ?? 0)
+}
+
+/** A line's as-built value — as-built qty and rate where set, labour at the as-built qty. */
+export function lineAsBuiltValue(i: ValuedLine): number {
+  const qty = i.as_built_quantity ?? i.quoted_quantity ?? 0
+  return qty * (i.as_built_unit_rate ?? i.quoted_unit_rate ?? 0) + qty * (i.labour_rate ?? 0)
+}
+
+/**
+ * The money for certifying a claim line at `pct`, scaled from what was
+ * claimed on it, so certifying at the claimed % gives back exactly the
+ * claimed amount whatever the line's rates are now.
+ */
+export function certifiedAmount(line: { percentage_claimed: number; amount_claimed: number }, pct: number): number {
+  return line.percentage_claimed > 0 ? round2(line.amount_claimed * pct / line.percentage_claimed) : 0
+}
+
 export function claimTotals(claim: ClaimCharges, retentionPercentage: number | null | undefined, vatRate: number): ClaimTotals {
   const claimed = round2(claim.total_claimed ?? 0)
   const billed = round2(claim.total_invoiced ?? claim.total_certified ?? claim.total_claimed ?? 0)
