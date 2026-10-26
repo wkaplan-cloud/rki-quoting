@@ -240,7 +240,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
                 className="px-1.5 py-1 text-xs text-right rounded outline-none w-full"
                 style={{ background: fullyDone ? S.bg : '#fff', border: `1px solid ${fullyDone ? S.border : S.accent}`, color: S.accent }}
               />
-              <span className="text-xs text-right" style={{ color: S.muted }}>{remaining.toFixed(0)}% left</span>
+              <span className="text-xs text-right" style={{ color: S.muted }}>{Math.max(0, remaining - thisPct).toFixed(0)}% left</span>
               <span className="text-xs text-right font-semibold font-mono" style={{ color: thisPct > 0 ? S.text : S.muted }}>
                 {thisPct > 0 ? fmtR(thisAmt) : '—'}
               </span>
