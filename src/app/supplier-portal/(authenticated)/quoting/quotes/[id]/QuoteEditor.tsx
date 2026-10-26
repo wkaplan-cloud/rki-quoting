@@ -1099,6 +1099,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const contractTotal = billable.reduce((s, i) => s + itemTotal(i), 0)
   const approvedVOs = liveVOs.filter(v => v.status === 'approved')
   const approvedVOTotal = approvedVOs.reduce((s, v) => s + v.value, 0)
+  // A VO's lines only become claimable once the VO is approved
+  const approvedVOIds = new Set(approvedVOs.map(v => v.id))
+  const claimableItems = itemsForChildTabs.filter(i => !(i.is_variation && i.variation_order_id && !approvedVOIds.has(i.variation_order_id)))
   const approvedVOCostTotal = approvedVOs.reduce((s, v) => s + (v.cost_value ?? 0), 0)
   const itemCostTotal = billable.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
   const costTotal = itemCostTotal + approvedVOCostTotal
@@ -1382,7 +1385,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             portalAccountId={portalAccountId}
             initialClaims={claims}
             extraClaims={voCreatedClaims}
-            items={itemsForChildTabs}
+            items={claimableItems}
             sections={sections as unknown as ElecQuoteSection[]}
             contractTotal={contractTotal}
             approvedVOTotal={approvedVOTotal}
