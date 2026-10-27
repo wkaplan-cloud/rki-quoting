@@ -43,6 +43,8 @@ interface Props {
   suppliers: Supplier[]
   items: { id: string; item_name: string }[]
   officeAddress: { name: string; address: string }
+  /** The project client's saved address — offered first in "Deliver to". */
+  clientAddress?: { name: string; address: string } | null
   onChange: (items: LineItem[]) => void
   onSupplierCreated: (supplier: Supplier) => void
   activePriceListIds: string[]
@@ -161,7 +163,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const dragItem = useRef<number | null>(null)
@@ -1062,6 +1064,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         })()
                       : (() => {
                           const deliveryOptions = [
+                            ...(clientAddress?.address ? [{ id: `${clientAddress.name}\n${clientAddress.address}`, label: clientAddress.name }] : []),
                             ...(officeAddress.address ? [{ id: `${officeAddress.name}\n${officeAddress.address}`, label: officeAddress.name }] : []),
                             ...suppliers.map(s => {
                               const addr = deliveryOverrides[s.id] ?? s.delivery_address
