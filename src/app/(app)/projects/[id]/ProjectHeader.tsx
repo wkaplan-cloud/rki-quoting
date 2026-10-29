@@ -34,6 +34,9 @@ interface Props {
   members: { user_id: string; label: string }[]
   isAdmin: boolean
   createdByName: string | null
+  /** Delivery timeline flag — shows the installation deadline in the header. */
+  deliveryTimelineEnabled?: boolean
+  onInstallDeadlineChange?: (date: string | null) => void
 }
 
 const EMPTY_STAGES: ProjectStages = {
@@ -49,7 +52,7 @@ const EMPTY_STAGES: ProjectStages = {
   delivered_installed: false, delivered_installed_at: null,
 }
 
-export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid, xeroConnected, members, isAdmin, createdByName }: Props) {
+export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid, xeroConnected, members, isAdmin, createdByName, deliveryTimelineEnabled = false, onInstallDeadlineChange }: Props) {
   const [editing, setEditing] = useState(false)
   const [editingClient, setEditingClient] = useState(false)
   const [togglingStage, setTogglingStage] = useState<string | null>(null)
@@ -345,15 +348,30 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
       </div>
 
       {/* Assigned to row — full width so justify-end is truly right-edge */}
-      {!editing && members.length > 0 && (
-        <div className="flex items-center justify-end gap-3 mt-1.5 text-xs text-[#8A877F]">
+      {!editing && (members.length > 0 || deliveryTimelineEnabled) && (
+        <div className="flex items-center justify-end gap-3 mt-1.5 text-xs text-[#8A877F] flex-wrap">
+          {deliveryTimelineEnabled && (
+            <>
+              <label className="flex items-center gap-1">
+                <span>Installation deadline</span>
+                <input
+                  type="date"
+                  value={project.install_deadline ?? ''}
+                  disabled={sageInvoicePaid}
+                  onChange={e => onInstallDeadlineChange?.(e.target.value || null)}
+                  className="text-[#2C2C2A] bg-transparent border-b border-dashed border-[#9A7B4F] outline-none cursor-pointer hover:border-[#2C2C2A] focus-visible:border-[#2C2C2A] transition-colors disabled:opacity-50"
+                />
+              </label>
+              {members.length > 0 && <span className="text-[#D8D3C8]">·</span>}
+            </>
+          )}
           {createdByName && createdByName !== (members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label) && (
             <>
               <span>Created by <span className="text-[#2C2C2A]">{createdByName}</span></span>
               <span className="text-[#D8D3C8]">·</span>
             </>
           )}
-          <span className="flex items-center gap-1">
+          {members.length > 0 && <span className="flex items-center gap-1">
             <span title="Assigned to determines who this project appears under in the team view and on production documents">Assigned to</span>{' '}
             {isAdmin ? (
               <select
@@ -369,7 +387,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
             ) : (
               <span className="text-[#2C2C2A]">{members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label ?? '—'}</span>
             )}
-          </span>
+          </span>}
         </div>
       )}
 

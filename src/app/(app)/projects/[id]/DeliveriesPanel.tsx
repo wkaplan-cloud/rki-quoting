@@ -26,7 +26,8 @@ interface Props {
   lineItems: LineItem[]
   onLineItemsChange: (updater: (prev: LineItem[]) => LineItem[]) => void
   initialSupplierDates: SupplierDates
-  initialInstallDeadline: string | null
+  installDeadline: string | null
+  onInstallDeadlineChange: (date: string | null) => void
   locked?: boolean
 }
 
@@ -35,11 +36,10 @@ interface Props {
  * override, and the installation deadline. Only rendered when the org has
  * the delivery timeline feature switched on.
  */
-export function DeliveriesPanel({ projectId, lineItems, onLineItemsChange, initialSupplierDates, initialInstallDeadline, locked }: Props) {
+export function DeliveriesPanel({ projectId, lineItems, onLineItemsChange, initialSupplierDates, installDeadline: deadline, onInstallDeadlineChange, locked }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(true)
   const [supplierDates, setSupplierDates] = useState<SupplierDates>(initialSupplierDates)
-  const [deadline, setDeadline] = useState(initialInstallDeadline)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const today = todaySA()
 
@@ -52,12 +52,6 @@ export function DeliveriesPanel({ projectId, lineItems, onLineItemsChange, initi
     }
     return [...bySupplier.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [lineItems])
-
-  async function saveDeadline(value: string | null) {
-    setDeadline(value)
-    const { error } = await supabase.from('projects').update({ install_deadline: value }).eq('id', projectId)
-    if (error) toast.error('Could not save the installation deadline')
-  }
 
   async function saveSupplierDate(supplier: string, value: string | null) {
     setSupplierDates(prev => ({ ...prev, [supplier]: value }))
@@ -111,7 +105,7 @@ export function DeliveriesPanel({ projectId, lineItems, onLineItemsChange, initi
               type="date"
               value={deadline ?? ''}
               disabled={locked}
-              onChange={e => saveDeadline(e.target.value || null)}
+              onChange={e => onInstallDeadlineChange(e.target.value || null)}
               className={DATE_INPUT}
             />
             <Link href="/timeline" className="ml-auto text-xs text-[#9A7B4F] hover:text-[#7E6036] hover:underline focus-visible:underline">

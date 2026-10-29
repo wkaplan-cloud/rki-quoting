@@ -276,6 +276,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     toast.success(amount != null ? `Deposit of ${formatZAR(amount)} recorded` : 'Deposit amount cleared')
   }, [depositAmountReceived, stages, project.id, project.status, supabase])
 
+  // Edited from both the header and the Deliveries panel, so it lives here.
+  const saveInstallDeadline = useCallback(async (date: string | null) => {
+    setProject(p => ({ ...p, install_deadline: date }))
+    const { error } = await supabase.from('projects').update({ install_deadline: date }).eq('id', project.id)
+    if (error) toast.error('Could not save the installation deadline')
+  }, [project.id, supabase])
+
   const handleDuplicate = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: orgId } = await supabase.rpc('get_current_org_id')
@@ -720,6 +727,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         members={members}
         isAdmin={isAdmin}
         createdByName={createdByName}
+        deliveryTimelineEnabled={deliveryTimelineEnabled}
+        onInstallDeadlineChange={saveInstallDeadline}
       />
 
       {/* Client approved — show comment if they left one */}
@@ -1239,7 +1248,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           lineItems={lineItems}
           onLineItemsChange={setLineItems}
           initialSupplierDates={supplierDeliveryDates}
-          initialInstallDeadline={project.install_deadline ?? null}
+          installDeadline={project.install_deadline ?? null}
+          onInstallDeadlineChange={saveInstallDeadline}
           locked={isPaid}
         />
       )}
