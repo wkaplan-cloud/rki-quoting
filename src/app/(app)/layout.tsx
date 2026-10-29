@@ -49,7 +49,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const [org, { data: membership }, { data: settings }, { count: capitalBadgeCount }] = await Promise.all([
     getCurrentOrg(orgId),
     supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled').eq('org_id', orgId).maybeSingle(),
+    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled, delivery_timeline_enabled').eq('org_id', orgId).maybeSingle(),
     supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending').eq('archived', false),
   ])
 
@@ -82,6 +82,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const capitalHotelsEnabled = settings?.capital_hotels_enabled ?? false
   const studioEnabled = settings?.studio_enabled ?? false
+  const deliveryTimelineEnabled = settings?.delivery_timeline_enabled ?? false
   const capitalBadge = capitalBadgeCount ?? 0
 
   // Only trust the impersonation stash if it actually matches who's currently logged in —
@@ -98,6 +99,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       capitalHotelsEnabled={capitalHotelsEnabled}
       capitalBadge={capitalBadge}
       studioEnabled={studioEnabled}
+      deliveryTimelineEnabled={deliveryTimelineEnabled}
       userEmail={user.email ?? ''}
       userName={membership?.full_name ?? ''}
       plan={org?.plan ?? 'trial'}

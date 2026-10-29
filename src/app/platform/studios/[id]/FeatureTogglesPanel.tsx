@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -74,12 +74,14 @@ export function FeatureTogglesPanel({
   studioEnabled,
   lineItemImagesEnabled = false,
   jobCostSheetEnabled = false,
+  deliveryTimelineEnabled = false,
   plan = 'trial',
 }: {
   orgId: string
   studioEnabled: boolean
   lineItemImagesEnabled?: boolean
   jobCostSheetEnabled?: boolean
+  deliveryTimelineEnabled?: boolean
   plan?: string
 }) {
   // The cost sheet ships with Studio and Agency, so the override only means
@@ -116,6 +118,14 @@ export function FeatureTogglesPanel({
               ? 'Included on this plan already — this override only applies to Solo studios'
               : 'Goodwill override: unlock the Studio-tier Job Cost Sheet on this Solo plan'
           }
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="delivery_timeline_enabled"
+          initial={deliveryTimelineEnabled}
+          icon={<CalendarClock size={16} className="text-[#7E6036]" />}
+          title="Delivery timeline"
+          description="Delivery dates per supplier and item, installation deadline, and the Timeline page"
         />
       </div>
     </div>

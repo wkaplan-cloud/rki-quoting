@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import { SupplierQuotesModal } from './SupplierQuotesModal'
+import { DeliveriesPanel } from './DeliveriesPanel'
+import type { SupplierDates } from '@/lib/deliveries'
 import toast from 'react-hot-toast'
 import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown, ReceiptText } from 'lucide-react'
 import confetti from 'canvas-confetti'
@@ -59,9 +61,12 @@ interface Props {
    * Additive only — Studio and Agency always have it regardless.
    */
   jobCostSheetEnabled?: boolean
+  /** Platform feature flag: delivery dates, installation deadline, /timeline. */
+  deliveryTimelineEnabled?: boolean
+  supplierDeliveryDates?: SupplierDates
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, jobCostSheetEnabled = false }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {} }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -289,7 +294,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     if (error || !newProject) { toast.error('Failed to duplicate'); return }
     if (lineItems.length > 0) {
       await supabase.from('line_items').insert(
-        lineItems.map(({ id: _id, project_id: _pid, ...rest }) => ({
+        lineItems.map(({ id: _id, project_id: _pid, delivery_date: _dd, ...rest }) => ({
           ...rest,
           project_id: newProject.id,
         }))
@@ -1227,6 +1232,17 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           </div>
         </div>
       </div>
+
+      {deliveryTimelineEnabled && (
+        <DeliveriesPanel
+          projectId={project.id}
+          lineItems={lineItems}
+          onLineItemsChange={setLineItems}
+          initialSupplierDates={supplierDeliveryDates}
+          initialInstallDeadline={project.install_deadline ?? null}
+          locked={isPaid}
+        />
+      )}
 
       {/* Email + approval history */}
       {(emailLogs.length > 0 || approvalLogs.length > 0) && (() => {

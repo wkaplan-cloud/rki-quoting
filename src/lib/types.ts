@@ -60,6 +60,8 @@ export interface Project {
   invoiced_date: string | null
   archived_at: string | null
   assigned_to: string | null
+  /** Delivery timeline feature — see supabase/delivery_timeline.sql. */
+  install_deadline?: string | null
   // joined
   client?: Client | null
 }
@@ -97,6 +99,8 @@ export interface LineItem {
   /** Breadcrumbs from Studio board conversion — see studio_line_item_links.sql. */
   studio_object_id?: string | null
   studio_slide_id?: string | null
+  /** Delivery timeline: overrides the supplier's date for this project. */
+  delivery_date?: string | null
   created_at: string
 }
 

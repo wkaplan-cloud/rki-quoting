@@ -15,6 +15,7 @@ export function AppLayout({
   capitalHotelsEnabled,
   capitalBadge,
   studioEnabled = false,
+  deliveryTimelineEnabled = false,
   userEmail,
   userName,
   plan,
@@ -30,6 +31,7 @@ export function AppLayout({
   capitalHotelsEnabled: boolean
   capitalBadge: number
   studioEnabled?: boolean
+  deliveryTimelineEnabled?: boolean
   userEmail: string
   userName: string
   plan: string
@@ -62,6 +64,7 @@ export function AppLayout({
         capitalHotelsEnabled={capitalHotelsEnabled}
         capitalBadge={capitalBadge}
         studioEnabled={studioEnabled}
+        deliveryTimelineEnabled={deliveryTimelineEnabled}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onContactClick={() => setFeedbackOpen(true)}

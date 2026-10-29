@@ -12,19 +12,19 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   // Both were resolved by the surrounding layout, so this costs nothing here.
   const [user, orgId] = await Promise.all([getCurrentUser(), getCurrentOrgId()])
 
-  // Now fire all 14 queries in parallel: project data + org meta + access + members
+  // Now fire all 15 queries in parallel: project data + org meta + access + members
   const [
     { data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers },
     { data: items }, { data: settings }, { data: stages }, { data: emailLogs },
     { data: platformContacts }, { data: quoteApproval }, { data: approvalLogs },
-    orgMeta, { data: members }, { data: activeAccess },
+    orgMeta, { data: members }, { data: activeAccess }, { data: supplierDeliveries },
   ] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
     supabase.from('line_items').select('*').eq('project_id', id).order('sort_order').order('created_at'),
     supabase.from('clients').select('id, client_name, company').order('client_name'),
     supabase.from('suppliers').select('id, supplier_name, category, markup_percentage, delivery_address, delivery_contact_name, delivery_contact_number, is_platform, price_list_id, email').order('supplier_name'),
     supabase.from('items').select('id, item_name').order('item_name'),
-    supabase.from('settings').select('business_name, business_address, vat_rate, deposit_percentage, sage_company_id, xero_access_token, xero_tenant_id, email_template_quote, email_template_invoice, production_sheet_email, line_item_images_enabled, job_cost_sheet_enabled').maybeSingle(),
+    supabase.from('settings').select('business_name, business_address, vat_rate, deposit_percentage, sage_company_id, xero_access_token, xero_tenant_id, email_template_quote, email_template_invoice, production_sheet_email, line_item_images_enabled, job_cost_sheet_enabled, delivery_timeline_enabled').maybeSingle(),
     supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
     supabase.from('email_logs').select('id, type, sent_to, sent_at, supplier_name').eq('project_id', id).order('sent_at', { ascending: false }),
     supabase.from('platform_supplier_contacts').select('supplier_id, markup_percentage, email'),
@@ -33,6 +33,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     orgId ? getCurrentOrg(orgId) : Promise.resolve(null),
     orgId ? supabaseAdmin.from('org_members').select('user_id, invited_email, full_name, role').eq('org_id', orgId).eq('status', 'active') : Promise.resolve({ data: [], error: null }),
     orgId ? supabaseAdmin.from('price_list_access').select('price_list_id').eq('org_id', orgId).eq('status', 'active') : Promise.resolve({ data: [], error: null }),
+    supabase.from('project_supplier_deliveries').select('supplier_name, delivery_date').eq('project_id', id),
   ])
 
   if (!project) notFound()
@@ -93,6 +94,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       productionSheetEmail={settings?.production_sheet_email ?? null}
       imagesEnabled={settings?.line_item_images_enabled ?? false}
       jobCostSheetEnabled={settings?.job_cost_sheet_enabled ?? false}
+      deliveryTimelineEnabled={settings?.delivery_timeline_enabled ?? false}
+      supplierDeliveryDates={Object.fromEntries((supplierDeliveries ?? []).map(d => [d.supplier_name, d.delivery_date]))}
       sageConnected={!!settings?.sage_company_id}
       xeroConnected={!!(settings?.xero_access_token && settings?.xero_tenant_id)}
       activePriceListIds={[...activePriceListIds]}

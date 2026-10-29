@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation'
 import { clearStudioOfflineCaches } from '@/lib/studio/offlineRuntime'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, BookOpen, X, MessageSquare, Calculator, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel, Presentation, ReceiptText,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, BookOpen, X, MessageSquare, Calculator, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel, Presentation, ReceiptText, CalendarClock,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
 const mainLinks = [
   { href: '/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
   { href: '/projects',  label: 'Projects',   icon: FolderOpen, tourId: 'nav-projects' },
+  { href: '/timeline',  label: 'Timeline',   icon: CalendarClock, requiresTimeline: true },
   { href: '/pieces',    label: 'Our Pieces', icon: LayoutGrid, soloLocked: true },
 ]
 
@@ -31,6 +32,7 @@ interface Props {
   capitalHotelsEnabled?: boolean
   capitalBadge?: number
   studioEnabled?: boolean
+  deliveryTimelineEnabled?: boolean
   isOpen: boolean
   onClose: () => void
   onContactClick: () => void
@@ -41,7 +43,7 @@ interface Props {
   onDesktopToggle: () => void
 }
 
-export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, capitalBadge = 0, studioEnabled = false, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
+export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, capitalBadge = 0, studioEnabled = false, deliveryTimelineEnabled = false, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
@@ -119,7 +121,10 @@ export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, c
 
         {/* Main nav */}
         <nav className="flex-1 pt-4 pb-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {mainLinks.map(({ href, label, icon: Icon, soloLocked, tourId }: { href: string; label: string; icon: React.ElementType; soloLocked?: boolean; tourId?: string }) => {
+          {mainLinks.map(({ href, label, icon: Icon, soloLocked, tourId, requiresTimeline }: { href: string; label: string; icon: React.ElementType; soloLocked?: boolean; tourId?: string; requiresTimeline?: boolean }) => {
+            if (requiresTimeline && !deliveryTimelineEnabled) {
+              return null
+            }
             if (soloLocked && plan === 'solo') {
               return (
                 <button
