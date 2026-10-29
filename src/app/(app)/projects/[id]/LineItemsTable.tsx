@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
+import { reorderRows } from '@/lib/reorder-rows'
 import type { LineItem } from '@/lib/types'
 import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2, LayoutGrid, Check } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
@@ -608,14 +609,15 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   }, [lineItems, onChange, supabase, projectId])
 
   const handleDragEnd = useCallback(async () => {
-    if (dragItem.current === null || dragOver.current === null) return
-    const reordered = [...lineItems]
-    const [moved] = reordered.splice(dragItem.current, 1)
-    reordered.splice(dragOver.current, 0, moved)
-    const updated = reordered.map((item, i) => ({ ...item, sort_order: i }))
-    onChange(updated)
+    const from = dragItem.current
+    const to = dragOver.current
     dragItem.current = null
     dragOver.current = null
+    if (from === null || to === null) return
+    const reordered = reorderRows(lineItems, from, to)
+    if (reordered === lineItems) return
+    const updated = reordered.map((item, i) => ({ ...item, sort_order: i }))
+    onChange(updated)
     const { error: reorderError } = await supabase.from('line_items')
       .upsert(updated.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
     if (reorderError) {
