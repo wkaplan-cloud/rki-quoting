@@ -672,12 +672,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   >
                     <td className={`px-1.5 py-2 text-[#C4BFB5] sticky left-0 z-10 bg-[#F5F2EC] border-l-[3px] border-transparent ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
                       {!locked && (
-                        <div className="relative flex items-center justify-center w-[14px] h-[14px]">
-                          <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
+                        <div className="flex flex-col items-center gap-1 w-[14px]">
+                          <GripVertical size={14} className="cursor-grab active:cursor-grabbing" />
                           <button
                             onClick={e => { e.stopPropagation(); insertRowBefore(index) }}
                             title="Insert row below"
-                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] cursor-pointer"
+                            className="flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] active:text-[#5A3B0F] cursor-pointer"
                           >
                             <Plus size={12} />
                           </button>
@@ -730,15 +730,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   onDragOver={!locked ? e => e.preventDefault() : undefined}
                   className={`border-b border-[#F2EFE9] last:border-0 group transition-colors ${item.highlight_color === 'blue' ? 'bg-blue-50 hover:bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-[#FDFCF9]'}`}
                 >
-                  {/* Drag handle */}
+                  {/* Drag handle — the insert button sits below the grip, never on top of it:
+                      browsers won't start a drag from a button, so covering the grip killed dragging. */}
                   <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
                     {!locked && (
-                      <div className="relative flex items-center justify-center w-[14px] h-[14px]">
-                        <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
+                      <div className="flex flex-col items-center gap-1 w-[14px]">
+                        <GripVertical size={14} className="cursor-grab active:cursor-grabbing" />
                         <button
                           onClick={e => { e.stopPropagation(); insertRowBefore(index) }}
                           title="Insert row below"
-                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] cursor-pointer"
+                          className="flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] active:text-[#5A3B0F] cursor-pointer"
                         >
                           <Plus size={12} />
                         </button>
