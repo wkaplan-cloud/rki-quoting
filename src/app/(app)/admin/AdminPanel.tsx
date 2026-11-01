@@ -35,6 +35,7 @@ interface CompletedProject {
   project_name: string
   project_number: string
   date: string
+  status?: string
   design_fee: number
   vat_rate: number | null
   client: { client_name: string } | { client_name: string }[] | null
@@ -157,22 +158,25 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     onConfirm: () => Promise<void>
   } | null>(null)
 
-  // Projected profit across non-draft projects whose final invoice isn't paid yet
-  const pipelineProfit = pipelineProjects.reduce((total, p) => {
-    const items = pipelineLineItems.filter(li => li.project_id === p.id)
-    const computed = computeLineItems(items)
+  // Profit (ex VAT) on one project: line profit plus design fee
+  const projectProfit = (p: CompletedProject, lineItems: LineItemRow[]) => {
+    const computed = computeLineItems(lineItems.filter(li => li.project_id === p.id))
     const lineProfit = computed.reduce((sum, i) => sum + i.profit, 0)
     const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
-    return total + lineProfit + designFeeAmount
-  }, 0)
+    return lineProfit + designFeeAmount
+  }
+
+  // Pipeline = not Draft/Cancelled, final invoice not yet paid. Split into work the
+  // client has accepted (Approved onwards) and quotes still awaiting acceptance.
+  const quotedProjects = pipelineProjects.filter(p => p.status === 'Quote')
+  const committedProjects = pipelineProjects.filter(p => p.status !== 'Quote')
+  const committedProfit = committedProjects.reduce((t, p) => t + projectProfit(p, pipelineLineItems), 0)
+  const quotedProfit = quotedProjects.reduce((t, p) => t + projectProfit(p, pipelineLineItems), 0)
+  const completedUnpaidCount = committedProjects.filter(p => p.status === 'Completed').length
 
   // Compute profit per completed project
   const profitByProject = completedProjects.map(p => {
-    const items = completedLineItems.filter(li => li.project_id === p.id)
-    const computed = computeLineItems(items)
-    const profit = computed.reduce((sum, i) => sum + i.profit, 0)
-    const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
-    return { ...p, profitExVat: profit + designFeeAmount }
+    return { ...p, profitExVat: projectProfit(p, completedLineItems) }
   })
 
   // Group by year
@@ -454,13 +458,30 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
       {tab === 'profit' && (
         <div className="space-y-8">
-          {/* Pipeline profit tile */}
-          <div className="bg-white border border-dashed border-[#C4A46B] rounded-xl px-6 py-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-[#9A7B4F] uppercase tracking-wider mb-1">Projected Pipeline Profit</p>
-              <p className="text-2xl font-semibold text-[#2C2C2A]">{fmtZAR(pipelineProfit)}</p>
-              <p className="text-xs text-[#8A877F] mt-1">{pipelineProjects.length} active project{pipelineProjects.length !== 1 ? 's' : ''} · excl. VAT · final invoice not yet paid</p>
+          {/* Pipeline profit tile: committed work vs quotes awaiting acceptance */}
+          <div className="bg-white border border-dashed border-[#C4A46B] rounded-xl px-6 py-5">
+            <p className="text-xs font-semibold text-[#9A7B4F] uppercase tracking-wider mb-4">Projected Profit — not yet Paid in Full</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm font-medium text-[#2C2C2A]">Committed work</p>
+                <p className="text-2xl font-semibold text-[#2C2C2A] mt-1">{fmtZAR(committedProfit)}</p>
+                <p className="text-xs text-[#8A877F] mt-1">
+                  {committedProjects.length} project{committedProjects.length !== 1 ? 's' : ''} the client has accepted (Approved, Deposit, Invoice or Completed) · not yet Paid in Full · excl. VAT
+                </p>
+              </div>
+              <div className="sm:border-l sm:border-[#E8E4DC] sm:pl-6">
+                <p className="text-sm font-medium text-[#8A877F]">Quoted — awaiting client acceptance</p>
+                <p className="text-2xl font-semibold text-[#8A877F] mt-1">{fmtZAR(quotedProfit)}</p>
+                <p className="text-xs text-[#8A877F] mt-1">
+                  {quotedProjects.length} quote{quotedProjects.length !== 1 ? 's' : ''} sent, not yet accepted · not included in committed · excl. VAT
+                </p>
+              </div>
             </div>
+            {completedUnpaidCount > 0 && (
+              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-4">
+                {completedUnpaidCount} Completed project{completedUnpaidCount !== 1 ? 's are' : ' is'} not marked Paid in Full. If {completedUnpaidCount !== 1 ? 'they have' : 'it has'} been paid, tick Paid in Full on the project so {completedUnpaidCount !== 1 ? 'they move' : 'it moves'} to paid profit below.
+              </p>
+            )}
           </div>
 
           {completedProjects.length === 0 ? (
