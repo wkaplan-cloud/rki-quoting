@@ -157,7 +157,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     onConfirm: () => Promise<void>
   } | null>(null)
 
-  // Projected profit across all active (unpaid) projects
+  // Projected profit across non-draft projects whose final invoice isn't paid yet
   const pipelineProfit = pipelineProjects.reduce((total, p) => {
     const items = pipelineLineItems.filter(li => li.project_id === p.id)
     const computed = computeLineItems(items)
@@ -459,7 +459,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
             <div>
               <p className="text-xs font-semibold text-[#9A7B4F] uppercase tracking-wider mb-1">Projected Pipeline Profit</p>
               <p className="text-2xl font-semibold text-[#2C2C2A]">{fmtZAR(pipelineProfit)}</p>
-              <p className="text-xs text-[#8A877F] mt-1">{pipelineProjects.length} active project{pipelineProjects.length !== 1 ? 's' : ''} · excl. VAT · not yet invoiced</p>
+              <p className="text-xs text-[#8A877F] mt-1">{pipelineProjects.length} active project{pipelineProjects.length !== 1 ? 's' : ''} · excl. VAT · final invoice not yet paid</p>
             </div>
           </div>
 

@@ -159,7 +159,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Cost', tip: 'Your cost price from the supplier (ex VAT). This is never shown to the client.' },
   { col: 'Mkup %', tip: 'Your markup percentage. Defaults to the supplier\'s markup. Edit per line if needed.' },
   { col: 'Sale', tip: 'The selling price shown to the client — calculated automatically from Cost + Markup.' },
-  { col: 'Profit', tip: 'Your profit per unit (Sale minus Cost). Shown for your reference only.' },
+  { col: 'Profit', tip: 'Your profit on this line ((Sale minus Cost) × Qty). Shown for your reference only.' },
   { col: 'Tot. Cost', tip: 'Total cost for this line (Cost × Qty).' },
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
