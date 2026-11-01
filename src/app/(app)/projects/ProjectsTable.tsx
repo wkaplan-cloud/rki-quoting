@@ -54,7 +54,10 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const staleDays = parseInt(searchParams.get('days') ?? '30', 10) || 30
 
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
+  const rawStatus = searchParams.get('status')
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>(
+    STATUSES.includes(rawStatus as ProjectStatus) ? (rawStatus as ProjectStatus) : 'All'
+  )
   const [showArchived, setShowArchived] = useState(false)
   const [myProjects, setMyProjects] = useState(!dashboardFilterKey)
   const [activeDashboardFilter, setActiveDashboardFilter] = useState(dashboardFilterKey)

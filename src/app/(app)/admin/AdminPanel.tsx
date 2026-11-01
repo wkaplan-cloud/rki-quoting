@@ -62,6 +62,7 @@ interface Props {
   completedLineItems: LineItemRow[]
   pipelineProjects: CompletedProject[]
   pipelineLineItems: LineItemRow[]
+  draftCounts: { total: number; olderThan60Days: number }
   userProfile: { fullName: string; email: string; phone: string; jobTitle: string }
 }
 
@@ -140,7 +141,7 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
     }))
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, userProfile }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, draftCounts, userProfile }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -477,6 +478,15 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                 </p>
               </div>
             </div>
+            {draftCounts.total > 0 && (
+              <p className="text-xs text-[#8A877F] mt-4 pt-4 border-t border-[#E8E4DC]">
+                <Link href="/projects?status=Draft" className="text-[#9A7B4F] hover:underline focus-visible:underline outline-none">
+                  {draftCounts.total} draft{draftCounts.total !== 1 ? 's' : ''} not yet sent to the client
+                </Link>
+                {draftCounts.olderThan60Days > 0 && <> · {draftCounts.olderThan60Days} created over 60 days ago</>}
+                {' '}· not included in the figures above — send or archive old drafts to keep this list clean
+              </p>
+            )}
             {completedUnpaidCount > 0 && (
               <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-4">
                 {completedUnpaidCount} Completed project{completedUnpaidCount !== 1 ? 's are' : ' is'} not marked Paid in Full. If {completedUnpaidCount !== 1 ? 'they have' : 'it has'} been paid, tick Paid in Full on the project so {completedUnpaidCount !== 1 ? 'they move' : 'it moves'} to paid profit below.

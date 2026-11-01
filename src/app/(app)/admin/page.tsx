@@ -46,6 +46,7 @@ export default async function AdminPage() {
             completedLineItems={[]}
             pipelineProjects={[]}
             pipelineLineItems={[]}
+            draftCounts={{ total: 0, olderThan60Days: 0 }}
             userProfile={userProfile}
             />
         </div>
@@ -60,7 +61,7 @@ export default async function AdminPage() {
     supabaseAdmin.from('audit_logs').select('id, user_email, action, table_name, record_id, old_data, new_data, created_at').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
     supabase.from('settings').select('*').maybeSingle(),
     supabase.from('projects')
-      .select('id, project_name, project_number, status, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
+      .select('id, project_name, project_number, status, date, created_at, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
       .is('archived_at', null)
       .order('date', { ascending: false }),
   ])
@@ -74,6 +75,12 @@ export default async function AdminPage() {
     const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
     return stages?.final_invoice_paid !== true && p.status !== 'Draft' && p.status !== 'Cancelled'
   })
+
+  // Drafts aren't priced into the pipeline (unsent, often copies) — just counted
+  const drafts = (allProjects ?? []).filter(p => p.status === 'Draft')
+  // eslint-disable-next-line react-hooks/purity
+  const staleCutoff = Date.now() - 60 * 24 * 60 * 60 * 1000
+  const draftCounts = { total: drafts.length, olderThan60Days: drafts.filter(p => new Date(p.created_at).getTime() < staleCutoff).length }
 
   const paidIds = new Set(paidProjects.map(p => p.id))
   const pipelineIds = new Set(pipelineProjects.map(p => p.id))
@@ -102,6 +109,7 @@ export default async function AdminPage() {
           completedLineItems={completedLineItems ?? []}
           pipelineProjects={pipelineProjects}
           pipelineLineItems={pipelineLineItems ?? []}
+          draftCounts={draftCounts}
           userProfile={userProfile}
         />
       </div>
