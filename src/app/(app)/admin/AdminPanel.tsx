@@ -7,6 +7,8 @@ import { StudioSettingsForm } from './StudioSettingsForm'
 import { SettingsForm } from '../settings/SettingsForm'
 import Link from 'next/link'
 import { computeLineItems } from '@/lib/quoting'
+import type { Insights } from '@/lib/insights'
+import { InsightsTab } from './InsightsTab'
 
 interface Member {
   id: string
@@ -63,6 +65,8 @@ interface Props {
   pipelineProjects: CompletedProject[]
   pipelineLineItems: LineItemRow[]
   draftCounts: { total: number; olderThan60Days: number }
+  /** Null unless the studio has the Insights switch on. */
+  insights: Insights | null
   userProfile: { fullName: string; email: string; phone: string; jobTitle: string }
 }
 
@@ -141,7 +145,7 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
     }))
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, draftCounts, userProfile }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, draftCounts, insights, userProfile }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -150,7 +154,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
   const [upgradingAgency, setUpgradingAgency] = useState(false)
   const [reactivatingId, setReactivatingId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit'>(isAdmin ? 'users' : 'profile')
+  const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'insights' | 'audit'>(isAdmin ? 'users' : 'profile')
   const [confirmModal, setConfirmModal] = useState<{
     title: string
     body: string
@@ -289,7 +293,9 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
         {(isAdmin
-          ? (['users', 'studio', 'profit', 'audit', 'profile'] as const)
+          ? (insights
+              ? (['users', 'studio', 'profit', 'insights', 'audit', 'profile'] as const)
+              : (['users', 'studio', 'profit', 'audit', 'profile'] as const))
           : (['profile'] as const)
         ).map(t => (
           <button
@@ -297,7 +303,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${tab === t ? 'border-b-2 border-[#9A7B4F] text-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
           >
-            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : t === 'audit' ? 'Audit Log' : 'My Profile'}
+            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : t === 'insights' ? 'Insights' : t === 'audit' ? 'Audit Log' : 'My Profile'}
           </button>
         ))}
       </div>
@@ -490,6 +496,15 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
             {completedUnpaidCount > 0 && (
               <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-4">
                 {completedUnpaidCount} Completed project{completedUnpaidCount !== 1 ? 's are' : ' is'} not marked Paid in Full. If {completedUnpaidCount !== 1 ? 'they have' : 'it has'} been paid, tick Paid in Full on the project so {completedUnpaidCount !== 1 ? 'they move' : 'it moves'} to paid profit below.
+                {insights && (
+                  <>
+                    {' '}
+                    <button
+                      onClick={() => setTab('insights')}
+                      className="underline font-medium cursor-pointer hover:text-amber-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-700 rounded-sm"
+                    >See the list on Insights</button>
+                  </>
+                )}
               </p>
             )}
           </div>
@@ -559,6 +574,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
           )}
         </div>
       )}
+
+      {tab === 'insights' && insights && <InsightsTab insights={insights} />}
 
       {tab === 'audit' && (
         <div className="space-y-3">
