@@ -47,6 +47,7 @@ interface LineItemRow {
   markup_percentage: number
   quantity: number
   row_type: string | null
+  sale_price_override: number | null
 }
 
 interface Props {

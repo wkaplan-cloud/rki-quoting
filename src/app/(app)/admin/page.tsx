@@ -81,7 +81,7 @@ export default async function AdminPage() {
 
   // Fetch line_items only for the projects we actually need — not the entire org's history
   const { data: allLineItems } = relevantProjectIds.length > 0
-    ? await supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', relevantProjectIds)
+    ? await supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type, sale_price_override').in('project_id', relevantProjectIds)
     : { data: [] }
 
   const completedLineItems = (allLineItems ?? []).filter(li => paidIds.has(li.project_id))
