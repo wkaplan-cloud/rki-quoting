@@ -7,12 +7,13 @@ import { createClient } from '@/lib/supabase/client'
 import { getNextProjectNumber } from '@/lib/projectNumber'
 import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
 import { MAX_DOCUMENT_IMAGES, countDocumentImages } from '@/lib/lineItemImage'
-import type { Project, LineItem, ProjectStages } from '@/lib/types'
+import type { Project, LineItem, ProjectPayment, ProjectStages, ProjectStatus } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import { SupplierQuotesModal } from './SupplierQuotesModal'
 import { DeliveriesPanel } from './DeliveriesPanel'
+import { PaymentsPanel } from './PaymentsPanel'
 import type { SupplierDates } from '@/lib/deliveries'
 import toast from 'react-hot-toast'
 import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown, ReceiptText } from 'lucide-react'
@@ -64,9 +65,12 @@ interface Props {
   /** Platform feature flag: delivery dates, installation deadline, /timeline. */
   deliveryTimelineEnabled?: boolean
   supplierDeliveryDates?: SupplierDates
+  /** Platform feature flag: payment list per project + client statements. */
+  statementsEnabled?: boolean
+  initialPayments?: ProjectPayment[]
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {} }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {}, statementsEnabled = false, initialPayments = [] }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -119,6 +123,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [emailInput, setEmailInput] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailBody, setEmailBody] = useState('')
+  const [attachStatement, setAttachStatement] = useState(true)
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs)
   const [approvalLogs] = useState<ApprovalLog[]>(initialApprovalLogs)
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
@@ -229,8 +234,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   }, [])
 
   // The deposit actually paid, in rands, is what invoices print. When a Sage invoice is linked
-  // Sage owns that figure (written on sync); otherwise the designer enters it by hand here.
-  const depositManual = !sageInvoiceId
+  // Sage owns that figure (written on sync). With the statements switch on it is the sum of
+  // the Payments list. Otherwise the designer enters it by hand here.
+  const paymentsLedger = statementsEnabled && !sageInvoiceId
+  const depositManual = !sageInvoiceId && !paymentsLedger
 
   const handleDepositReceivedSave = useCallback(async (raw: string) => {
     const parsed = parseFloat(raw)
@@ -275,6 +282,14 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
     toast.success(amount != null ? `Deposit of ${formatZAR(amount)} recorded` : 'Deposit amount cleared')
   }, [depositAmountReceived, stages, project.id, project.status, supabase])
+
+  // The Payments panel saved a change: the server has already moved the paid total
+  // and, if needed, the Deposit Received stage — mirror both here.
+  const handlePaymentsChange = useCallback((paid: number | null, updatedStages: ProjectStages | null, newStatus: ProjectStatus) => {
+    setDepositAmountReceived(paid)
+    if (updatedStages) setStages(updatedStages)
+    if (project.status !== 'Cancelled') setProject(p => ({ ...p, status: newStatus }))
+  }, [project.status])
 
   // Edited from both the header and the Deliveries panel, so it lives here.
   const saveInstallDeadline = useCallback(async (date: string | null) => {
@@ -436,7 +451,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project.id, type: emailModalType, overrideEmail: emailInput.trim(), customBody: emailBody }),
+        body: JSON.stringify({ projectId: project.id, type: emailModalType, overrideEmail: emailInput.trim(), customBody: emailBody, attachStatement: statementsEnabled && attachStatement }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -461,7 +476,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     } finally {
       setEmailSending(false)
     }
-  }, [emailInput, emailModalType, emailBody, project.client, project.client_id, project.id, supabase, depositManual, isPaid, depositDraft, handleDepositReceivedSave])
+  }, [emailInput, emailModalType, emailBody, project.client, project.client_id, project.id, supabase, depositManual, isPaid, depositDraft, handleDepositReceivedSave, statementsEnabled, attachStatement])
 
   const handleOpenProdSheetModal = useCallback(() => {
     setProdSheetEmailInput(initialProductionSheetEmail ?? '')
@@ -1064,7 +1079,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           {depositAmountReceived != null && (
             <>
               <div className="flex justify-between text-sm text-green-700">
-                <span>Deposit Received</span>
+                <span>{paymentsLedger ? 'Paid to Date' : 'Deposit Received'}</span>
                 <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-[#2C2C2A]">
@@ -1220,7 +1235,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </div>
             ) : depositAmountReceived != null ? (
               <div className="flex justify-between text-sm text-green-700">
-                <span>Deposit Received</span>
+                <span>{paymentsLedger ? 'Paid to Date' : 'Deposit Received'}</span>
                 <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
               </div>
             ) : null}
@@ -1235,12 +1250,21 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 <span className="font-medium">{formatZAR(totals.balance_due)}</span>
               </div>
             ) : null}
-            {!depositManual && (
+            {sageInvoiceId && (
               <p className="text-[11px] text-[#8A877F]">Deposit amount is synced from Sage.</p>
             )}
           </div>
         </div>
       </div>
+
+      {paymentsLedger && (
+        <PaymentsPanel
+          projectId={project.id}
+          initialPayments={initialPayments}
+          total={totals.grand_total}
+          onChange={handlePaymentsChange}
+        />
+      )}
 
       {deliveryTimelineEnabled && (
         <DeliveriesPanel
@@ -1393,6 +1417,17 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     : 'Leave empty if no deposit has been paid — the invoice will show the full amount due.'}
                 </p>
               </div>
+            )}
+            {emailModalType === 'invoice' && statementsEnabled && project.client_id && (
+              <label className="mt-4 flex items-center gap-2 text-sm text-[#2C2C2A] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={attachStatement}
+                  onChange={e => setAttachStatement(e.target.checked)}
+                  className="w-4 h-4 accent-[#9A7B4F] cursor-pointer"
+                />
+                Attach the client&apos;s statement (all their projects)
+              </label>
             )}
             <div className="mt-4">
               <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Message</label>

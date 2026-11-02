@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
-import { statusFromStages } from '@/lib/types'
-import type { ProjectStages } from '@/lib/types'
+import { applyStageUpdate } from '@/lib/stages'
 
 const ALLOWED_FIELDS = new Set([
   'quote_sent', 'quote_sent_at',
@@ -40,32 +38,9 @@ export async function POST(req: NextRequest) {
     )
     if (!Object.keys(safeUpdate).length) return NextResponse.json({ error: 'No valid fields' }, { status: 400 })
 
-    // Write using admin client — bypasses RLS/get_current_org_id issues on client-side sessions
-    const { error: upsertError } = await supabaseAdmin
-      .from('project_stages')
-      .upsert({ project_id: projectId, ...safeUpdate }, { onConflict: 'project_id' })
-
-    if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 500 })
-
-    // Recompute project status from the full updated stages
-    const { data: stages } = await supabaseAdmin
-      .from('project_stages')
-      .select('*')
-      .eq('project_id', projectId)
-      .maybeSingle()
-
-    let newStatus = project.status
-    if (project.status !== 'Cancelled') {
-      newStatus = statusFromStages(stages as ProjectStages | null)
-      const { error: statusError } = await supabaseAdmin
-        .from('projects')
-        .update({ status: newStatus })
-        .eq('id', projectId)
-      if (statusError) {
-        console.error('[stages/toggle] projects status update failed:', statusError.message)
-        return NextResponse.json({ error: `Status update failed: ${statusError.message}` }, { status: 500 })
-      }
-    }
+    // Written with the admin client — bypasses RLS/get_current_org_id issues on client-side sessions
+    const { stages, newStatus, error } = await applyStageUpdate(projectId, project.status, safeUpdate)
+    if (error) return NextResponse.json({ error }, { status: 500 })
 
     return NextResponse.json({ success: true, newStatus, stages })
   } catch (e) {

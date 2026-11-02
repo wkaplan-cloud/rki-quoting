@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -76,6 +76,7 @@ export function FeatureTogglesPanel({
   jobCostSheetEnabled = false,
   deliveryTimelineEnabled = false,
   insightsEnabled = false,
+  statementsEnabled = false,
   plan = 'trial',
 }: {
   orgId: string
@@ -84,6 +85,7 @@ export function FeatureTogglesPanel({
   jobCostSheetEnabled?: boolean
   deliveryTimelineEnabled?: boolean
   insightsEnabled?: boolean
+  statementsEnabled?: boolean
   plan?: string
 }) {
   // The cost sheet ships with Studio and Agency, so the override only means
@@ -136,6 +138,14 @@ export function FeatureTogglesPanel({
           icon={<Lightbulb size={16} className="text-[#7E6036]" />}
           title="Insights"
           description="Admin → Insights tab: profit report by client, supplier and item, plus a data clean-up list. Read-only"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="statements_enabled"
+          initial={statementsEnabled}
+          icon={<ReceiptText size={16} className="text-[#7E6036]" />}
+          title="Payments & statements"
+          description="Record each payment on a project, and send clients a statement across all their projects"
         />
       </div>
     </div>

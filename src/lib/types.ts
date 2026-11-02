@@ -66,6 +66,20 @@ export interface Project {
   client?: Client | null
 }
 
+export type PaymentMethod = 'eft' | 'card' | 'cash' | 'other'
+
+/** One payment from the client — see supabase/statements.sql. */
+export interface ProjectPayment {
+  id: string
+  project_id: string
+  amount: number
+  paid_on: string
+  method: PaymentMethod | null
+  reference: string | null
+  note: string | null
+  created_at: string
+}
+
 export interface LineItem {
   id: string
   project_id: string

@@ -44,7 +44,7 @@ export function computeLineItems(items: LineItemCalcInput[]): (LineItemCalcInput
 // ─── Project totals ───────────────────────────────────────────────────────────
 
 export function computeTotals(
-  items: LineItem[],
+  items: LineItemCalcInput[],
   design_fee_pct: number,
   vat_rate: number = 15,
   deposit_pct: number = 50

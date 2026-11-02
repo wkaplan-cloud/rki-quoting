@@ -10,6 +10,8 @@ import { resolveAcceptance } from '@/lib/acceptance'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { fetchLineItemImages } from '@/lib/pdf/lineItemImages'
 import { apiError } from '@/lib/api-error'
+import { statementsEnabled } from '@/lib/statement'
+import { renderStatement } from '@/lib/pdf/renderStatement'
 
 export const maxDuration = 60
 
@@ -18,7 +20,7 @@ const escHtml = (s: string) =>
 
 export async function POST(req: NextRequest) {
   try {
-  const { projectId, type, overrideEmail, customBody } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string; customBody?: string }
+  const { projectId, type, overrideEmail, customBody, attachStatement } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string; customBody?: string; attachStatement?: boolean }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -103,6 +105,11 @@ export async function POST(req: NextRequest) {
       })
     )
 
+    // Optional: the client's statement goes out with an invoice (statements switch only)
+    const statement = type === 'invoice' && attachStatement && project.client_id && await statementsEnabled(supabase)
+      ? await renderStatement(supabase, project.client_id)
+      : null
+
     const label = type === 'quote' ? 'Quotation' : 'Invoice'
     const subject = `${label} - ${project.project_name} - ${project.project_number}`
     const studioName = settings?.business_name ?? 'Your Studio'
@@ -182,7 +189,7 @@ export async function POST(req: NextRequest) {
               </tr>
             </table>`
             })() : ''}
-            <p style="margin:28px 0 0;font-size:13px;color:#8A877F;line-height:1.6;">The PDF is attached to this email. Please don't hesitate to reach out if you have any questions.</p>
+            <p style="margin:28px 0 0;font-size:13px;color:#8A877F;line-height:1.6;">${statement ? 'Your invoice and statement are attached as PDFs.' : 'The PDF is attached to this email.'} Please don't hesitate to reach out if you have any questions.</p>
           </td>
         </tr>
 
@@ -199,10 +206,13 @@ export async function POST(req: NextRequest) {
   </table>
 </body>
 </html>`,
-      attachments: [{
-        filename: `${type === 'quote' ? 'Quote' : 'Invoice'}-${project.project_number}.pdf`,
-        content: Buffer.from(buffer),
-      }],
+      attachments: [
+        {
+          filename: `${type === 'quote' ? 'Quote' : 'Invoice'}-${project.project_number}.pdf`,
+          content: Buffer.from(buffer),
+        },
+        ...(statement ? [{ filename: statement.filename, content: Buffer.from(statement.buffer) }] : []),
+      ],
     })
 
     if (resendError) {
