@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import sharp from 'sharp'
 import { z } from 'zod'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import type { InboundEmail } from './inbound'
@@ -9,6 +10,34 @@ import type { InboundEmail } from './inbound'
 // mis-file it, never make the assistant do anything.
 
 export const AGENT_MODEL = 'claude-opus-5-5'
+
+// List price per million tokens for AGENT_MODEL (cache write = 5-minute
+// ephemeral). Thinking is billed as output and is included in output_tokens.
+const PRICE_PER_MTOK = { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 }
+
+export interface CallUsage {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  costUsd: number
+}
+
+function usageOf(u: Anthropic.Usage): CallUsage {
+  const inputTokens = u.input_tokens ?? 0
+  const outputTokens = u.output_tokens ?? 0
+  const cacheReadTokens = u.cache_read_input_tokens ?? 0
+  const cacheWriteTokens = u.cache_creation_input_tokens ?? 0
+  const costUsd = (inputTokens * PRICE_PER_MTOK.input + outputTokens * PRICE_PER_MTOK.output
+    + cacheReadTokens * PRICE_PER_MTOK.cacheRead + cacheWriteTokens * PRICE_PER_MTOK.cacheWrite) / 1_000_000
+  return { model: AGENT_MODEL, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, costUsd }
+}
+
+/** The API refused the call because the account has no credit left. */
+export function isOutOfCredit(e: unknown): boolean {
+  return e instanceof Anthropic.APIError && /credit balance/i.test(e.message)
+}
 
 const KINDS = [
   'supplier_quote', 'proforma', 'invoice', 'order_confirmation', 'delivery',
@@ -110,16 +139,38 @@ ${rfqs || '(none)'}`
 
 const MAX_BODY_CHARS = 20_000
 
-export async function classifyEmail(email: InboundEmail, ctx: StudioContext): Promise<AgentResult> {
+/**
+ * The copy of an image the model reads: at most 1568px on the long side (the
+ * API's recommended size; bigger costs more and reads no better) and well
+ * under its 5 MB per-image limit, which a phone photo often passes. Only this
+ * copy is shrunk — the original is what is stored and saved to Drive.
+ */
+async function forReading(image: Buffer): Promise<string> {
+  const out = await sharp(image)
+    .rotate()
+    .resize({ width: 1568, height: 1568, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 82 })
+    .toBuffer()
+  return out.toString('base64')
+}
+
+/**
+ * `onUsage` runs as soon as the API answers — before any check that might
+ * throw — because a refused or cut-off answer is billed all the same.
+ */
+export async function classifyEmail(
+  email: InboundEmail,
+  ctx: StudioContext,
+  onUsage: (usage: CallUsage) => Promise<void>,
+): Promise<AgentResult> {
   const client = new Anthropic()
 
   const content: Anthropic.ContentBlockParam[] = []
   for (const a of email.attachments) {
-    const data = a.content.toString('base64')
     if (a.contentType === 'application/pdf' || a.filename.toLowerCase().endsWith('.pdf')) {
-      content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data }, title: a.filename })
+      content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.content.toString('base64') }, title: a.filename })
     } else if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(a.contentType)) {
-      content.push({ type: 'image', source: { type: 'base64', media_type: a.contentType as 'image/jpeg', data } })
+      content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: await forReading(a.content) } })
     }
   }
   const body = email.text.length > MAX_BODY_CHARS ? email.text.slice(0, MAX_BODY_CHARS) + '\n[…email truncated]' : email.text
@@ -144,6 +195,7 @@ ${body || '(no text)'}`,
     ],
     messages: [{ role: 'user', content }],
   })
+  await onUsage(usageOf(response.usage))
 
   if (response.stop_reason === 'refusal') throw new Error('The model declined to read this email')
   if (response.stop_reason === 'max_tokens') throw new Error('Email too long to read in one pass')

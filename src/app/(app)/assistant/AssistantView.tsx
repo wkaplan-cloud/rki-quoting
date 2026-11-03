@@ -12,6 +12,15 @@ export interface MailboxInfo {
   last_received_at: string | null
   last_error: string | null
   drive_folder_id: string | null
+  credit_out_at: string | null
+}
+
+export interface Costs {
+  thisMonth: number
+  lastMonth: number
+  perEmail: number | null
+  emailsRead: number
+  usdZar: number
 }
 
 interface ExtractedLine {
@@ -89,9 +98,10 @@ const when = (iso: string | null) =>
 
 const selectClass = 'w-full text-sm px-2.5 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer'
 
-export function AssistantView({ mailbox, driveAccount, emails, projects, suppliers }: {
+export function AssistantView({ mailbox, driveAccount, costs, emails, projects, suppliers }: {
   mailbox: MailboxInfo | null
   driveAccount: string | null
+  costs: Costs
   emails: AgentEmailRow[]
   projects: Option[]
   suppliers: Option[]
@@ -121,6 +131,10 @@ export function AssistantView({ mailbox, driveAccount, emails, projects, supplie
             </button>
           </div>
         )}
+
+        {mailbox?.credit_out_at && <CreditOut since={mailbox.credit_out_at} name={name} onDone={() => router.refresh()} />}
+
+        {mailbox && <CostBox costs={costs} />}
 
         {mailbox?.last_error && (
           <div className="flex items-start gap-2 rounded-lg border border-[#E8C4B8] bg-[#FBEFEA] px-4 py-3 text-sm text-[#8A3A22]">
@@ -490,5 +504,75 @@ function ActionText({ text }: { text: string }) {
       <a href={link} target="_blank" rel="noreferrer" className="underline font-medium hover:text-[#2C2C2A]">Confirm forwarding in Gmail</a>
       {after}
     </>
+  )
+}
+
+const zar = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+function CostBox({ costs }: { costs: Costs }) {
+  return (
+    <div className="flex flex-wrap gap-x-8 gap-y-2 rounded-xl border border-[#D8D3C8] bg-white px-5 py-3">
+      <Stat label="This month" value={zar(costs.thisMonth)} note={`${costs.emailsRead} email${costs.emailsRead === 1 ? '' : 's'} read`} />
+      <Stat label="Last month" value={zar(costs.lastMonth)} />
+      <Stat label="Per email" value={costs.perEmail == null ? '—' : zar(costs.perEmail)} note="average this month" />
+      <p className="basis-full text-[11px] text-[#8A877F]">
+        Estimate of Claude usage at R{costs.usdZar.toFixed(2)} to the dollar. Your actual bill is at console.anthropic.com.
+      </p>
+    </div>
+  )
+}
+
+function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">{label}</div>
+      <div className="font-serif text-lg text-[#1A1A18]">{value}</div>
+      {note && <div className="text-[11px] text-[#8A877F]">{note}</div>}
+    </div>
+  )
+}
+
+function CreditOut({ since, name, onDone }: { since: string; name: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  async function readAll() {
+    setBusy(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/agent/retry-failed', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) setResult(data.error ?? 'Could not read them')
+      else setResult(`${data.filed} read${data.failed ? `, ${data.failed} still failing` : ''}${data.left ? ` — ${data.left} left, press again` : ''}.`)
+      onDone()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[#E8C4B8] bg-[#FBEFEA] px-5 py-4 space-y-2">
+      <div className="flex items-start gap-2 text-sm text-[#8A3A22]">
+        <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="font-medium">{name} has run out of Claude credit (since {when(since)}).</p>
+          <p>Supplier emails are still arriving and being saved, but she can&rsquo;t read them until the account is topped up.</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 pl-6">
+        <a
+          href="https://console.anthropic.com/settings/billing"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 font-medium rounded px-3 py-1.5 text-xs bg-[#2C2C2A] text-[#F5F2EC] hover:bg-[#9A7B4F] transition-colors"
+        >
+          Top up credit
+        </a>
+        <Button size="sm" variant="secondary" onClick={readAll} disabled={busy}>
+          <RotateCcw size={12} /> {busy ? 'Reading…' : 'Read all again'}
+        </Button>
+        {result && <span className="text-xs text-[#8A3A22]">{result}</span>}
+      </div>
+    </div>
   )
 }

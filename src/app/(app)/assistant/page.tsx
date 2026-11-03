@@ -14,10 +14,14 @@ export default async function AssistantPage() {
   if (!orgId || !(await agentEnabled(orgId))) redirect('/dashboard')
 
   const supabase = await createClient()
-  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: suppliers }] = await Promise.all([
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: suppliers }, { data: usage }] = await Promise.all([
     supabaseAdmin
       .from('agent_mailboxes')
-      .select('agent_name, email, last_received_at, last_error, drive_folder_id')
+      .select('agent_name, email, last_received_at, last_error, drive_folder_id, credit_out_at')
       .eq('org_id', orgId)
       .maybeSingle(),
     supabase
@@ -33,7 +37,23 @@ export default async function AssistantPage() {
       .is('archived_at', null)
       .order('created_at', { ascending: false }),
     supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
+    supabase.from('agent_usage').select('email_id, cost_usd, created_at').gte('created_at', lastMonthStart.toISOString()),
   ])
+
+  // Rand estimate at a fixed rate: Anthropic bills in dollars, and this is a
+  // guide to what reading mail costs, not the invoice.
+  const usdZar = Number(process.env.AGENT_USD_ZAR) || 18.5
+  const sum = (rows: { cost_usd: number | string }[]) => rows.reduce((t, r) => t + Number(r.cost_usd), 0) * usdZar
+  const thisMonth = (usage ?? []).filter(u => new Date(u.created_at) >= monthStart)
+  const lastMonth = (usage ?? []).filter(u => new Date(u.created_at) < monthStart)
+  const emailsRead = new Set(thisMonth.map(u => u.email_id)).size
+  const costs = {
+    thisMonth: sum(thisMonth),
+    lastMonth: sum(lastMonth),
+    perEmail: emailsRead ? sum(thisMonth) / emailsRead : null,
+    emailsRead,
+    usdZar,
+  }
 
   const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null)
 
@@ -41,6 +61,7 @@ export default async function AssistantPage() {
     <AssistantView
       mailbox={(mailbox as MailboxInfo | null) ?? null}
       driveAccount={driveAccountEmail()}
+      costs={costs}
       emails={(emails ?? []) as unknown as AgentEmailRow[]}
       projects={(projects ?? []).map(p => ({
         id: p.id,

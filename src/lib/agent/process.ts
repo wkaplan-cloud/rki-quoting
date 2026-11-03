@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { gmailForwardingRequest, type InboundEmail } from './inbound'
-import { classifyEmail, AGENT_MODEL, type StudioContext } from './classify'
+import { classifyEmail, isOutOfCredit, AGENT_MODEL, type CallUsage, type StudioContext } from './classify'
 import { syncEmailToDrive } from './drive-sync'
 
 // Filing one email for one studio. Every email gets a row whatever happens —
@@ -119,8 +119,22 @@ async function readAndFile(
   ctx: StudioContext,
 ): Promise<'filed' | 'failed'> {
   const row = { id: rowId }
+  const recordUsage = async (u: CallUsage) => {
+    await supabaseAdmin.from('agent_usage').insert({
+      org_id: orgId,
+      email_id: row.id,
+      model: u.model,
+      input_tokens: u.inputTokens,
+      output_tokens: u.outputTokens,
+      cache_read_tokens: u.cacheReadTokens,
+      cache_write_tokens: u.cacheWriteTokens,
+      cost_usd: u.costUsd,
+    })
+  }
   try {
-    const result = await classifyEmail(email, ctx)
+    const result = await classifyEmail(email, ctx, recordUsage)
+    // A read went through, so the account has credit again.
+    await supabaseAdmin.from('agent_mailboxes').update({ credit_out_at: null }).eq('org_id', orgId).not('credit_out_at', 'is', null)
 
     await supabaseAdmin.from('agent_emails').update({
       error: null,
@@ -170,7 +184,11 @@ async function readAndFile(
     }
     return 'filed'
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
+    const outOfCredit = isOutOfCredit(e)
+    const message = outOfCredit
+      ? 'Not read: the Claude account is out of credit. Top up, then press Read again.'
+      : e instanceof Error ? e.message : String(e)
+    if (outOfCredit) await flagOutOfCredit(orgId)
     await supabaseAdmin.from('agent_emails')
       .update({ status: 'error', error: message, updated_at: new Date().toISOString() })
       .eq('id', row.id).eq('org_id', orgId)
@@ -187,6 +205,24 @@ async function readAndFile(
     }
     return 'failed'
   }
+}
+
+/** First refusal for lack of credit raises one notification, not one per email. */
+async function flagOutOfCredit(orgId: string): Promise<void> {
+  const { data } = await supabaseAdmin
+    .from('agent_mailboxes')
+    .update({ credit_out_at: new Date().toISOString() })
+    .eq('org_id', orgId)
+    .is('credit_out_at', null)
+    .select('agent_name')
+  if (!data?.length) return
+  await supabaseAdmin.from('org_notifications').insert({
+    org_id: orgId,
+    type: 'agent_credit_out',
+    title: `${data[0].agent_name} has run out of Claude credit`,
+    body: 'Supplier emails are still being received and saved, but not read. Top up at console.anthropic.com, then press Read all again on her page.',
+    metadata: {},
+  })
 }
 
 /**
@@ -237,4 +273,21 @@ export async function retryEmail(orgId: string, emailId: string): Promise<'filed
   if (outcome === 'filed') return 'filed'
   const { data: after } = await supabaseAdmin.from('agent_emails').select('error').eq('id', emailId).eq('org_id', orgId).maybeSingle()
   return after?.error ?? 'Could not read it'
+}
+
+/** Read every email whose read failed, oldest first — for catching up after a top-up. */
+export async function retryFailed(orgId: string, limit = 8): Promise<{ filed: number; failed: number; left: number }> {
+  const { data: rows, count } = await supabaseAdmin
+    .from('agent_emails')
+    .select('id', { count: 'exact' })
+    .eq('org_id', orgId)
+    .eq('status', 'error')
+    .order('created_at', { ascending: true })
+    .limit(limit)
+  let filed = 0, failed = 0
+  for (const r of rows ?? []) {
+    if ((await retryEmail(orgId, r.id)) === 'filed') filed++
+    else failed++
+  }
+  return { filed, failed, left: Math.max(0, (count ?? 0) - filed) }
 }
