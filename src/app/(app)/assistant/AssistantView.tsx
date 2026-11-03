@@ -255,11 +255,9 @@ function AddressCard({ mailbox, driveAccount, onSaved }: { mailbox: MailboxInfo;
           </Button>
         </div>
       </div>
-      <ol className="text-xs leading-relaxed text-[#4A4A47] list-decimal pl-4 space-y-0.5">
-        <li>In each studio Gmail inbox, open Settings → Forwarding and POP/IMAP → Add a forwarding address, and paste the address above.</li>
-        <li>Gmail sends a confirmation here (a code, or a link for Google Workspace inboxes). It appears on this page within a minute: type the code back into Gmail, or open the link.</li>
-        <li>Create a filter for supplier mail (for example, from the supplier domains) and choose &ldquo;Forward it to&rdquo; this address.</li>
-      </ol>
+      <p className="text-xs leading-relaxed text-[#4A4A47]">
+        Supplier mail reaches {mailbox.agent_name} automatically through the studio&rsquo;s Google Workspace rule. To send her one by hand, forward it to the address above.
+      </p>
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-60">
           <Input label="Name" value={agentName} onChange={e => setAgentName(e.target.value)} />
@@ -268,7 +266,6 @@ function AddressCard({ mailbox, driveAccount, onSaved }: { mailbox: MailboxInfo;
           {saving ? 'Saving…' : 'Rename'}
         </Button>
       </div>
-      <p className="text-[11px] text-[#8A877F]">Renaming doesn&rsquo;t change the address, so forwarding keeps working.</p>
       {error && <p className="text-sm text-[#B4472F]">{error}</p>}
       {driveAccount && <DriveSettings mailbox={mailbox} driveAccount={driveAccount} onSaved={onSaved} />}
     </div>
