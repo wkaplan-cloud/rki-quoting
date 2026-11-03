@@ -46,11 +46,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   // Everything below only needs orgId, so it all goes out in one wave rather
   // than fetching the org first and the rest after it.
-  const [org, { data: membership }, { data: settings }, { count: capitalBadgeCount }] = await Promise.all([
+  const [org, { data: membership }, { data: settings }, { count: capitalBadgeCount }, { data: agentMailbox }] = await Promise.all([
     getCurrentOrg(orgId),
     supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled, delivery_timeline_enabled').eq('org_id', orgId).maybeSingle(),
+    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled, delivery_timeline_enabled, agent_enabled').eq('org_id', orgId).maybeSingle(),
     supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending').eq('archived', false),
+    supabaseAdmin.from('agent_mailboxes').select('agent_name').eq('org_id', orgId).maybeSingle(),
   ])
 
   // Calculate trial and grace period
@@ -100,6 +101,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
       capitalBadge={capitalBadge}
       studioEnabled={studioEnabled}
       deliveryTimelineEnabled={deliveryTimelineEnabled}
+      agentEnabled={settings?.agent_enabled ?? false}
+      agentName={agentMailbox?.agent_name ?? null}
       userEmail={user.email ?? ''}
       userName={membership?.full_name ?? ''}
       plan={org?.plan ?? 'trial'}

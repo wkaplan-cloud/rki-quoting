@@ -12,6 +12,7 @@
     "verify": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@imgly/background-removal": "^1.7.0",
     "@react-pdf/renderer": "^4.3.2",
@@ -25,9 +26,11 @@
     "driver.js": "^1.4.0",
     "firebase-admin": "^14.0.0",
     "heic2any": "^0.0.4",
+    "imapflow": "^2.10.0",
     "jspdf": "^4.2.1",
     "konva": "^10.3.0",
     "lucide-react": "^0.577.0",
+    "mailparser": "^3.14.1",
     "next": "16.2.0",
     "papaparse": "^5.5.3",
     "pdfjs-dist": "^6.1.200",
@@ -39,10 +42,12 @@
     "sharp": "^0.34.5",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
+    "zod": "^4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

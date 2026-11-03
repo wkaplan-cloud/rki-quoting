@@ -16,6 +16,8 @@ export function AppLayout({
   capitalBadge,
   studioEnabled = false,
   deliveryTimelineEnabled = false,
+  agentEnabled = false,
+  agentName = null,
   userEmail,
   userName,
   plan,
@@ -32,6 +34,8 @@ export function AppLayout({
   capitalBadge: number
   studioEnabled?: boolean
   deliveryTimelineEnabled?: boolean
+  agentEnabled?: boolean
+  agentName?: string | null
   userEmail: string
   userName: string
   plan: string
@@ -65,6 +69,8 @@ export function AppLayout({
         capitalBadge={capitalBadge}
         studioEnabled={studioEnabled}
         deliveryTimelineEnabled={deliveryTimelineEnabled}
+        agentEnabled={agentEnabled}
+        agentName={agentName}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onContactClick={() => setFeedbackOpen(true)}

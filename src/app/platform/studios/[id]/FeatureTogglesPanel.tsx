@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -77,6 +77,7 @@ export function FeatureTogglesPanel({
   deliveryTimelineEnabled = false,
   insightsEnabled = false,
   statementsEnabled = false,
+  agentEnabled = false,
   plan = 'trial',
 }: {
   orgId: string
@@ -86,6 +87,7 @@ export function FeatureTogglesPanel({
   deliveryTimelineEnabled?: boolean
   insightsEnabled?: boolean
   statementsEnabled?: boolean
+  agentEnabled?: boolean
   plan?: string
 }) {
   // The cost sheet ships with Studio and Agency, so the override only means
@@ -146,6 +148,14 @@ export function FeatureTogglesPanel({
           icon={<ReceiptText size={16} className="text-[#7E6036]" />}
           title="Payments & statements"
           description="Record each payment on a project, and send clients a statement across all their projects"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="agent_enabled"
+          initial={agentEnabled}
+          icon={<Inbox size={16} className="text-[#7E6036]" />}
+          title="Studio assistant"
+          description="Reads a forwarded Gmail inbox, files supplier emails and PDFs to projects, and flags what needs doing. Uses the Claude API"
         />
       </div>
     </div>
