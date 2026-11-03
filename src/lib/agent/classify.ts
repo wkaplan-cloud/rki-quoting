@@ -9,11 +9,13 @@ import type { InboundEmail } from './inbound'
 // the model has no tools, so text inside a supplier's email can at worst
 // mis-file it, never make the assistant do anything.
 
-export const AGENT_MODEL = 'claude-opus-5-5'
+// Sonnet rather than Opus: about half the cost per email, chosen by the studio
+// once Opus had been seen reading quotes well.
+export const AGENT_MODEL = 'claude-sonnet-5-5'
 
 // List price per million tokens for AGENT_MODEL (cache write = 5-minute
 // ephemeral). Thinking is billed as output and is included in output_tokens.
-const PRICE_PER_MTOK = { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 }
+const PRICE_PER_MTOK = { input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 }
 
 export interface CallUsage {
   model: string
