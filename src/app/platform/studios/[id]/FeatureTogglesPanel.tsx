@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -78,6 +78,7 @@ export function FeatureTogglesPanel({
   insightsEnabled = false,
   statementsEnabled = false,
   agentEnabled = false,
+  capitalEnabled = false,
   plan = 'trial',
 }: {
   orgId: string
@@ -88,6 +89,7 @@ export function FeatureTogglesPanel({
   insightsEnabled?: boolean
   statementsEnabled?: boolean
   agentEnabled?: boolean
+  capitalEnabled?: boolean
   plan?: string
 }) {
   // The cost sheet ships with Studio and Agency, so the override only means
@@ -156,6 +158,14 @@ export function FeatureTogglesPanel({
           icon={<Inbox size={16} className="text-[#7E6036]" />}
           title="Studio assistant"
           description="Gets her own email address; supplier mail forwarded to it is filed to projects (emails and PDFs) and what needs doing is flagged. Uses the Claude API"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="capital_hotels_enabled"
+          initial={capitalEnabled}
+          icon={<Hotel size={16} className="text-[#7E6036]" />}
+          title="Capital (Hotels & Pieces)"
+          description="Capital Hotels requests and the Capital Pieces catalogue, both in the sidebar"
         />
       </div>
     </div>
