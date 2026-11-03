@@ -239,7 +239,7 @@ function AddressCard({ mailbox, onSaved }: { mailbox: MailboxInfo; onSaved: () =
       </div>
       <ol className="text-xs leading-relaxed text-[#4A4A47] list-decimal pl-4 space-y-0.5">
         <li>In each studio Gmail inbox, open Settings → Forwarding and POP/IMAP → Add a forwarding address, and paste the address above.</li>
-        <li>Gmail sends a confirmation code here. It appears on this page within a minute. Type it back into Gmail.</li>
+        <li>Gmail sends a confirmation here (a code, or a link for Google Workspace inboxes). It appears on this page within a minute: type the code back into Gmail, or open the link.</li>
         <li>Create a filter for supplier mail (for example, from the supplier domains) and choose &ldquo;Forward it to&rdquo; this address.</li>
       </ol>
       <div className="flex flex-wrap items-end gap-2">
@@ -314,7 +314,9 @@ function EmailCard({ email: e, projects, suppliers }: { email: AgentEmailRow; pr
         )}
         {e.summary && <p className="text-sm text-[#2C2C2A]">{e.summary}</p>}
         {e.action_needed && (
-          <p className="text-sm text-[#7A5F35] bg-[#FBF5EA] border border-[#EADBC0] rounded-md px-3 py-1.5">{e.action_needed}</p>
+          <p className="text-sm text-[#7A5F35] bg-[#FBF5EA] border border-[#EADBC0] rounded-md px-3 py-1.5 break-words">
+            <ActionText text={e.action_needed} />
+          </p>
         )}
 
         <div className="grid gap-2 md:grid-cols-2">
@@ -418,5 +420,22 @@ function Field({ label, value }: { label: string; value: string }) {
       <dt className="text-[#8A877F]">{label}</dt>
       <dd className="text-[#2C2C2A]">{value}</dd>
     </div>
+  )
+}
+
+// Action text is written by the model from outside mail, so it is plain text.
+// The one exception is Google's forwarding-confirmation link, made clickable
+// because the studio has to open it; no other link ever is.
+const GOOGLE_FORWARDING_LINK = /(https:\/\/mail-settings\.google\.com\/mail\/vf-\S+)/
+
+function ActionText({ text }: { text: string }) {
+  const [before, link, after] = text.split(GOOGLE_FORWARDING_LINK)
+  if (!link) return <>{text}</>
+  return (
+    <>
+      {before}
+      <a href={link} target="_blank" rel="noreferrer" className="underline font-medium hover:text-[#2C2C2A]">Confirm forwarding in Gmail</a>
+      {after}
+    </>
   )
 }

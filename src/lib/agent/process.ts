@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { gmailForwardingCode, type InboundEmail } from './inbound'
+import { gmailForwardingRequest, type InboundEmail } from './inbound'
 import { classifyEmail, AGENT_MODEL, type StudioContext } from './classify'
 
 // Filing one email for one studio. Every email gets a row whatever happens —
@@ -54,7 +54,7 @@ function safeName(name: string): string {
 }
 
 export async function fileInbound(orgId: string, email: InboundEmail): Promise<'filed' | 'failed' | 'skipped'> {
-  const forwardingCode = gmailForwardingCode(email)
+  const forwarding = gmailForwardingRequest(email)
 
   const { data: row, error: insertError } = await supabaseAdmin
     .from('agent_emails')
@@ -67,12 +67,14 @@ export async function fileInbound(orgId: string, email: InboundEmail): Promise<'
       subject: email.subject,
       received_at: email.receivedAt?.toISOString() ?? null,
       body_text: email.text.slice(0, 50_000),
-      model: forwardingCode ? null : AGENT_MODEL,
+      model: forwarding ? null : AGENT_MODEL,
       // Gmail's forwarding check isn't supplier mail; it only needs its code read back.
-      ...(forwardingCode && {
+      ...(forwarding && {
         kind: 'other',
         summary: 'Gmail is asking to confirm that mail may be forwarded here.',
-        action_needed: `Gmail forwarding confirmation code: ${forwardingCode}. Enter it in Gmail → Settings → Forwarding to finish setting up.`,
+        action_needed: forwarding.code
+          ? `Gmail forwarding confirmation code: ${forwarding.code}. Enter it in Gmail → Settings → Forwarding to finish setting up.`
+          : `Open this link while signed in to the inbox that asked, to allow forwarding: ${forwarding.link}`,
         match_confidence: 'high',
       }),
     })
@@ -87,7 +89,7 @@ export async function fileInbound(orgId: string, email: InboundEmail): Promise<'
     .update({ last_received_at: new Date().toISOString(), last_error: null, updated_at: new Date().toISOString() })
     .eq('org_id', orgId)
 
-  if (forwardingCode) return 'filed'
+  if (forwarding) return 'filed'
 
   // Keep the originals before reading them, so a failed read still leaves the PDF to open.
   const stored = await Promise.all(email.attachments.map(async (a, i) => {

@@ -144,11 +144,13 @@ export async function fetchReceived(emailId: string): Promise<InboundEmail> {
 
 /**
  * Gmail sends this to a new forwarding address before it will forward to it.
- * The studio needs the code back in Gmail, so it is shown on the assistant's
- * page rather than read as supplier mail.
+ * Personal Gmail sends a code to type back in; Google Workspace sends a link
+ * to open instead. Either way it is shown on the assistant's page rather than
+ * read as supplier mail. Only links on Google's own settings host are kept.
  */
-export function gmailForwardingCode(email: InboundEmail): string | null {
+export function gmailForwardingRequest(email: InboundEmail): { code: string | null; link: string | null } | null {
   if (email.fromEmail !== 'forwarding-noreply@google.com') return null
-  const m = email.subject.match(/\(#(\d+)\)/) ?? email.text.match(/confirmation code:\s*(\d+)/i)
-  return m ? m[1] : null
+  const code = (email.subject.match(/\(#(\d+)\)/) ?? email.text.match(/confirmation code:\s*(\d+)/i))?.[1] ?? null
+  const link = email.text.match(/https:\/\/mail-settings\.google\.com\/mail\/vf-\S+/)?.[0] ?? null
+  return code || link ? { code, link } : null
 }
