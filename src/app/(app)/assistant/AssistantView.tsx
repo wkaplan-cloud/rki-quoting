@@ -426,7 +426,7 @@ function Field({ label, value }: { label: string; value: string }) {
 // Action text is written by the model from outside mail, so it is plain text.
 // The one exception is Google's forwarding-confirmation link, made clickable
 // because the studio has to open it; no other link ever is.
-const GOOGLE_FORWARDING_LINK = /(https:\/\/mail-settings\.google\.com\/mail\/vf-\S+)/
+const GOOGLE_FORWARDING_LINK = /(https:\/\/mail(?:-settings)?\.google\.com\/mail\/vf-\S+)/
 
 function ActionText({ text }: { text: string }) {
   const [before, link, after] = text.split(GOOGLE_FORWARDING_LINK)
