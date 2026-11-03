@@ -108,7 +108,8 @@ export function AssistantView({ mailbox, driveAccount, costs, emails, projects, 
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<'needs' | 'all'>('needs')
-  const [showSettings, setShowSettings] = useState(false)
+  // Open to start with while there's no mail yet, so her address is in view.
+  const [showSettings, setShowSettings] = useState(emails.length === 0)
 
   const name = mailbox?.agent_name ?? 'Assistant'
   const needs = useMemo(() => emails.filter(e => e.status !== 'done'), [emails])
@@ -144,7 +145,7 @@ export function AssistantView({ mailbox, driveAccount, costs, emails, projects, 
         )}
 
         {!mailbox && <SetupForm onDone={() => router.refresh()} />}
-        {mailbox && (showSettings || emails.length === 0) && <AddressCard mailbox={mailbox} driveAccount={driveAccount} onSaved={() => router.refresh()} />}
+        {mailbox && showSettings && <AddressCard mailbox={mailbox} driveAccount={driveAccount} onSaved={() => router.refresh()} />}
 
         {mailbox && (
           <>
