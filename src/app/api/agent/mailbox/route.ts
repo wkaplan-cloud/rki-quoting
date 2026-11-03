@@ -1,52 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { encrypt } from '@/lib/sage-crypto'
-import { testLogin } from '@/lib/agent/mailbox'
+import { inboundAddress, inboundDomain, newInboundToken } from '@/lib/agent/inbound'
 import { agentGate } from '@/lib/agent/gate'
 import { apiError } from '@/lib/api-error'
 
-// Connect (or reconnect) the assistant's Gmail inbox. The app password is
-// checked against Gmail before it is stored, and is never sent back out.
-export async function PUT(req: NextRequest) {
+// Give the studio's assistant its receiving address. Once made, the address
+// never changes — the studio's Gmail forwarding filters point at it — so a
+// rename only changes the name shown in QuotingHub.
+export async function POST(req: NextRequest) {
   try {
     const gate = await agentGate()
     if (!gate.ok) return gate.res
+    const domain = inboundDomain()
+    if (!domain) return NextResponse.json({ error: 'Inbound mail is not configured on the server (RESEND_INBOUND_DOMAIN)' }, { status: 500 })
 
-    const body = await req.json()
-    const email = String(body.email ?? '').trim().toLowerCase()
-    const appPassword = String(body.appPassword ?? '').replace(/\s+/g, '')
-    const agentName = String(body.agentName ?? '').trim() || 'Mia'
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return NextResponse.json({ error: 'Enter the assistant’s Gmail address' }, { status: 400 })
-    if (appPassword.length !== 16) return NextResponse.json({ error: 'A Google app password is 16 letters' }, { status: 400 })
-
-    try {
-      await testLogin({ email, appPassword })
-    } catch (e) {
-      const why = e instanceof Error ? e.message : String(e)
-      return NextResponse.json({ error: `Gmail refused the login. Check the address and app password, and that IMAP is on. (${why})` }, { status: 400 })
-    }
-
-    // A different address means a different inbox: start its UID tracking fresh.
     const { data: existing } = await supabaseAdmin.from('agent_mailboxes').select('email').eq('org_id', gate.orgId).maybeSingle()
-    const sameInbox = existing?.email === email
+    if (existing) return NextResponse.json({ ok: true, email: existing.email })
 
-    const { error } = await supabaseAdmin.from('agent_mailboxes').upsert({
+    const { agentName } = await req.json()
+    const name = String(agentName ?? '').trim() || 'Mia'
+    const token = newInboundToken()
+    const email = inboundAddress(name, token, domain)
+
+    const { error } = await supabaseAdmin.from('agent_mailboxes').insert({
       org_id: gate.orgId,
-      agent_name: agentName,
+      agent_name: name,
       email,
-      app_password_enc: encrypt(appPassword),
-      last_error: null,
-      updated_at: new Date().toISOString(),
-      ...(sameInbox ? {} : { last_uid: null, uid_validity: null, last_checked_at: null }),
+      inbound_token: token,
     })
     if (error) throw error
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, email })
   } catch (e) {
     return apiError(e)
   }
 }
 
-// Rename only — no password needed.
 export async function PATCH(req: NextRequest) {
   try {
     const gate = await agentGate()

@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, RefreshCw, Check, AlertTriangle, ChevronDown, ChevronRight, RotateCcw, Inbox } from 'lucide-react'
+import { FileText, Copy, Check, AlertTriangle, ChevronDown, ChevronRight, RotateCcw, Inbox } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 export interface MailboxInfo {
   agent_name: string
   email: string
-  last_checked_at: string | null
+  last_received_at: string | null
   last_error: string | null
 }
 
@@ -94,63 +94,39 @@ export function AssistantView({ mailbox, emails, projects, suppliers }: {
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<'needs' | 'all'>('needs')
-  const [checking, setChecking] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [showConnect, setShowConnect] = useState(!mailbox)
+  const [showSettings, setShowSettings] = useState(false)
 
   const name = mailbox?.agent_name ?? 'Assistant'
   const needs = useMemo(() => emails.filter(e => e.status !== 'done'), [emails])
   const shown = tab === 'needs' ? needs : emails
 
-  async function checkNow() {
-    setChecking(true)
-    setMessage(null)
-    try {
-      const res = await fetch('/api/agent/run', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) setMessage(data.error ?? 'Could not check the inbox')
-      else {
-        const s = data.summary
-        setMessage(s.read === 0 ? 'No new mail.' : `Read ${s.read}: ${s.filed} filed${s.failed ? `, ${s.failed} could not be read` : ''}${s.skipped ? `, ${s.skipped} already filed` : ''}.`)
-      }
-      router.refresh()
-    } finally {
-      setChecking(false)
-    }
-  }
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={name}
-        subtitle={mailbox ? `Reads ${mailbox.email} and files supplier mail to projects` : 'Connect a Gmail inbox to start'}
+        subtitle={mailbox ? 'Files the supplier mail forwarded to her, and flags what needs doing' : 'Set up to start'}
         count={mailbox ? needs.length : undefined}
-        actions={mailbox && (
-          <Button size="sm" onClick={checkNow} disabled={checking}>
-            <RefreshCw size={13} className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Check now'}
-          </Button>
-        )}
       />
 
       <div className="p-4 md:p-8 space-y-4 max-w-5xl">
         {mailbox && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#8A877F]">
-            <span>Last checked {mailbox.last_checked_at ? when(mailbox.last_checked_at) : 'never'}</span>
-            <button className="underline hover:text-[#2C2C2A] cursor-pointer" onClick={() => setShowConnect(v => !v)}>
-              {showConnect ? 'Hide inbox settings' : 'Inbox settings'}
+            <span>Last email {mailbox.last_received_at ? when(mailbox.last_received_at) : 'none yet'}</span>
+            <button className="underline hover:text-[#2C2C2A] cursor-pointer" onClick={() => setShowSettings(v => !v)}>
+              {showSettings ? 'Hide setup' : 'Address & setup'}
             </button>
-            {message && <span className="text-[#2C2C2A]">{message}</span>}
           </div>
         )}
 
         {mailbox?.last_error && (
           <div className="flex items-start gap-2 rounded-lg border border-[#E8C4B8] bg-[#FBEFEA] px-4 py-3 text-sm text-[#8A3A22]">
             <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />
-            <span>The last check failed: {mailbox.last_error}</span>
+            <span>The last email could not be taken in: {mailbox.last_error}</span>
           </div>
         )}
 
-        {showConnect && <ConnectForm mailbox={mailbox} onDone={() => { setShowConnect(false); router.refresh() }} />}
+        {!mailbox && <SetupForm onDone={() => router.refresh()} />}
+        {mailbox && (showSettings || emails.length === 0) && <AddressCard mailbox={mailbox} onSaved={() => router.refresh()} />}
 
         {mailbox && (
           <>
@@ -169,7 +145,7 @@ export function AssistantView({ mailbox, emails, projects, suppliers }: {
             {shown.length === 0 ? (
               <div className="py-16 text-center text-sm text-[#8A877F]">
                 <Inbox size={20} className="mx-auto mb-2 opacity-50" />
-                {tab === 'needs' ? 'Nothing waiting. Everything is filed.' : `Nothing in ${name}'s inbox yet. Forward a supplier email to ${mailbox.email} and press Check now.`}
+                {tab === 'needs' ? 'Nothing waiting. Everything is filed.' : `Nothing in ${name}'s inbox yet. Forward a supplier email to ${mailbox.email}.`}
               </div>
             ) : (
               <div className="space-y-3">
@@ -183,26 +159,22 @@ export function AssistantView({ mailbox, emails, projects, suppliers }: {
   )
 }
 
-function ConnectForm({ mailbox, onDone }: { mailbox: MailboxInfo | null; onDone: () => void }) {
-  const [agentName, setAgentName] = useState(mailbox?.agent_name ?? 'Mia')
-  const [email, setEmail] = useState(mailbox?.email ?? '')
-  const [appPassword, setAppPassword] = useState('')
+function SetupForm({ onDone }: { onDone: () => void }) {
+  const [agentName, setAgentName] = useState('Mia')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function save() {
+  async function create() {
     setSaving(true)
     setError(null)
     try {
-      // Only the name changed: no need to re-enter the password.
-      const renameOnly = mailbox && email.trim().toLowerCase() === mailbox.email && !appPassword
       const res = await fetch('/api/agent/mailbox', {
-        method: renameOnly ? 'PATCH' : 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(renameOnly ? { agentName } : { agentName, email, appPassword }),
+        body: JSON.stringify({ agentName }),
       })
       const data = await res.json()
-      if (!res.ok) setError(data.error ?? 'Could not save')
+      if (!res.ok) setError(data.error ?? 'Could not set up')
       else onDone()
     } finally {
       setSaving(false)
@@ -212,25 +184,74 @@ function ConnectForm({ mailbox, onDone }: { mailbox: MailboxInfo | null; onDone:
   return (
     <div className="rounded-xl border border-[#D8D3C8] bg-white p-5 space-y-4">
       <div>
-        <h2 className="font-serif text-lg text-[#1A1A18]">{mailbox ? 'Inbox settings' : 'Connect the assistant’s inbox'}</h2>
-        <ol className="mt-2 text-xs leading-relaxed text-[#4A4A47] list-decimal pl-4 space-y-0.5">
-          <li>Create a Gmail account for the assistant and turn on 2-Step Verification.</li>
-          <li>Go to myaccount.google.com/apppasswords, create one called QuotingHub, and paste the 16 letters below.</li>
-          <li>In the studio inboxes, add a Gmail filter that forwards supplier mail to this address.</li>
-        </ol>
+        <h2 className="font-serif text-lg text-[#1A1A18]">Set up the studio assistant</h2>
+        <p className="mt-1 text-sm text-[#4A4A47]">She gets her own email address. Forward supplier mail to it and she files each email and PDF to the right project.</p>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="max-w-xs">
         <Input label="Name" value={agentName} onChange={e => setAgentName(e.target.value)} />
-        <Input label="Gmail address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-        <div>
-          <Input label="App password" type="password" autoComplete="new-password" value={appPassword} onChange={e => setAppPassword(e.target.value)} />
-          {mailbox && <p className="text-[11px] text-[#8A877F] mt-1">Leave blank to keep the current one.</p>}
-        </div>
       </div>
       {error && <p className="text-sm text-[#B4472F]">{error}</p>}
       <div className="flex justify-end">
-        <Button onClick={save} disabled={saving}>{saving ? 'Checking with Gmail…' : mailbox ? 'Save' : 'Connect'}</Button>
+        <Button onClick={create} disabled={saving}>{saving ? 'Setting up…' : 'Create her address'}</Button>
       </div>
+    </div>
+  )
+}
+
+function AddressCard({ mailbox, onSaved }: { mailbox: MailboxInfo; onSaved: () => void }) {
+  const [agentName, setAgentName] = useState(mailbox.agent_name)
+  const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function copy() {
+    await navigator.clipboard.writeText(mailbox.email)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function rename() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/agent/mailbox', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentName }),
+      })
+      if (!res.ok) setError((await res.json()).error ?? 'Could not save')
+      else onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[#D8D3C8] bg-white p-5 space-y-4">
+      <div>
+        <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">{mailbox.agent_name}&rsquo;s address</span>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <code className="text-sm text-[#2C2C2A] bg-[#F5F2EC] border border-[#EDE9E1] rounded px-2.5 py-1.5 break-all">{mailbox.email}</code>
+          <Button size="sm" variant="secondary" onClick={copy}>
+            {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+          </Button>
+        </div>
+      </div>
+      <ol className="text-xs leading-relaxed text-[#4A4A47] list-decimal pl-4 space-y-0.5">
+        <li>In each studio Gmail inbox, open Settings → Forwarding and POP/IMAP → Add a forwarding address, and paste the address above.</li>
+        <li>Gmail sends a confirmation code here. It appears on this page within a minute. Type it back into Gmail.</li>
+        <li>Create a filter for supplier mail (for example, from the supplier domains) and choose &ldquo;Forward it to&rdquo; this address.</li>
+      </ol>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-60">
+          <Input label="Name" value={agentName} onChange={e => setAgentName(e.target.value)} />
+        </div>
+        <Button size="sm" variant="secondary" onClick={rename} disabled={saving || agentName.trim() === mailbox.agent_name}>
+          {saving ? 'Saving…' : 'Rename'}
+        </Button>
+      </div>
+      <p className="text-[11px] text-[#8A877F]">Renaming doesn&rsquo;t change the address, so forwarding keeps working.</p>
+      {error && <p className="text-sm text-[#B4472F]">{error}</p>}
     </div>
   )
 }

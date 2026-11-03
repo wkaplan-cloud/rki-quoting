@@ -155,7 +155,7 @@ export function FeatureTogglesPanel({
           initial={agentEnabled}
           icon={<Inbox size={16} className="text-[#7E6036]" />}
           title="Studio assistant"
-          description="Reads a forwarded Gmail inbox, files supplier emails and PDFs to projects, and flags what needs doing. Uses the Claude API"
+          description="Gets her own email address; supplier mail forwarded to it is filed to projects (emails and PDFs) and what needs doing is flagged. Uses the Claude API"
         />
       </div>
     </div>

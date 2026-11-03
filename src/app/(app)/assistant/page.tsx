@@ -14,10 +14,9 @@ export default async function AssistantPage() {
 
   const supabase = await createClient()
   const [{ data: mailbox }, { data: emails }, { data: projects }, { data: suppliers }] = await Promise.all([
-    // Never select the password; the page only needs to know an inbox is connected.
     supabaseAdmin
       .from('agent_mailboxes')
-      .select('agent_name, email, last_checked_at, last_error')
+      .select('agent_name, email, last_received_at, last_error')
       .eq('org_id', orgId)
       .maybeSingle(),
     supabase

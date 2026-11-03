@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
-import type { InboundEmail } from './mailbox'
+import type { InboundEmail } from './inbound'
 
 // One Claude call per email: read the covering note and every PDF/image, then
 // say what it is and where it belongs. The answer is structured output only —

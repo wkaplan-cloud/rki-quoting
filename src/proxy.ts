@@ -116,6 +116,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/approve/') ||
     pathname.startsWith('/rfq/') ||
     pathname.startsWith('/api/rfq/') ||
+    // Resend's email.received webhook for the studio assistant; signature-checked in the route.
+    pathname === '/api/agent/inbound' ||
     pathname.startsWith('/job-sign/') ||
     pathname.startsWith('/api/job-sign/') ||
     pathname.startsWith('/capital-portal') ||
