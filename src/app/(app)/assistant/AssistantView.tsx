@@ -11,6 +11,7 @@ export interface MailboxInfo {
   email: string
   last_received_at: string | null
   last_error: string | null
+  drive_folder_id: string | null
 }
 
 interface ExtractedLine {
@@ -60,6 +61,8 @@ export interface AgentEmailRow {
     extracted: Extracted | null
     read_error: string | null
     storage_path: string | null
+    drive_link: string | null
+    drive_error: string | null
   }[]
 }
 
@@ -86,8 +89,9 @@ const when = (iso: string | null) =>
 
 const selectClass = 'w-full text-sm px-2.5 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer'
 
-export function AssistantView({ mailbox, emails, projects, suppliers }: {
+export function AssistantView({ mailbox, driveAccount, emails, projects, suppliers }: {
   mailbox: MailboxInfo | null
+  driveAccount: string | null
   emails: AgentEmailRow[]
   projects: Option[]
   suppliers: Option[]
@@ -126,7 +130,7 @@ export function AssistantView({ mailbox, emails, projects, suppliers }: {
         )}
 
         {!mailbox && <SetupForm onDone={() => router.refresh()} />}
-        {mailbox && (showSettings || emails.length === 0) && <AddressCard mailbox={mailbox} onSaved={() => router.refresh()} />}
+        {mailbox && (showSettings || emails.length === 0) && <AddressCard mailbox={mailbox} driveAccount={driveAccount} onSaved={() => router.refresh()} />}
 
         {mailbox && (
           <>
@@ -198,7 +202,7 @@ function SetupForm({ onDone }: { onDone: () => void }) {
   )
 }
 
-function AddressCard({ mailbox, onSaved }: { mailbox: MailboxInfo; onSaved: () => void }) {
+function AddressCard({ mailbox, driveAccount, onSaved }: { mailbox: MailboxInfo; driveAccount: string | null; onSaved: () => void }) {
   const [agentName, setAgentName] = useState(mailbox.agent_name)
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -251,6 +255,51 @@ function AddressCard({ mailbox, onSaved }: { mailbox: MailboxInfo; onSaved: () =
         </Button>
       </div>
       <p className="text-[11px] text-[#8A877F]">Renaming doesn&rsquo;t change the address, so forwarding keeps working.</p>
+      {error && <p className="text-sm text-[#B4472F]">{error}</p>}
+      {driveAccount && <DriveSettings mailbox={mailbox} driveAccount={driveAccount} onSaved={onSaved} />}
+    </div>
+  )
+}
+
+function DriveSettings({ mailbox, driveAccount, onSaved }: { mailbox: MailboxInfo; driveAccount: string; onSaved: () => void }) {
+  const [folder, setFolder] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState<string | null>(null)
+
+  async function save() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/agent/drive', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder }),
+      })
+      const data = await res.json()
+      if (!res.ok) setError(data.error ?? 'Could not connect the folder')
+      else { setSaved(data.name); setFolder(''); onSaved() }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="border-t border-[#EDE9E1] pt-4 space-y-2">
+      <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">Google Drive</span>
+      <p className="text-xs text-[#4A4A47]">
+        {mailbox.drive_folder_id || saved
+          ? `Connected${saved ? ` to “${saved}”` : ''}. PDFs filed to a project are saved in that project’s subfolder.`
+          : `Make a folder in a Shared Drive, share it with ${driveAccount} as Content manager, then paste its link here.`}
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1 min-w-[260px]">
+          <Input label={mailbox.drive_folder_id ? 'Change folder link' : 'Folder link'} value={folder} onChange={e => setFolder(e.target.value)} />
+        </div>
+        <Button size="sm" variant="secondary" onClick={save} disabled={saving || !folder.trim()}>
+          {saving ? 'Checking…' : 'Connect'}
+        </Button>
+      </div>
       {error && <p className="text-sm text-[#B4472F]">{error}</p>}
     </div>
   )
@@ -374,6 +423,10 @@ function DocumentBlock({ doc }: { doc: AgentEmailRow['agent_documents'][number] 
         {doc.doc_type && <span className="text-[10px] uppercase tracking-widest text-[#8A877F]">{KIND_LABELS[doc.doc_type] ?? doc.doc_type}</span>}
       </div>
       {doc.read_error && <p className="text-xs text-[#B4472F] mt-1">{doc.read_error}</p>}
+      {doc.drive_link && (
+        <a href={doc.drive_link} target="_blank" rel="noreferrer" className="inline-block mt-1 text-xs text-[#7E6036] underline hover:text-[#2C2C2A]">In Drive</a>
+      )}
+      {doc.drive_error && <p className="text-xs text-[#B4472F] mt-1">Not saved to Drive: {doc.drive_error}</p>}
       {x && !doc.read_error && (
         <>
           <dl className="mt-1.5 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">

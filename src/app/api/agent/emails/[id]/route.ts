@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { agentGate } from '@/lib/agent/gate'
 import { retryEmail } from '@/lib/agent/process'
+import { syncEmailToDrive } from '@/lib/agent/drive-sync'
 import { apiError } from '@/lib/api-error'
 
 const STATUSES = ['new', 'done']
@@ -40,6 +41,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { data, error } = await supabase.from('agent_emails').update(updates).eq('id', id).select('id').maybeSingle()
     if (error) throw error
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    // Refiled to a project: its PDFs go to (or move to) that project's Drive folder.
+    if (updates.project_id) await syncEmailToDrive(gate.orgId, id)
     return NextResponse.json({ ok: true })
   } catch (e) {
     return apiError(e)

@@ -25,6 +25,7 @@
     "canvas-confetti": "^1.9.4",
     "driver.js": "^1.4.0",
     "firebase-admin": "^14.0.0",
+    "google-auth-library": "^10.7.0",
     "heic2any": "^0.0.4",
     "jspdf": "^4.2.1",
     "konva": "^10.3.0",

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getCurrentOrgId } from '@/lib/auth-context'
 import { agentEnabled } from '@/lib/agent/gate'
+import { driveAccountEmail } from '@/lib/agent/drive'
 import { AssistantView, type AgentEmailRow, type MailboxInfo } from './AssistantView'
 
 // The studio assistant's desk: what came into its inbox, where it filed each
@@ -16,14 +17,14 @@ export default async function AssistantPage() {
   const [{ data: mailbox }, { data: emails }, { data: projects }, { data: suppliers }] = await Promise.all([
     supabaseAdmin
       .from('agent_mailboxes')
-      .select('agent_name, email, last_received_at, last_error')
+      .select('agent_name, email, last_received_at, last_error, drive_folder_id')
       .eq('org_id', orgId)
       .maybeSingle(),
     supabase
       .from('agent_emails')
       .select(`id, from_email, from_name, subject, received_at, kind, supplier_id, supplier_guess, project_id,
         rfq_request_id, match_confidence, match_reason, summary, action_needed, status, error, created_at,
-        agent_documents(id, filename, doc_type, extracted, read_error, storage_path)`)
+        agent_documents(id, filename, doc_type, extracted, read_error, storage_path, drive_link, drive_error)`)
       .order('received_at', { ascending: false, nullsFirst: false })
       .limit(200),
     supabase
@@ -39,6 +40,7 @@ export default async function AssistantPage() {
   return (
     <AssistantView
       mailbox={(mailbox as MailboxInfo | null) ?? null}
+      driveAccount={driveAccountEmail()}
       emails={(emails ?? []) as unknown as AgentEmailRow[]}
       projects={(projects ?? []).map(p => ({
         id: p.id,

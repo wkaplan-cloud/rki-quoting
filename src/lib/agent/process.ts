@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { gmailForwardingRequest, type InboundEmail } from './inbound'
 import { classifyEmail, AGENT_MODEL, type StudioContext } from './classify'
+import { syncEmailToDrive } from './drive-sync'
 
 // Filing one email for one studio. Every email gets a row whatever happens —
 // a failed read is stored with its error and shown on the assistant's page,
@@ -155,6 +156,8 @@ async function readAndFile(
         }
       }))
     }
+
+    if (result.project_id) await syncEmailToDrive(orgId, row.id)
 
     if (result.action_needed) {
       await supabaseAdmin.from('org_notifications').insert({
