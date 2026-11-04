@@ -17,7 +17,7 @@ const rfq = (id: string, sentOn: string, extra = {}) => ({
 test('quotes are listed from 7 days before expiry to 14 days after', () => {
   const list = buildChaseList([
     quote('too-early', '2026-11-12'), quote('first-day', '2026-11-11'), quote('today', today),
-    quote('last-day', '2026-10-21'), quote('too-late', '2026-10-28'),
+    quote('last-day', '2026-10-21'), quote('too-late', '2026-10-20'),
   ], [], today)
   assert.deepEqual(list.quotes.map(q => [q.id, q.daysLeft]), [['last-day', -14], ['today', 0], ['first-day', 7]])
 })
@@ -27,11 +27,11 @@ test('a missing or misread expiry date is left out', () => {
   assert.equal(list.quotes.length, 0)
 })
 
-test('RFQs are chased from 7 days to 10 days after sending', () => {
+test('RFQs are chased from 3 days to 7 days after sending', () => {
   const list = buildChaseList([], [
-    rfq('too-soon', '2026-10-29'), rfq('first-day', '2026-10-28'), rfq('last-day', '2026-10-25'), rfq('too-late', '2026-10-24'),
+    rfq('too-soon', '2026-11-02'), rfq('first-day', '2026-11-01'), rfq('last-day', '2026-10-28'), rfq('too-late', '2026-10-27'),
   ], today)
-  assert.deepEqual(list.rfqs.map(r => [r.id, r.daysWaiting]), [['last-day', 10], ['first-day', 7]])
+  assert.deepEqual(list.rfqs.map(r => [r.id, r.daysWaiting]), [['last-day', 7], ['first-day', 3]])
 })
 
 test('a supplier who replied by either route is not chased', () => {
