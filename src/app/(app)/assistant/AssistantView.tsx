@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileText, Copy, Check, AlertTriangle, ChevronDown, ChevronRight, RotateCcw, Inbox } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -328,6 +328,8 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [addingProject, setAddingProject] = useState(false)
+  // A refresh can take seconds; until it lands the dropdowns still show the old filing.
+  const [refreshing, startRefresh] = useTransition()
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true)
@@ -335,7 +337,7 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
     const res = await fetch(`/api/agent/emails/${e.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     if (!res.ok) setError((await res.json()).error ?? 'Could not save')
     setBusy(false)
-    router.refresh()
+    startRefresh(() => router.refresh())
   }
 
   async function readAgain() {
@@ -388,8 +390,8 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
 
         <div className="grid gap-2 md:grid-cols-2">
           <label className="block">
-            <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">Project</span>
-            <select className={selectClass} value={e.project_id ?? ''} disabled={busy} onChange={ev => {
+            <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">Project{busy || refreshing ? ' · saving…' : ''}</span>
+            <select className={selectClass} value={e.project_id ?? ''} disabled={busy || refreshing} onChange={ev => {
               if (ev.target.value === NEW_PROJECT) setAddingProject(true)
               else patch({ project_id: ev.target.value || null })
             }}>
@@ -400,7 +402,7 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
           </label>
           <label className="block">
             <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">Supplier</span>
-            <select className={selectClass} value={e.supplier_id ?? ''} disabled={busy} onChange={ev => patch({ supplier_id: ev.target.value || null })}>
+            <select className={selectClass} value={e.supplier_id ?? ''} disabled={busy || refreshing} onChange={ev => patch({ supplier_id: ev.target.value || null })}>
               <option value="">{e.supplier_guess ? `Not in your list (${e.supplier_guess})` : 'Unknown'}</option>
               {suppliers.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
