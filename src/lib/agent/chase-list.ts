@@ -3,8 +3,8 @@
 
 export const QUOTE_WARN_DAYS = 7      // list a quote this long before it expires,
 export const QUOTE_EXPIRED_DAYS = 14  // and this long after, then stop
-export const RFQ_WAIT_DAYS = 3        // give a supplier this long to reply,
-export const RFQ_GIVE_UP_DAYS = 30    // and stop chasing after this long
+export const RFQ_WAIT_DAYS = 7        // give a supplier this long to reply,
+export const RFQ_GIVE_UP_DAYS = 10    // and stop chasing after this long
 
 export interface QuoteRow {
   id: string
