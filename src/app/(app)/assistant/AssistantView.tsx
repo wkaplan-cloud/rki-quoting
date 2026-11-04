@@ -5,6 +5,7 @@ import { FileText, Copy, Check, AlertTriangle, ChevronDown, ChevronRight, Rotate
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Combobox } from '@/components/ui/Combobox'
 
 export interface MailboxInfo {
   agent_name: string
@@ -76,6 +77,7 @@ export interface AgentEmailRow {
 }
 
 interface Option { id: string; label: string }
+interface ClientOption extends Option { name: string }
 
 const KIND_LABELS: Record<string, string> = {
   supplier_quote: 'Quote',
@@ -96,14 +98,18 @@ const rand = (n: number | null, currency?: string | null) =>
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
 
+// Not a project id: the dropdown row that opens the new-project form.
+const NEW_PROJECT = '__new'
+
 const selectClass = 'w-full text-sm px-2.5 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer'
 
-export function AssistantView({ mailbox, driveAccount, costs, emails, projects, suppliers }: {
+export function AssistantView({ mailbox, driveAccount, costs, emails, projects, clients, suppliers }: {
   mailbox: MailboxInfo | null
   driveAccount: string | null
   costs: Costs
   emails: AgentEmailRow[]
   projects: Option[]
+  clients: ClientOption[]
   suppliers: Option[]
 }) {
   const router = useRouter()
@@ -167,7 +173,7 @@ export function AssistantView({ mailbox, driveAccount, costs, emails, projects, 
               </div>
             ) : (
               <div className="space-y-3">
-                {shown.map(e => <EmailCard key={e.id} email={e} projects={projects} suppliers={suppliers} />)}
+                {shown.map(e => <EmailCard key={e.id} email={e} projects={projects} clients={clients} suppliers={suppliers} />)}
               </div>
             )}
           </>
@@ -316,11 +322,12 @@ function DriveSettings({ mailbox, driveAccount, onSaved }: { mailbox: MailboxInf
   )
 }
 
-function EmailCard({ email: e, projects, suppliers }: { email: AgentEmailRow; projects: Option[]; suppliers: Option[] }) {
+function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEmailRow; projects: Option[]; clients: ClientOption[]; suppliers: Option[] }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [addingProject, setAddingProject] = useState(false)
 
   async function patch(body: Record<string, unknown>) {
     setBusy(true)
@@ -382,8 +389,12 @@ function EmailCard({ email: e, projects, suppliers }: { email: AgentEmailRow; pr
         <div className="grid gap-2 md:grid-cols-2">
           <label className="block">
             <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">Project</span>
-            <select className={selectClass} value={e.project_id ?? ''} disabled={busy} onChange={ev => patch({ project_id: ev.target.value || null })}>
+            <select className={selectClass} value={e.project_id ?? ''} disabled={busy} onChange={ev => {
+              if (ev.target.value === NEW_PROJECT) setAddingProject(true)
+              else patch({ project_id: ev.target.value || null })
+            }}>
               <option value="">Not filed to a project</option>
+              <option value={NEW_PROJECT}>+ New project</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
@@ -395,6 +406,14 @@ function EmailCard({ email: e, projects, suppliers }: { email: AgentEmailRow; pr
             </select>
           </label>
         </div>
+        {addingProject && (
+          <NewProjectForm
+            suggestion={e.agent_documents.map(d => d.extracted?.client_or_project_reference).find(Boolean) ?? ''}
+            clients={clients}
+            onCancel={() => setAddingProject(false)}
+            onCreated={async id => { setAddingProject(false); await patch({ project_id: id }) }}
+          />
+        )}
         {e.match_reason && (
           <p className={`text-xs ${lowMatch ? 'text-[#B4472F]' : 'text-[#8A877F]'}`}>
             {lowMatch ? 'Not sure: ' : ''}{e.match_reason}
@@ -417,6 +436,65 @@ function EmailCard({ email: e, projects, suppliers }: { email: AgentEmailRow; pr
         {error && <p className="text-xs text-[#B4472F]">{error}</p>}
       </div>
     </div>
+  )
+}
+
+function NewProjectForm({ suggestion, clients, onCancel, onCreated }: {
+  suggestion: string
+  clients: ClientOption[]
+  onCancel: () => void
+  onCreated: (id: string) => Promise<void>
+}) {
+  // What she read on the document can be a client, a project or both, so a
+  // known client is picked for them and the rest is theirs to check.
+  const known = suggestion ? clients.find(c => suggestion.toLowerCase().includes(c.name.toLowerCase())) : undefined
+  const [projectName, setProjectName] = useState(suggestion)
+  const [clientId, setClientId] = useState(known?.id ?? '')
+  const [clientName, setClientName] = useState(known?.label ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save(ev: React.FormEvent) {
+    ev.preventDefault()
+    setSaving(true)
+    setError(null)
+    const res = await fetch('/api/agent/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_name: projectName, client_id: clientId || null, client_name: clientName }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error ?? 'Could not create the project')
+      setSaving(false)
+      return
+    }
+    await onCreated(data.id)
+  }
+
+  return (
+    <form onSubmit={save} className="rounded-lg border border-[#D8D3C8] bg-[#FAF8F4] p-3 space-y-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Input label="Project name" value={projectName} onChange={ev => setProjectName(ev.target.value)} required autoFocus />
+        <Combobox
+          label="Client"
+          options={clients}
+          value={clientId}
+          inputValue={clientName}
+          onChange={(id, label) => { setClientId(id); setClientName(label) }}
+          onCreate={name => { setClientId(''); setClientName(name) }}
+        />
+      </div>
+      <p className="text-xs text-[#8A877F]">
+        {clientName.trim() && !clientId ? `“${clientName.trim()}” will be added as a client if they aren’t one yet. ` : ''}
+        The project gets the next project number.
+      </p>
+      {error && <p className="text-xs text-[#B4472F]">{error}</p>}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={saving}>{saving ? 'Creating…' : 'Create and file here'}</Button>
+        <Button type="button" size="sm" variant="secondary" onClick={onCancel} disabled={saving}>Cancel</Button>
+      </div>
+    </form>
   )
 }
 

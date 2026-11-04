@@ -18,7 +18,7 @@ export default async function AssistantPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
 
-  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: suppliers }, { data: usage }] = await Promise.all([
+  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: clients }, { data: suppliers }, { data: usage }] = await Promise.all([
     supabaseAdmin
       .from('agent_mailboxes')
       .select('agent_name, email, last_received_at, last_error, drive_folder_id, credit_out_at')
@@ -36,6 +36,7 @@ export default async function AssistantPage() {
       .select('id, project_number, project_name, clients(client_name)')
       .is('archived_at', null)
       .order('created_at', { ascending: false }),
+    supabase.from('clients').select('id, client_name, company').order('client_name'),
     supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
     supabase.from('agent_usage').select('email_id, cost_usd, created_at').gte('created_at', lastMonthStart.toISOString()),
   ])
@@ -68,6 +69,7 @@ export default async function AssistantPage() {
         label: [p.project_number, p.project_name, one(p.clients as { client_name: string } | { client_name: string }[] | null)?.client_name]
           .filter(Boolean).join(' · '),
       }))}
+      clients={(clients ?? []).map(c => ({ id: c.id, name: c.client_name, label: c.company ? `${c.client_name} — ${c.company}` : c.client_name }))}
       suppliers={(suppliers ?? []).map(s => ({ id: s.id, label: s.supplier_name }))}
     />
   )
