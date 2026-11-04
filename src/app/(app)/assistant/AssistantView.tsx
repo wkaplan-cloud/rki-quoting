@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Combobox } from '@/components/ui/Combobox'
+import type { ChaseList } from '@/lib/agent/chase-list'
 
 export interface MailboxInfo {
   agent_name: string
@@ -103,10 +104,11 @@ const NEW_PROJECT = '__new'
 
 const selectClass = 'w-full text-sm px-2.5 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer'
 
-export function AssistantView({ mailbox, driveAccount, costs, emails, projects, clients, suppliers }: {
+export function AssistantView({ mailbox, driveAccount, costs, chase, emails, projects, clients, suppliers }: {
   mailbox: MailboxInfo | null
   driveAccount: string | null
   costs: Costs
+  chase: ChaseList
   emails: AgentEmailRow[]
   projects: Option[]
   clients: ClientOption[]
@@ -141,6 +143,8 @@ export function AssistantView({ mailbox, driveAccount, costs, emails, projects, 
         {mailbox?.credit_out_at && <CreditOut since={mailbox.credit_out_at} name={name} onDone={() => router.refresh()} />}
 
         {mailbox && <CostBox costs={costs} />}
+
+        {mailbox && <ChaseBox chase={chase} />}
 
         {mailbox?.last_error && (
           <div className="flex items-start gap-2 rounded-lg border border-[#E8C4B8] bg-[#FBEFEA] px-4 py-3 text-sm text-[#8A3A22]">
@@ -438,6 +442,86 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
         {error && <p className="text-xs text-[#B4472F]">{error}</p>}
       </div>
     </div>
+  )
+}
+
+function ChaseBox({ chase }: { chase: ChaseList }) {
+  const count = chase.quotes.length + chase.rfqs.length
+  if (count === 0) return null
+
+  const expiry = (days: number) =>
+    days < 0 ? `Expired ${-days} day${days === -1 ? '' : 's'} ago` : days === 0 ? 'Expires today' : `Expires in ${days} day${days === 1 ? '' : 's'}`
+
+  return (
+    <div className="rounded-xl border border-[#D8D3C8] bg-white">
+      <h2 className="px-4 pt-3 pb-1 text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">To chase ({count})</h2>
+      <ul className="divide-y divide-[#EDE9E1]">
+        {chase.quotes.map(q => (
+          <ChaseRow
+            key={q.id}
+            kind="quote"
+            id={q.id}
+            title={[q.supplier ?? 'Quote', q.reference].filter(Boolean).join(' · ')}
+            detail={[expiry(q.daysLeft), q.project ?? 'Not filed to a project'].join(' · ')}
+            urgent={q.daysLeft <= 2}
+            href={`/api/agent/documents/${q.id}`}
+          />
+        ))}
+        {chase.rfqs.map(r => (
+          <ChaseRow
+            key={r.id}
+            kind="rfq"
+            id={r.id}
+            title={r.supplier}
+            detail={[
+              `No reply to RFQ after ${r.daysWaiting} days`,
+              r.opened ? 'Opened the link' : 'Not opened',
+              r.linkExpired ? 'Link has expired' : null,
+              r.board,
+            ].filter(Boolean).join(' · ')}
+            urgent={r.linkExpired}
+          />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ChaseRow({ kind, id, title, detail, urgent, href }: {
+  kind: 'quote' | 'rfq'
+  id: string
+  title: string
+  detail: string
+  urgent: boolean
+  href?: string
+}) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function done() {
+    setBusy(true)
+    setError(null)
+    const res = await fetch('/api/agent/chase', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, id }) })
+    if (!res.ok) {
+      setError((await res.json()).error ?? 'Could not save')
+      setBusy(false)
+      return
+    }
+    router.refresh()
+  }
+
+  return (
+    <li className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="flex-1 min-w-[220px]">
+        {href
+          ? <a href={href} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#2C2C2A] underline hover:text-[#9A7B4F]">{title}</a>
+          : <p className="text-sm font-medium text-[#2C2C2A]">{title}</p>}
+        <p className={`text-xs ${urgent ? 'text-[#B4472F]' : 'text-[#8A877F]'}`}>{detail}</p>
+        {error && <p className="text-xs text-[#B4472F]">{error}</p>}
+      </div>
+      <Button size="sm" variant="secondary" onClick={done} disabled={busy}><Check size={12} /> {busy ? 'Saving…' : 'Dealt with'}</Button>
+    </li>
   )
 }
 

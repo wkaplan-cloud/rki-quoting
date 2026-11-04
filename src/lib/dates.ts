@@ -9,6 +9,11 @@ export function todaySA(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date())
 }
 
+/** The South African calendar date of a stored timestamptz, as YYYY-MM-DD. */
+export function toSADate(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date(iso))
+}
+
 /**
  * Renders a stored timestamptz as the naive "YYYY-MM-DDTHH:mm" that a
  * `<input type="datetime-local">` expects, in South African time.

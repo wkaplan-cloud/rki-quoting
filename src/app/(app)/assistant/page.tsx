@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getCurrentOrgId } from '@/lib/auth-context'
 import { agentEnabled } from '@/lib/agent/gate'
 import { driveAccountEmail } from '@/lib/agent/drive'
+import { loadChaseList } from '@/lib/agent/chase'
 import { AssistantView, type AgentEmailRow, type MailboxInfo } from './AssistantView'
 
 // The studio assistant's desk: what came into its inbox, where it filed each
@@ -18,7 +19,7 @@ export default async function AssistantPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
 
-  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: clients }, { data: suppliers }, { data: usage }] = await Promise.all([
+  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: clients }, { data: suppliers }, { data: usage }, chase] = await Promise.all([
     supabaseAdmin
       .from('agent_mailboxes')
       .select('agent_name, email, last_received_at, last_error, drive_folder_id, credit_out_at')
@@ -39,6 +40,7 @@ export default async function AssistantPage() {
     supabase.from('clients').select('id, client_name, company').order('client_name'),
     supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
     supabase.from('agent_usage').select('email_id, cost_usd, created_at').gte('created_at', lastMonthStart.toISOString()),
+    loadChaseList(orgId),
   ])
 
   // Rand estimate at a fixed rate: Anthropic bills in dollars, and this is a
@@ -63,6 +65,7 @@ export default async function AssistantPage() {
       mailbox={(mailbox as MailboxInfo | null) ?? null}
       driveAccount={driveAccountEmail()}
       costs={costs}
+      chase={chase}
       emails={(emails ?? []) as unknown as AgentEmailRow[]}
       projects={(projects ?? []).map(p => ({
         id: p.id,
