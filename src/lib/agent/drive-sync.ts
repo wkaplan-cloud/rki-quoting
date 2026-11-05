@@ -8,6 +8,14 @@ import { moveFile, projectFolder, uploadFile } from './drive'
 // shown on the assistant's page — a PDF the studio thinks is in Drive and
 // isn't is worse than one it knows is missing.
 
+// Signature logos and banners are images the model files as "other", at any
+// size (one Outlook signature was 2.3 MB). An image only goes to Drive when it
+// was read as a real document, such as a photographed quote. PDFs always go.
+const NOT_A_DOCUMENT = [null, 'other', 'not_supplier']
+function belongsInDrive(d: { content_type: string | null; doc_type: string | null }): boolean {
+  return !d.content_type?.startsWith('image/') || !NOT_A_DOCUMENT.includes(d.doc_type)
+}
+
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null)
 
 export async function syncEmailToDrive(orgId: string, emailId: string): Promise<void> {
@@ -17,7 +25,7 @@ export async function syncEmailToDrive(orgId: string, emailId: string): Promise<
       .from('agent_emails')
       .select(`project_id, received_at, supplier_guess, suppliers(supplier_name),
         projects(project_number, project_name, clients(client_name)),
-        agent_documents(id, filename, content_type, storage_path, extracted, drive_file_id, drive_parent_id)`)
+        agent_documents(id, filename, content_type, doc_type, storage_path, extracted, drive_file_id, drive_parent_id)`)
       .eq('id', emailId)
       .eq('org_id', orgId)
       .maybeSingle(),
@@ -29,10 +37,12 @@ export async function syncEmailToDrive(orgId: string, emailId: string): Promise<
   const folderName = [project?.project_number, project?.project_name].filter(Boolean).join(' ') + (client ? ` – ${client}` : '')
   const supplier = one(email.suppliers as unknown as { supplier_name: string } | null)?.supplier_name ?? email.supplier_guess
 
-  const docs = (email.agent_documents ?? []) as {
-    id: string; filename: string; content_type: string | null; storage_path: string | null
+  const allDocs = (email.agent_documents ?? []) as {
+    id: string; filename: string; content_type: string | null; doc_type: string | null; storage_path: string | null
     extracted: { document_date?: string | null } | null; drive_file_id: string | null; drive_parent_id: string | null
   }[]
+  // Anything already in Drive stays in play, so a refile still moves it with the rest.
+  const docs = allDocs.filter(d => d.drive_file_id || belongsInDrive(d))
   if (docs.length === 0) return
 
   let folderId: string
@@ -40,7 +50,7 @@ export async function syncEmailToDrive(orgId: string, emailId: string): Promise<
     folderId = await projectFolder(mailbox.drive_folder_id, email.project_id, folderName || 'Project')
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    await supabaseAdmin.from('agent_documents').update({ drive_error: message }).eq('email_id', emailId).eq('org_id', orgId)
+    await supabaseAdmin.from('agent_documents').update({ drive_error: message }).in('id', docs.map(d => d.id)).eq('org_id', orgId)
     return
   }
 
