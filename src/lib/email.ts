@@ -192,6 +192,34 @@ export type SendEmailOptions = Body & {
   headers?: Record<string, string>
 }
 
+const QUOTA_ALERT_TO = 'wkaplan@gmail.com'
+const QUOTA_ALERT_LEVELS = [70, 50]
+
+/**
+ * Resend's free plan stops at 100 emails a UTC day, across everything on the
+ * account (JIYP too), and reports the count on each send. Warren is told at 50
+ * and 70, once each a day. Never throws: a lost alert mustn't stop an email.
+ */
+async function watchDailyQuota(headers: Record<string, string> | null) {
+  try {
+    const used = Number(headers?.['x-resend-daily-quota'])
+    const level = QUOTA_ALERT_LEVELS.find((l) => used >= l)
+    if (!level) return
+    const { supabaseAdmin } = await import('@/lib/supabase/admin')
+    // The table's primary key makes this the once-a-day check.
+    const { error } = await supabaseAdmin.from('email_quota_alerts').insert({ day: new Date().toISOString().slice(0, 10), level })
+    if (error) return
+    await client().emails.send({
+      from: FROM_TRANSACTIONAL,
+      to: QUOTA_ALERT_TO,
+      subject: `Resend: ${used} of 100 emails used today`,
+      text: `Your Resend account has used ${used} of its 100 emails for today, across QuotingHub and JIYP. Sending stops at 100 until the count resets at 02:00 South African time.\n\nhttps://resend.com/settings/usage`,
+    })
+  } catch (e) {
+    console.error('[email quota]', (e as Error).message)
+  }
+}
+
 /**
  * Send one transactional email.
  * Fills in From, Reply-To, preheader and the text/plain part when not supplied.
@@ -199,7 +227,7 @@ export type SendEmailOptions = Body & {
 export async function sendEmail(opts: SendEmailOptions) {
   const html = opts.html ? withPreheader(opts.html, opts.preheader) : undefined
   const text = opts.text ?? (html ? htmlToText(html) : '')
-  return client().emails.send({
+  const sent = await client().emails.send({
     from: opts.from ?? FROM_TRANSACTIONAL,
     replyTo: opts.replyTo ?? DEFAULT_REPLY_TO,
     to: opts.to,
@@ -211,6 +239,8 @@ export async function sendEmail(opts: SendEmailOptions) {
     ...(opts.attachments ? { attachments: opts.attachments } : {}),
     ...(opts.headers ? { headers: opts.headers } : {}),
   })
+  await watchDailyQuota(sent.headers)
+  return sent
 }
 
 export type BulkRecipient = { email: string }
