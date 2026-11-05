@@ -326,6 +326,47 @@ function DriveSettings({ mailbox, driveAccount, onSaved }: { mailbox: MailboxInf
   )
 }
 
+function OriginalEmail({ emailId }: { emailId: string }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [text, setText] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function toggle() {
+    setOpen(!open)
+    if (open || text !== null || loading) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/agent/emails/${emailId}`)
+      const data = await res.json()
+      if (res.ok) setText(data.text)
+      else setError(data.error ?? 'Could not load the email')
+    } catch {
+      setError('Could not load the email')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="pt-1">
+      <button className="flex items-center gap-1 text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer" aria-expanded={open} onClick={toggle}>
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        {open ? 'Hide email' : 'Show email'}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-md border border-[#EDE9E1] bg-[#FAF8F4] px-3 py-2 text-sm text-[#2C2C2A]">
+          {loading && <p className="text-xs text-[#8A877F]">Loading…</p>}
+          {error && <p className="text-xs text-[#B4472F]">{error}</p>}
+          {text === '' && <p className="text-xs text-[#8A877F]">This email has no text.</p>}
+          {text && <div className="max-h-96 overflow-y-auto whitespace-pre-wrap break-words">{text}</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEmailRow; projects: Option[]; clients: ClientOption[]; suppliers: Option[] }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -425,6 +466,8 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
             {lowMatch ? 'Not sure: ' : ''}{e.match_reason}
           </p>
         )}
+
+        <OriginalEmail emailId={e.id} />
 
         {e.agent_documents.length > 0 && (
           <div className="pt-1">

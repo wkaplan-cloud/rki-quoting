@@ -7,6 +7,22 @@ import { apiError } from '@/lib/api-error'
 
 const STATUSES = ['new', 'done']
 
+// The supplier's original wording. Fetched on demand so the page isn't carrying up to 200 full emails.
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const gate = await agentGate()
+    if (!gate.ok) return gate.res
+    const { id } = await params
+    const supabase = await createClient()
+    const { data, error } = await supabase.from('agent_emails').select('body_text').eq('id', id).maybeSingle()
+    if (error) throw error
+    if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ text: data.body_text ?? '' })
+  } catch (e) {
+    return apiError(e)
+  }
+}
+
 // A person correcting the filing: move to another project/supplier, or mark done.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
