@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { Resend } from 'resend'
+import { parseAddressHeader } from './recipients'
 
 // Mail for the studio assistant arrives through Resend receiving. Two traps
 // carried over from CompareMyQuotes, both of which fail silently:
@@ -24,6 +25,9 @@ export interface InboundEmail {
   messageId: string
   /** Every address the message was delivered for, including forwarding headers. */
   recipients: string[]
+  /** Who the sender addressed it to, from the original To and Cc headers. */
+  sentTo: string[]
+  sentCc: string[]
   fromEmail: string | null
   fromName: string | null
   subject: string
@@ -128,11 +132,18 @@ export async function fetchReceived(emailId: string): Promise<InboundEmail> {
     .flatMap(([, v]) => String(v).split(/[\s,]+/))
   const recipients = [...(email.to ?? []), ...(email.cc ?? []), ...(email.bcc ?? []), ...headers]
 
+  const originalHeader = (name: string) => {
+    const found = Object.entries(email.headers ?? {}).find(([k]) => k.toLowerCase() === name)?.[1]
+    return found ? String(found) : null
+  }
+
   const from = parseFrom(email.from)
   return {
     resendId: email.id,
     messageId: email.message_id || `resend-${email.id}`,
     recipients,
+    sentTo: parseAddressHeader(originalHeader('to'), inboundDomain()),
+    sentCc: parseAddressHeader(originalHeader('cc'), inboundDomain()),
     fromEmail: from.email,
     fromName: from.name,
     subject: email.subject || '(no subject)',

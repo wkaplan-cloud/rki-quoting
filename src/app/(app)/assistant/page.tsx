@@ -6,6 +6,7 @@ import { getCurrentOrgId } from '@/lib/auth-context'
 import { agentEnabled } from '@/lib/agent/gate'
 import { driveAccountEmail } from '@/lib/agent/drive'
 import { loadChaseList } from '@/lib/agent/chase'
+import { withTeamNames } from '@/lib/agent/recipients'
 import { AssistantView, type AgentEmailRow, type MailboxInfo } from './AssistantView'
 
 // The studio assistant's desk: what came into its inbox, where it filed each
@@ -19,7 +20,7 @@ export default async function AssistantPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
 
-  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: clients }, { data: suppliers }, { data: usage }, chase] = await Promise.all([
+  const [{ data: mailbox }, { data: emails }, { data: projects }, { data: clients }, { data: suppliers }, { data: usage }, { data: team }, chase] = await Promise.all([
     supabaseAdmin
       .from('agent_mailboxes')
       .select('agent_name, email, last_received_at, last_error, drive_folder_id, credit_out_at')
@@ -27,7 +28,7 @@ export default async function AssistantPage() {
       .maybeSingle(),
     supabase
       .from('agent_emails')
-      .select(`id, from_email, from_name, subject, received_at, kind, supplier_id, supplier_guess, project_id,
+      .select(`id, from_email, from_name, subject, sent_to, sent_cc, received_at, kind, supplier_id, supplier_guess, project_id,
         rfq_request_id, match_confidence, match_reason, summary, action_needed, status, error, created_at,
         agent_documents(id, filename, doc_type, extracted, read_error, storage_path, drive_link, drive_parent_id, drive_error)`)
       .order('received_at', { ascending: false, nullsFirst: false })
@@ -40,8 +41,13 @@ export default async function AssistantPage() {
     supabase.from('clients').select('id, client_name, company').order('client_name'),
     supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
     supabase.from('agent_usage').select('email_id, cost_usd, created_at').gte('created_at', lastMonthStart.toISOString()),
+    supabaseAdmin.from('org_members').select('invited_email, full_name').eq('org_id', orgId).eq('status', 'active'),
     loadChaseList(orgId),
   ])
+
+  const teamNames = new Map(
+    (team ?? []).filter(m => m.invited_email && m.full_name).map(m => [m.invited_email.toLowerCase(), m.full_name]),
+  )
 
   // Rand estimate at a fixed rate: Anthropic bills in dollars, and this is a
   // guide to what reading mail costs, not the invoice.
@@ -66,7 +72,11 @@ export default async function AssistantPage() {
       driveAccount={driveAccountEmail()}
       costs={costs}
       chase={chase}
-      emails={(emails ?? []) as unknown as AgentEmailRow[]}
+      emails={((emails ?? []) as unknown as AgentEmailRow[]).map(e => ({
+        ...e,
+        sent_to: withTeamNames(e.sent_to, teamNames),
+        sent_cc: withTeamNames(e.sent_cc, teamNames),
+      }))}
       projects={(projects ?? []).map(p => ({
         id: p.id,
         label: [p.project_number, p.project_name, one(p.clients as { client_name: string } | { client_name: string }[] | null)?.client_name]

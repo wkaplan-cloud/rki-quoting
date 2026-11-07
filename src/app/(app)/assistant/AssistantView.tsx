@@ -53,6 +53,8 @@ export interface AgentEmailRow {
   from_email: string | null
   from_name: string | null
   subject: string | null
+  sent_to: string[]
+  sent_cc: string[]
   received_at: string | null
   kind: string | null
   supplier_id: string | null
@@ -412,6 +414,8 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
             <span className="text-xs text-[#8A877F]">{when(e.received_at)}</span>
           </div>
           <p className="text-sm text-[#4A4A47] mt-0.5">{e.subject}</p>
+          {e.sent_to.length > 0 && <p className="text-xs text-[#8A877F] mt-0.5 break-words">To: {e.sent_to.join(', ')}</p>}
+          {e.sent_cc.length > 0 && <p className="text-xs text-[#8A877F] break-words">Cc: {e.sent_cc.join(', ')}</p>}
         </div>
         <div className="flex items-center gap-2">
           {e.status === 'error' && (
