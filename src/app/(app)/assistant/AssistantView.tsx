@@ -73,6 +73,7 @@ export interface AgentEmailRow {
     read_error: string | null
     storage_path: string | null
     drive_link: string | null
+    drive_parent_id: string | null
     drive_error: string | null
   }[]
 }
@@ -395,6 +396,7 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
   }
 
   const lowMatch = e.match_confidence === 'low'
+  const driveFolderId = e.agent_documents.find(d => d.drive_link && d.drive_parent_id)?.drive_parent_id
 
   return (
     <div className={`rounded-xl border bg-white ${e.status === 'error' ? 'border-[#E8C4B8]' : 'border-[#D8D3C8]'}`}>
@@ -481,6 +483,16 @@ function EmailCard({ email: e, projects, clients, suppliers }: { email: AgentEma
               </div>
             )}
           </div>
+        )}
+        {driveFolderId && (
+          <a
+            href={`https://drive.google.com/drive/folders/${driveFolderId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block text-xs text-[#7E6036] underline hover:text-[#2C2C2A]"
+          >
+            View in folder
+          </a>
         )}
         {error && <p className="text-xs text-[#B4472F]">{error}</p>}
       </div>

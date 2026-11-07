@@ -29,7 +29,7 @@ export default async function AssistantPage() {
       .from('agent_emails')
       .select(`id, from_email, from_name, subject, received_at, kind, supplier_id, supplier_guess, project_id,
         rfq_request_id, match_confidence, match_reason, summary, action_needed, status, error, created_at,
-        agent_documents(id, filename, doc_type, extracted, read_error, storage_path, drive_link, drive_error)`)
+        agent_documents(id, filename, doc_type, extracted, read_error, storage_path, drive_link, drive_parent_id, drive_error)`)
       .order('received_at', { ascending: false, nullsFirst: false })
       .limit(200),
     supabase
