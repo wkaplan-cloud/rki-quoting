@@ -38,13 +38,13 @@ function splitOutsideQuotes(header: string): string[] {
 }
 
 /**
- * Swaps stored recipients for the studio's own names where the address is on
- * its team, because a sender's address book can call info@ anything. Done when
+ * Swaps stored recipients for first names where the address is on the studio's
+ * team, because a sender's address book can call info@ anything. Done when
  * showing the page, so a renamed team member is right on old emails too.
  */
 export function withTeamNames(recipients: string[], teamNames: Map<string, string>): string[] {
   return recipients.map(r => {
     const address = r.match(/<([^<>]+)>$/)?.[1] ?? r
-    return teamNames.get(address) ?? r
+    return teamNames.get(address)?.trim().split(/\s+/)[0] || r
   })
 }

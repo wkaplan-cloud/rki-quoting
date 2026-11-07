@@ -32,10 +32,10 @@ test('missing or address-less headers give nothing', () => {
   assert.deepEqual(parseAddressHeader('undisclosed-recipients:;'), [])
 })
 
-test('team members show by their own name, whatever the sender called them', () => {
+test('team members show by their first name, whatever the sender called them', () => {
   const team = new Map([['info@rki.co.za', 'Sheryl Kaplan']])
   assert.deepEqual(
     withTeamNames(['R Kaplan Interiors <info@rki.co.za>', 'info@rki.co.za', 'Gary B <gary@supplier.co.za>'], team),
-    ['Sheryl Kaplan', 'Sheryl Kaplan', 'Gary B <gary@supplier.co.za>'],
+    ['Sheryl', 'Sheryl', 'Gary B <gary@supplier.co.za>'],
   )
 })
