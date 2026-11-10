@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -75,6 +75,7 @@ export function FeatureTogglesPanel({
   lineItemImagesEnabled = false,
   jobCostSheetEnabled = false,
   deliveryTimelineEnabled = false,
+  duplicateLineEnabled = false,
   insightsEnabled = false,
   statementsEnabled = false,
   agentEnabled = false,
@@ -86,6 +87,7 @@ export function FeatureTogglesPanel({
   lineItemImagesEnabled?: boolean
   jobCostSheetEnabled?: boolean
   deliveryTimelineEnabled?: boolean
+  duplicateLineEnabled?: boolean
   insightsEnabled?: boolean
   statementsEnabled?: boolean
   agentEnabled?: boolean
@@ -134,6 +136,14 @@ export function FeatureTogglesPanel({
           icon={<CalendarClock size={16} className="text-[#7E6036]" />}
           title="Delivery timeline"
           description="Delivery dates per supplier and item, installation deadline, and the Timeline page"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="duplicate_line_enabled"
+          initial={duplicateLineEnabled}
+          icon={<Copy size={16} className="text-[#7E6036]" />}
+          title="Duplicate line"
+          description="Copy icon on each line item that adds the same item directly below it, e.g. for another room"
         />
         <FeatureToggle
           orgId={orgId}

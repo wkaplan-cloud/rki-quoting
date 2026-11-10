@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import { reorderRows } from '@/lib/reorder-rows'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2, LayoutGrid, Check } from 'lucide-react'
+import { Plus, Trash2, Copy, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2, LayoutGrid, Check } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import { compressImage } from '@/lib/compressImage'
@@ -53,6 +53,7 @@ interface Props {
   depositReceived?: boolean
   /** Platform feature flag — when off, the image thumbnail/upload UI is hidden entirely. */
   imagesEnabled?: boolean
+  duplicateEnabled?: boolean
 }
 
 const COL = 'px-2 py-1.5'
@@ -164,7 +165,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false, duplicateEnabled = false }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const dragItem = useRef<number | null>(null)
@@ -467,6 +468,36 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       toast.error('Failed to save new row order — please refresh')
     }
   }, [projectId, lineItems, onChange, supabase, officeAddress])
+
+  // Copy a line straight below itself — e.g. the same item going into another room.
+  // Read the full row from the DB so columns not on the LineItem type come too.
+  // The copy starts un-received and loses its Studio breadcrumb (it isn't on the board).
+  const duplicateRow = useCallback(async (index: number) => {
+    const source = lineItems[index]
+    if (!source) return
+    const { data: full, error: readError } = await supabase.from('line_items').select('*').eq('id', source.id).single()
+    if (readError || !full) { toast.error('Failed to duplicate row'); return }
+    const { id: _id, created_at: _created, ...fields } = full
+    void _id; void _created
+    const sort_order = lineItems.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1
+    const { data, error } = await supabase.from('line_items').insert({
+      ...fields,
+      sort_order,
+      received: false,
+      highlight_color: null,
+      studio_object_id: null,
+      studio_slide_id: null,
+    }).select().single()
+    if (error) { toast.error('Failed to duplicate row'); return }
+    const spliced = [...lineItems]
+    spliced.splice(index + 1, 0, data)
+    const renumbered = spliced.map((item, i) => ({ ...item, sort_order: i }))
+    onChange(renumbered)
+    const { error: reorderError } = await supabase.from('line_items')
+      .upsert(renumbered.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
+    if (reorderError) toast.error('Failed to save new row order — please refresh')
+    else toast.success('Line duplicated')
+  }, [projectId, lineItems, onChange, supabase])
 
   const addRow = useCallback(async () => {
     const sort_order = lineItems.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1
@@ -1247,15 +1278,35 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     {formatZAR(c.total_price)}
                   </td>
 
-                  {/* Delete */}
+                  {/* Delete (+ duplicate when the org has it switched on) */}
                   <td className="px-1.5 py-1">
-                    {!locked && (
+                    {!locked && !duplicateEnabled && (
                       <button
                         onClick={() => deleteRow(item.id)}
                         className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                       >
                         <Trash2 size={13} />
                       </button>
+                    )}
+                    {!locked && duplicateEnabled && (
+                      <div className="flex flex-col items-center gap-1.5">
+                        <button
+                          onClick={() => duplicateRow(index)}
+                          title="Duplicate this line"
+                          aria-label="Duplicate this line"
+                          className="text-[#D8D3C8] hover:text-[#9A7B4F] transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                        >
+                          <Copy size={13} />
+                        </button>
+                        <button
+                          onClick={() => deleteRow(item.id)}
+                          title="Delete this line"
+                          aria-label="Delete this line"
+                          className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
