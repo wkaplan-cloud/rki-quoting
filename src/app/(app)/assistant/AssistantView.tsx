@@ -15,6 +15,9 @@ export interface MailboxInfo {
   last_error: string | null
   drive_folder_id: string | null
   credit_out_at: string | null
+  sheet_id: string | null
+  sheet_synced_at: string | null
+  sheet_error: string | null
 }
 
 export interface Costs {
@@ -140,6 +143,14 @@ export function AssistantView({ mailbox, driveAccount, costs, chase, emails, pro
             <button className="underline hover:text-[#2C2C2A] cursor-pointer" onClick={() => setShowSettings(v => !v)}>
               {showSettings ? 'Hide setup' : 'Address & setup'}
             </button>
+            {mailbox.drive_folder_id && <SheetLink mailbox={mailbox} onDone={() => router.refresh()} />}
+          </div>
+        )}
+
+        {mailbox?.drive_folder_id && mailbox.sheet_error && (
+          <div className="flex items-start gap-2 rounded-lg border border-[#E8C4B8] bg-[#FBEFEA] px-4 py-3 text-sm text-[#8A3A22]">
+            <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />
+            <span>The Supplier Prices sheet could not be updated: {mailbox.sheet_error}</span>
           </div>
         )}
 
@@ -187,6 +198,50 @@ export function AssistantView({ mailbox, driveAccount, costs, chase, emails, pro
         )}
       </div>
     </div>
+  )
+}
+
+// The Supplier Prices sheet in Drive (Mia folder / Accounts). It rebuilds
+// itself after every filing; the button is for a first build or after a fix.
+function SheetLink({ mailbox, onDone }: { mailbox: MailboxInfo; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function update() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/agent/sheet', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) setError(data.error ?? 'Could not update the sheet')
+      onDone()
+    } catch {
+      setError('Could not update the sheet')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-x-2">
+      {mailbox.sheet_id ? (
+        <a
+          className="underline hover:text-[#2C2C2A] focus-visible:text-[#2C2C2A]"
+          href={`https://docs.google.com/spreadsheets/d/${mailbox.sheet_id}/edit`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Supplier prices sheet
+        </a>
+      ) : (
+        <span>Supplier prices sheet not made yet</span>
+      )}
+      {mailbox.sheet_synced_at && <span>updated {when(mailbox.sheet_synced_at)}</span>}
+      <button className="underline hover:text-[#2C2C2A] cursor-pointer disabled:opacity-50" onClick={update} disabled={busy}>
+        {busy ? 'Updating…' : mailbox.sheet_id ? 'Update now' : 'Make it'}
+      </button>
+      {error && !mailbox.sheet_error && <span className="text-[#B4472F]">{error}</span>}
+    </span>
   )
 }
 

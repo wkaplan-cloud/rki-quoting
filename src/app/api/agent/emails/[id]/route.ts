@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { agentGate } from '@/lib/agent/gate'
 import { retryEmail } from '@/lib/agent/process'
 import { syncEmailToDrive } from '@/lib/agent/drive-sync'
+import { syncSheet } from '@/lib/agent/sheet'
 import { apiError } from '@/lib/api-error'
 
 const STATUSES = ['new', 'done']
@@ -59,6 +60,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     // Refiled to a project: its PDFs go to (or move to) that project's Drive folder.
     if (updates.project_id) await syncEmailToDrive(gate.orgId, id)
+    // The sheet groups by project and supplier, so either change moves rows.
+    if ('project_id' in updates || 'supplier_id' in updates) await syncSheet(gate.orgId)
     return NextResponse.json({ ok: true })
   } catch (e) {
     return apiError(e)

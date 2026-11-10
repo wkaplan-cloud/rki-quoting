@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { gmailForwardingRequest, type InboundEmail } from './inbound'
 import { classifyEmail, isOutOfCredit, AGENT_MODEL, type CallUsage, type StudioContext } from './classify'
 import { syncEmailToDrive } from './drive-sync'
+import { syncSheet } from './sheet'
 
 // Filing one email for one studio. Every email gets a row whatever happens —
 // a failed read is stored with its error and shown on the assistant's page,
@@ -49,6 +50,9 @@ async function loadContext(orgId: string): Promise<StudioContext> {
     })),
   }
 }
+
+// Documents that appear in the Supplier Prices sheet.
+const SHEET_TYPES: string[] = ['supplier_quote', 'proforma', 'invoice']
 
 function safeName(name: string): string {
   return name.replace(/[^\w.\-]+/g, '_').slice(-120) || 'file'
@@ -174,6 +178,8 @@ async function readAndFile(
     }
 
     if (result.project_id) await syncEmailToDrive(orgId, row.id)
+    // After Drive, so a newly filed PDF already has its link in the sheet.
+    if (result.documents.some(d => SHEET_TYPES.includes(d.doc_type ?? ''))) await syncSheet(orgId)
 
     if (result.action_needed) {
       await supabaseAdmin.from('org_notifications').insert({

@@ -23,7 +23,7 @@ export default async function AssistantPage() {
   const [{ data: mailbox }, { data: emails }, { data: projects }, { data: clients }, { data: suppliers }, { data: usage }, { data: team }, chase] = await Promise.all([
     supabaseAdmin
       .from('agent_mailboxes')
-      .select('agent_name, email, last_received_at, last_error, drive_folder_id, credit_out_at')
+      .select('agent_name, email, last_received_at, last_error, drive_folder_id, credit_out_at, sheet_id, sheet_synced_at, sheet_error')
       .eq('org_id', orgId)
       .maybeSingle(),
     supabase
