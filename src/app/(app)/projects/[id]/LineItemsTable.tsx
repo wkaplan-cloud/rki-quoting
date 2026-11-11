@@ -54,6 +54,8 @@ interface Props {
   /** Platform feature flag — when off, the image thumbnail/upload UI is hidden entirely. */
   imagesEnabled?: boolean
   duplicateEnabled?: boolean
+  /** Per-org flag: the table scrolls in its own box so the column headings stay pinned. */
+  stickyHeaderEnabled?: boolean
 }
 
 const COL = 'px-2 py-1.5'
@@ -165,7 +167,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false, duplicateEnabled = false }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const dragItem = useRef<number | null>(null)
@@ -665,9 +667,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
       </div>
 
-      <div className="bg-[#FDFCFB] rounded-xl overflow-x-auto overflow-y-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_24px_rgba(0,0,0,0.06)]">
+      <div className={`bg-[#FDFCFB] rounded-xl ${stickyHeaderEnabled ? 'overflow-auto max-h-[calc(100vh-8rem)]' : 'overflow-x-auto overflow-y-visible'} shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_24px_rgba(0,0,0,0.06)]`}>
         <table className="w-full text-sm min-w-[1220px]">
-          <thead>
+          <thead className={stickyHeaderEnabled ? 'sticky top-0 z-20' : undefined}>
             <tr className="border-b border-[#E8E4DC] bg-[#F7F4EF] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2 sticky left-0 z-10 bg-[#F7F4EF]" />
               <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />

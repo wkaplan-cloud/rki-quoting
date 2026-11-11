@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -76,6 +76,7 @@ export function FeatureTogglesPanel({
   jobCostSheetEnabled = false,
   deliveryTimelineEnabled = false,
   duplicateLineEnabled = false,
+  stickyLineHeaderEnabled = false,
   insightsEnabled = false,
   statementsEnabled = false,
   agentEnabled = false,
@@ -88,6 +89,7 @@ export function FeatureTogglesPanel({
   jobCostSheetEnabled?: boolean
   deliveryTimelineEnabled?: boolean
   duplicateLineEnabled?: boolean
+  stickyLineHeaderEnabled?: boolean
   insightsEnabled?: boolean
   statementsEnabled?: boolean
   agentEnabled?: boolean
@@ -144,6 +146,14 @@ export function FeatureTogglesPanel({
           icon={<Copy size={16} className="text-[#7E6036]" />}
           title="Duplicate line"
           description="Copy icon on each line item that adds the same item directly below it, e.g. for another room"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="sticky_line_header_enabled"
+          initial={stickyLineHeaderEnabled}
+          icon={<PanelTop size={16} className="text-[#7E6036]" />}
+          title="Pinned column headings"
+          description="Line items table scrolls in its own box so Item, Qty, Cost, Sale etc. stay visible at the top"
         />
         <FeatureToggle
           orgId={orgId}
