@@ -862,7 +862,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             >
                               {thumb
                                 // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                                ? <img src={thumb} alt="" className="w-full h-full object-contain bg-white" />
                                 : <ImagePlus size={11} />
                               }
                               {count > 1 && (
@@ -1541,7 +1541,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   {uploaded.map((url, i) => (
                     <div key={url} className="relative group/img aspect-square rounded-lg overflow-hidden border border-[#E8E4DC]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={`Image ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={url} alt={`Image ${i + 1}`} className="w-full h-full object-contain bg-[#FAF8F5]" />
                       {i === 0 && (
                         <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[9px] rounded">On quote</span>
                       )}
@@ -1560,7 +1560,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               {uploaded.length === 0 && catalogue && (
                 <div className="flex items-center gap-3 mb-4 p-3 bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={catalogue} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" />
+                  <img src={catalogue} alt="" className="w-12 h-12 rounded object-contain bg-white flex-shrink-0" />
                   <p className="text-xs text-[#8A877F]">
                     Using the supplier&apos;s catalogue image. Upload your own to replace it on the quote.
                   </p>

@@ -158,7 +158,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
               {showImages && (
                 <View style={{ width: w.img, paddingLeft: 3, paddingRight: 3 }}>
                   {images[item.id]
-                    ? <Image src={images[item.id]} style={{ width: THUMB, height: THUMB, borderRadius: 2, objectFit: 'cover' }} />
+                    ? <Image src={images[item.id]} style={{ width: THUMB, height: THUMB, borderRadius: 2, objectFit: 'contain' }} />
                     : null}
                 </View>
               )}
