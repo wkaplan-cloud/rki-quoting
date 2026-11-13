@@ -49,6 +49,9 @@ import BestInstallerSoftware from './posts/best-quoting-software-for-home-automa
 import ElectricalCocGuide from './posts/electrical-coc-guide-for-electricians-south-africa'
 import CctvQuotation from './posts/how-to-quote-a-cctv-installation-south-africa'
 import TradifyVsQuotingHub from './posts/tradify-vs-quotinghub-south-africa'
+import JobberVsQuotingHub from './posts/jobber-vs-quotinghub-south-africa'
+import ServiceM8VsQuotingHub from './posts/servicem8-vs-quotinghub-south-africa'
+import DToolsVsQuotingHub from './posts/d-tools-vs-quotinghub-south-africa'
 
 export const blogPosts: BlogPost[] = [
   {
@@ -76,6 +79,48 @@ export const blogPosts: BlogPost[] = [
     faqs: [
       { q: 'What should a CCTV quotation include?', a: 'Coverage by area, itemised cameras, recorder, storage, switch, cabling and backup power, separate installation labour and configuration, two or three options, exclusions such as electrical and builder\'s work, validity, deposit and VAT, and an optional support plan.' },
       { q: 'How should CCTV installers price support?', a: 'Offer a monthly or annual support plan with health checks, firmware updates and a set number of callouts, and charge separately for work outside it. QuotingHub Installer Pro invoices these plans automatically and marks each callout as covered or chargeable.' },
+    ],
+  },
+  {
+    slug: 'jobber-vs-quotinghub-south-africa',
+    title: 'Jobber vs QuotingHub for South African Electricians',
+    description: 'Jobber and QuotingHub compared for SA electrical contractors: US-dollar tiered pricing vs per-business rand pricing, QuickBooks and Xero vs Sage, COCs, progress claims and variation orders.',
+    date: '2026-11-13',
+    category: 'Trades Guides',
+    readTime: 4,
+    content: JobberVsQuotingHub,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'Is Jobber or QuotingHub better for South African electricians?', a: 'Jobber is a strong general field service app priced in US dollars and integrated with QuickBooks Online and Xero. QuotingHub is built in South Africa, priced per business in rand with up to 20 staff included, integrates with Sage, and adds a digital SANS 10142-1 COC, progress claims and variation orders. Contractors who quote projects and issue COCs tend to fit QuotingHub better.' },
+      { q: 'Does Jobber work with Sage?', a: 'Jobber\'s accounting integrations are QuickBooks Online and Xero. South African contractors who use Sage Business Cloud Accounting can use QuotingHub, which pushes invoices and claims to Sage.' },
+    ],
+  },
+  {
+    slug: 'servicem8-vs-quotinghub-south-africa',
+    title: 'ServiceM8 vs QuotingHub for South African Electricians and Installers',
+    description: 'ServiceM8 and QuotingHub compared for SA trades: per-job vs per-business pricing, Xero and QuickBooks vs Sage, COCs, progress claims, device registers and support contracts.',
+    date: '2026-11-13',
+    category: 'Trades Guides',
+    readTime: 4,
+    content: ServiceM8VsQuotingHub,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'Is ServiceM8 or QuotingHub better for South African electricians?', a: 'ServiceM8 is a strong job management app for high-volume callout work, priced by the number of jobs per month and built around Xero and QuickBooks. QuotingHub is built in South Africa, charges a flat rand fee per business with no job limit, integrates with Sage, and includes a SANS 10142-1 COC, progress claims and variation orders.' },
+      { q: 'How does ServiceM8 charge?', a: 'ServiceM8 does not charge per user; its plans are priced by how many jobs you create each month. QuotingHub charges a flat monthly fee per business with up to 20 staff and no job cap.' },
+    ],
+  },
+  {
+    slug: 'd-tools-vs-quotinghub-south-africa',
+    title: 'D-Tools vs QuotingHub for South African Home Automation, AV and CCTV Installers',
+    description: 'D-Tools and QuotingHub compared for SA installers and integrators: US-dollar tiers vs rand pricing, product libraries vs distributor price lists, device registers, handover packs and support contracts.',
+    date: '2026-11-13',
+    category: 'Trades Guides',
+    readTime: 5,
+    content: DToolsVsQuotingHub,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'Is D-Tools or QuotingHub better for South African installers?', a: 'D-Tools is the specialist tool for larger AV and smart home integrators, with a large manufacturer library and deep design tools, priced in US dollars. QuotingHub is built in South Africa for home automation, AV, CCTV and networking installers: room-by-room quotes from your own distributor price lists, a device register, handover packs and recurring support billing, at R2,999 or R4,499 a month with Sage included.' },
+      { q: 'Is there a South African alternative to D-Tools?', a: 'Yes. QuotingHub is built in South Africa for installers and integrators, priced in rand, imports local distributor price lists, and integrates with Sage Business Cloud Accounting.' },
     ],
   },
   {

@@ -3,14 +3,14 @@ import { FAQContent } from './FAQContent'
 import { faqs } from './faq-data'
 
 export const metadata: Metadata = {
-  title: 'FAQ — QuotingHub for Interior Designers',
-  description: 'Common questions about QuotingHub: setup, billing, features, and how it works for interior designers and decorators in South Africa.',
+  title: 'QuotingHub FAQ — Quoting Software for SA Designers, Electricians & Installers',
+  description: 'Answers about QuotingHub for South African interior designers, electricians, and home automation, AV and CCTV installers: pricing in rand, COCs, progress claims, Sage and Xero, VAT and the free trial.',
   alternates: {
     canonical: 'https://www.quotinghub.co.za/faq',
   },
   openGraph: {
-    title: 'FAQ — QuotingHub for Interior Designers',
-    description: 'Common questions about QuotingHub: setup, billing, features, and how it works for interior designers in South Africa.',
+    title: 'QuotingHub FAQ — Quoting Software for SA Designers, Electricians & Installers',
+    description: 'Answers about QuotingHub for South African interior designers, electricians and installers: pricing in rand, COCs, progress claims, Sage and Xero, VAT and the free trial.',
     url: 'https://www.quotinghub.co.za/faq',
     images: [{ url: 'https://www.quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
   },
