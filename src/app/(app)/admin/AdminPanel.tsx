@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
 import { SettingsForm } from '../settings/SettingsForm'
 import Link from 'next/link'
-import { computeLineItems } from '@/lib/quoting'
+import { projectProfit as sharedProjectProfit } from '@/lib/profit'
 import type { Insights } from '@/lib/insights'
 import { InsightsTab } from './InsightsTab'
 
@@ -164,12 +164,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   } | null>(null)
 
   // Profit (ex VAT) on one project: line profit plus design fee
-  const projectProfit = (p: CompletedProject, lineItems: LineItemRow[]) => {
-    const computed = computeLineItems(lineItems.filter(li => li.project_id === p.id))
-    const lineProfit = computed.reduce((sum, i) => sum + i.profit, 0)
-    const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
-    return lineProfit + designFeeAmount
-  }
+  const projectProfit = (p: CompletedProject, lineItems: LineItemRow[]) =>
+    sharedProjectProfit(lineItems.filter(li => li.project_id === p.id), p.design_fee).profit
 
   // Pipeline = not Draft/Cancelled, final invoice not yet paid. Split into work the
   // client has accepted (Approved onwards) and quotes still awaiting acceptance.
