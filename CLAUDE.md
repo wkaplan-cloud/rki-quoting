@@ -6,7 +6,8 @@
 
 This app is multi-tenant. Every org has isolated data. These tables are **org-scoped** — always filter by `org_id`, never `user_id`:
 
-- `settings`, `projects`, `clients`, `suppliers`, `items`, `line_items`
+- `settings`, `projects`, `clients`, `suppliers`, `items`
+- `line_items` has **no `org_id` column**: scope it through its project (`projects!inner(org_id)` + `.eq('projects.org_id', orgId)`)
 - `price_lists`, `price_list_items`, `price_list_access`
 - `sourcing_sessions`, `sourcing_session_items`, `sourcing_session_suppliers`
 - `audit_logs`, `org_notifications`, `quote_approvals`, `quote_approval_logs`

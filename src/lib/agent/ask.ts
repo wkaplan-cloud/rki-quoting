@@ -45,7 +45,7 @@ function systemPrompt(agentName: string): string {
 
 How to answer:
 - Use the tools to look things up. Answer only from what the tools return. If they return nothing useful, say plainly that you couldn't find it and what you searched for. Never guess a price, date or total.
-- Be short and plain: the answer first, then the few facts behind it. No headings. Use short lists only when listing several things.
+- Be short and plain: the answer first, then the few facts behind it. Plain text only: no headings, no bold, no asterisks or other markdown. Use short "- " lists only when listing several things.
 - Money is in rand, written like R12,345.00. Say whether a figure is cost (what the studio pays) or sale (what the client pays), and that amounts exclude VAT unless the data says otherwise.
 - Always name the project number (e.g. RKI-2025-014) and supplier when you mention them, so the person can find it.
 - Prices on line items come from the studio's own quotes; prices on documents come from supplier PDFs Mia filed. Say which one you used.
@@ -67,7 +67,8 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
       project_id: string; item_name: string | null; supplier_name: string | null; cost_price: number
       markup_percentage: number; quantity: number; row_type: string | null; sale_price_override: number | null
     }>((from, to) => db.from('line_items')
-      .select('id, project_id, item_name, supplier_name, cost_price, markup_percentage, quantity, row_type, sale_price_override').eq('org_id', orgId)
+      .select('id, project_id, item_name, supplier_name, cost_price, markup_percentage, quantity, row_type, sale_price_override, projects!inner(org_id)')
+      .eq('projects.org_id', orgId)
       .in('project_id', projectIds).order('id').range(from, to))
     if (error) throw new Error(error)
     return rows.filter(r => r.row_type !== 'section').map(r => computeLineItem(r))
@@ -123,7 +124,8 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
     run: async ({ supplier, item }) => {
       if (!term(supplier) && !term(item)) return 'Give a supplier, an item, or both.'
       let q = db.from('line_items')
-        .select('item_name, description, supplier_name, cost_price, quantity, created_at, projects!inner(id, project_number, project_name, date, status)').eq('org_id', orgId)
+        .select('item_name, description, supplier_name, cost_price, quantity, created_at, projects!inner(id, project_number, project_name, date, status, org_id)')
+        .eq('projects.org_id', orgId)
         .neq('row_type', 'section')
       for (const f of wordsFilter(supplier ?? '', ['supplier_name'])) q = q.or(f)
       for (const f of wordsFilter(item ?? '', ['item_name', 'description'])) q = q.or(f)
@@ -344,7 +346,8 @@ export async function askMia(
 
   if (!last) throw new Error('No answer came back')
   if (last.stop_reason === 'refusal') throw new Error(`${agentName} couldn't answer that one`)
-  const text = last.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim()
+  // The page shows plain text, so drop any markdown emphasis that slips through.
+  const text = last.content.filter(b => b.type === 'text').map(b => b.text).join('\n').replace(/\*\*(.+?)\*\*/g, '$1').trim()
   if (!text) throw new Error(last.stop_reason === 'tool_use' ? 'That took too many look-ups. Try a narrower question.' : 'No answer came back')
 
   // Only list sources the answer actually mentions (project numbers, file names).
