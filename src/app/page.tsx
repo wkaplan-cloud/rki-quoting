@@ -24,18 +24,20 @@ export default function LandingPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
                   <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
                 </div>
-                <Link
-                  href="/trades/electrician"
-                  className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
-                >
-                  Electricians click here
-                </Link>
-                <Link
-                  href="/trades/installer"
-                  className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
-                >
-                  Installers click here
-                </Link>
+                <div className="inline-flex items-center gap-x-3 whitespace-nowrap">
+                  <Link
+                    href="/trades/electrician"
+                    className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
+                  >
+                    Electricians click here
+                  </Link>
+                  <Link
+                    href="/trades/installer"
+                    className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
+                  >
+                    Installers click here
+                  </Link>
+                </div>
               </div>
 
               <h1 className="font-serif text-5xl md:text-6xl text-[#1A1A18] leading-[1.05] tracking-tight mb-4">
