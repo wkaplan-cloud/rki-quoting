@@ -134,8 +134,11 @@ export function AssistantView({ mailbox, driveAccount, canAsk, team, costs, chas
 
   // Team members who appear on at least one email, with how many.
   const people = useMemo(() => team
-    .map(m => ({ ...m, count: emails.filter(e => e.recipients.includes(m.email)).length }))
-    .filter(m => m.count > 0)
+    .map(m => {
+      const theirs = emails.filter(e => e.recipients.includes(m.email))
+      return { ...m, total: theirs.length, count: theirs.filter(e => e.status !== 'done').length }
+    })
+    .filter(m => m.total > 0)
     .sort((a, b) => a.name.localeCompare(b.name)), [team, emails])
   const mine = useMemo(() => person ? emails.filter(e => e.recipients.includes(person)) : emails, [emails, person])
   const needs = useMemo(() => mine.filter(e => e.status !== 'done'), [mine])
@@ -217,12 +220,14 @@ export function AssistantView({ mailbox, driveAccount, canAsk, team, costs, chas
                     onChange={e => setPerson(e.target.value)}
                     className="text-sm px-2.5 py-1 rounded-md border border-[#D8D3C8] bg-white outline-none hover:border-[#9A7B4F] focus-visible:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer"
                   >
-                    <option value="">Everyone ({emails.length})</option>
-                    {people.map(m => <option key={m.email} value={m.email}>{m.name} ({m.count})</option>)}
+                    <option value="">Everyone ({emails.filter(e => e.status !== 'done').length} to do)</option>
+                    {people.map(m => <option key={m.email} value={m.email}>{m.name} ({m.count} to do)</option>)}
                   </select>
                 </label>
               )}
             </div>
+
+            {tab === 'needs' && <MarkAllDone emails={needs} person={people.find(m => m.email === person)?.name ?? null} onDone={() => router.refresh()} />}
 
             {shown.length === 0 ? (
               <div className="py-16 text-center text-sm text-[#8A877F]">
@@ -888,6 +893,52 @@ function CreditOut({ since, name, onDone }: { since: string; name: string; onDon
         </Button>
         {result && <span className="text-xs text-[#8A3A22]">{result}</span>}
       </div>
+    </div>
+  )
+}
+
+// Marks every email still 'new' in the list being viewed as done, after a
+// second click to confirm. Emails that failed to read are left for "Read again".
+function MarkAllDone({ emails, person, onDone }: { emails: AgentEmailRow[]; person: string | null; onDone: () => void }) {
+  const ids = emails.filter(e => e.status === 'new').map(e => e.id)
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshing, startRefresh] = useTransition()
+
+  if (ids.length < 2 && !error) return null
+
+  async function markAll() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/agent/emails/done', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) setError(data.error ?? 'Could not mark them done')
+      else setConfirming(false)
+    } catch {
+      setError('Could not mark them done')
+    } finally {
+      setBusy(false)
+      startRefresh(onDone)
+    }
+  }
+
+  const whose = person ? `${person}'s ` : ''
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+      {error && <span className="text-[#B4472F] text-xs">{error}</span>}
+      {!confirming ? (
+        <Button size="sm" variant="secondary" onClick={() => setConfirming(true)} disabled={busy || refreshing}>
+          <Check size={12} /> Mark all {ids.length} {whose ? `of ${whose}` : ''}as done
+        </Button>
+      ) : (
+        <>
+          <span className="text-xs text-[#5F5C55]">Mark all {ids.length} of {whose || 'these '}emails as done?</span>
+          <Button size="sm" variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>Cancel</Button>
+          <Button size="sm" onClick={markAll} disabled={busy}>{busy ? 'Marking…' : `Yes, mark ${ids.length} done`}</Button>
+        </>
+      )}
     </div>
   )
 }
