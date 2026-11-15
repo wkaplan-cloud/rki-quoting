@@ -126,7 +126,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
         projected_not_yet_paid: {
           accepted_work: { profit_excl_vat: sum(committed), projects: committed.length },
           quotes_awaiting_acceptance: { profit_excl_vat: sum(quoted), projects: quoted.length },
-          completed_but_not_marked_paid: committed.filter(p => p.status === 'Completed').length,
+          completed_but_not_marked_paid_project_count: committed.filter(p => p.status === 'Completed').length,
         },
         rules: 'Same as Admin → Profit: only Paid in Full counts as earned; year = project date; archived projects excluded; profit = item profit + design fee (% of item sales).',
       })
