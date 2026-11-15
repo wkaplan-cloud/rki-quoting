@@ -24,19 +24,21 @@ export default function LandingPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
                   <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
                 </div>
-                <div className="inline-flex items-center gap-x-3 whitespace-nowrap">
-                  <Link
-                    href="/trades/electrician"
-                    className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
-                  >
-                    Electricians click here
-                  </Link>
-                  <Link
-                    href="/trades/installer"
-                    className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
-                  >
-                    Installers click here
-                  </Link>
+                <div className="inline-flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-xs text-[#8A877F]">Not a designer?</span>
+                  {[
+                    { href: '/trades/electrician', label: 'Electricians' },
+                    { href: '/trades/installer', label: 'Installers' },
+                  ].map(({ href, label }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="group inline-flex items-center gap-1 rounded-full border border-[#9A7B4F]/35 px-3 py-1 text-xs font-medium text-[#9A7B4F] tracking-wide transition-colors hover:border-[#9A7B4F] hover:bg-[#9A7B4F]/5 active:bg-[#9A7B4F]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A7B4F]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F5F2EC]"
+                    >
+                      {label}
+                      <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  ))}
                 </div>
               </div>
 
