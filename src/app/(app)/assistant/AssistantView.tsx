@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Combobox } from '@/components/ui/Combobox'
 import type { ChaseList } from '@/lib/agent/chase-list'
+import { AskMia } from './AskMia'
 
 export interface MailboxInfo {
   agent_name: string
@@ -110,9 +111,10 @@ const NEW_PROJECT = '__new'
 
 const selectClass = 'w-full text-sm px-2.5 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer'
 
-export function AssistantView({ mailbox, driveAccount, costs, chase, emails, projects, clients, suppliers }: {
+export function AssistantView({ mailbox, driveAccount, canAsk, costs, chase, emails, projects, clients, suppliers }: {
   mailbox: MailboxInfo | null
   driveAccount: string | null
+  canAsk: boolean
   costs: Costs
   chase: ChaseList
   emails: AgentEmailRow[]
@@ -143,9 +145,21 @@ export function AssistantView({ mailbox, driveAccount, costs, chase, emails, pro
             <button className="underline hover:text-[#2C2C2A] cursor-pointer" onClick={() => setShowSettings(v => !v)}>
               {showSettings ? 'Hide setup' : 'Address & setup'}
             </button>
+            {mailbox.drive_folder_id && (
+              <a
+                className="underline hover:text-[#2C2C2A] focus-visible:text-[#2C2C2A] focus-visible:outline-none active:opacity-70"
+                href={`https://drive.google.com/drive/folders/${mailbox.drive_folder_id}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open Drive folder
+              </a>
+            )}
             {mailbox.drive_folder_id && <SheetLink mailbox={mailbox} onDone={() => router.refresh()} />}
           </div>
         )}
+
+        {mailbox && canAsk && <AskMia name={name} />}
 
         {mailbox?.drive_folder_id && mailbox.sheet_error && (
           <div className="flex items-start gap-2 rounded-lg border border-[#E8C4B8] bg-[#FBEFEA] px-4 py-3 text-sm text-[#8A3A22]">

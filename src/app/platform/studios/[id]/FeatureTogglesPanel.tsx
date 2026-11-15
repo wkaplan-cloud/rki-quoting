@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop, MessageCircleQuestion } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -80,6 +80,7 @@ export function FeatureTogglesPanel({
   insightsEnabled = false,
   statementsEnabled = false,
   agentEnabled = false,
+  askMiaEnabled = false,
   capitalEnabled = false,
   plan = 'trial',
 }: {
@@ -93,6 +94,7 @@ export function FeatureTogglesPanel({
   insightsEnabled?: boolean
   statementsEnabled?: boolean
   agentEnabled?: boolean
+  askMiaEnabled?: boolean
   capitalEnabled?: boolean
   plan?: string
 }) {
@@ -178,6 +180,14 @@ export function FeatureTogglesPanel({
           icon={<Inbox size={16} className="text-[#7E6036]" />}
           title="Studio assistant"
           description="Gets her own email address; supplier mail forwarded to it is filed to projects (emails and PDFs) and what needs doing is flagged. Uses the Claude API"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="ask_mia_enabled"
+          initial={askMiaEnabled}
+          icon={<MessageCircleQuestion size={16} className="text-[#7E6036]" />}
+          title="Ask the assistant"
+          description="Admins ask the assistant about clients, supplier prices, spend, margins and filed mail; she answers from the studio's data and can draft (never send) emails. Needs the Studio assistant on. Uses the Claude API"
         />
         <FeatureToggle
           orgId={orgId}

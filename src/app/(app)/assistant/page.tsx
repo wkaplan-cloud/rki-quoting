@@ -2,8 +2,8 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { getCurrentOrgId } from '@/lib/auth-context'
-import { agentEnabled } from '@/lib/agent/gate'
+import { getCurrentOrgId, getCurrentUser } from '@/lib/auth-context'
+import { agentEnabled, askMiaAllowed } from '@/lib/agent/gate'
 import { driveAccountEmail } from '@/lib/agent/drive'
 import { loadChaseList } from '@/lib/agent/chase'
 import { withTeamNames } from '@/lib/agent/recipients'
@@ -14,6 +14,8 @@ import { AssistantView, type AgentEmailRow, type MailboxInfo } from './Assistant
 export default async function AssistantPage() {
   const orgId = await getCurrentOrgId()
   if (!orgId || !(await agentEnabled(orgId))) redirect('/dashboard')
+  const user = await getCurrentUser()
+  const canAsk = user ? await askMiaAllowed(orgId, user.id) : false
 
   const supabase = await createClient()
   const now = new Date()
@@ -55,7 +57,8 @@ export default async function AssistantPage() {
   const sum = (rows: { cost_usd: number | string }[]) => rows.reduce((t, r) => t + Number(r.cost_usd), 0) * usdZar
   const thisMonth = (usage ?? []).filter(u => new Date(u.created_at) >= monthStart)
   const lastMonth = (usage ?? []).filter(u => new Date(u.created_at) < monthStart)
-  const emailsRead = new Set(thisMonth.map(u => u.email_id)).size
+  // Ask Mia calls have no email; they count in the cost, not in emails read.
+  const emailsRead = new Set(thisMonth.map(u => u.email_id).filter(Boolean)).size
   const costs = {
     thisMonth: sum(thisMonth),
     lastMonth: sum(lastMonth),
@@ -70,6 +73,7 @@ export default async function AssistantPage() {
     <AssistantView
       mailbox={(mailbox as MailboxInfo | null) ?? null}
       driveAccount={driveAccountEmail()}
+      canAsk={canAsk}
       costs={costs}
       chase={chase}
       emails={((emails ?? []) as unknown as AgentEmailRow[]).map(e => ({

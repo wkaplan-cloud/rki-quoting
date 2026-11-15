@@ -9,7 +9,7 @@ import { computeLineItem, type LineItemCalcInput } from './quoting'
 
 export const MIN_PAID_PROJECTS = 10
 
-const ACCEPTED_STATUSES = new Set(['Approved', 'Deposit', 'Invoice', 'Completed', 'Paid'])
+export const ACCEPTED_STATUSES = new Set(['Approved', 'Deposit', 'Invoice', 'Completed', 'Paid'])
 
 export interface InsightsProject {
   id: string

@@ -19,3 +19,12 @@ export async function agentEnabled(orgId: string): Promise<boolean> {
   const { data } = await supabaseAdmin.from('settings').select('agent_enabled').eq('org_id', orgId).maybeSingle()
   return data?.agent_enabled === true
 }
+
+/** "Ask Mia" (settings.ask_mia_enabled) on top of the assistant switch, for studio admins only. */
+export async function askMiaAllowed(orgId: string, userId: string): Promise<boolean> {
+  const [{ data: settings }, { data: member }] = await Promise.all([
+    supabaseAdmin.from('settings').select('agent_enabled, ask_mia_enabled').eq('org_id', orgId).maybeSingle(),
+    supabaseAdmin.from('org_members').select('role').eq('org_id', orgId).eq('user_id', userId).eq('status', 'active').maybeSingle(),
+  ])
+  return settings?.agent_enabled === true && settings?.ask_mia_enabled === true && member?.role === 'admin'
+}

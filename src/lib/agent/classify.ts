@@ -26,7 +26,8 @@ export interface CallUsage {
   costUsd: number
 }
 
-function usageOf(u: Anthropic.Usage): CallUsage {
+/** Cost of one API call at AGENT_MODEL's list price. */
+export function costOf(u: { input_tokens?: number | null; output_tokens?: number | null; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null }): CallUsage {
   const inputTokens = u.input_tokens ?? 0
   const outputTokens = u.output_tokens ?? 0
   const cacheReadTokens = u.cache_read_input_tokens ?? 0
@@ -197,7 +198,7 @@ ${body || '(no text)'}`,
     ],
     messages: [{ role: 'user', content }],
   })
-  await onUsage(usageOf(response.usage))
+  await onUsage(costOf(response.usage))
 
   if (response.stop_reason === 'refusal') throw new Error('The model declined to read this email')
   if (response.stop_reason === 'max_tokens') throw new Error('Email too long to read in one pass')
