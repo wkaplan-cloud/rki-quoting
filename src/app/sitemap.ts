@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://www.quotinghub.co.za/interior-design-software-george', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/interior-design-software-bloemfontein', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/interior-design-software-east-london', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://www.quotinghub.co.za/quoting-software-johannesburg', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/trades', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/trades/electrician', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://www.quotinghub.co.za/trades/installer', changeFrequency: 'monthly', priority: 0.9 },

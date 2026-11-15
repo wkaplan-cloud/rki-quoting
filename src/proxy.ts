@@ -83,6 +83,7 @@ export async function proxy(request: NextRequest) {
     pathname.endsWith('.xml') ||
     pathname.endsWith('.html') ||
     pathname.startsWith('/interior-design-software-') ||
+    pathname.startsWith('/quoting-software-') ||
     pathname.startsWith('/trades') ||
     pathname.startsWith('/manufacturer') ||
     pathname.startsWith('/blog') ||

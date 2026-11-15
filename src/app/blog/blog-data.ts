@@ -48,12 +48,28 @@ import ElectricalQuotation from './posts/how-to-write-an-electrical-quotation-so
 import BestInstallerSoftware from './posts/best-quoting-software-for-home-automation-cctv-installers-south-africa'
 import ElectricalCocGuide from './posts/electrical-coc-guide-for-electricians-south-africa'
 import CctvQuotation from './posts/how-to-quote-a-cctv-installation-south-africa'
+import BestQuotingSoftwareSA from './posts/best-quoting-software-south-africa'
 import TradifyVsQuotingHub from './posts/tradify-vs-quotinghub-south-africa'
 import JobberVsQuotingHub from './posts/jobber-vs-quotinghub-south-africa'
 import ServiceM8VsQuotingHub from './posts/servicem8-vs-quotinghub-south-africa'
 import DToolsVsQuotingHub from './posts/d-tools-vs-quotinghub-south-africa'
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: 'best-quoting-software-south-africa',
+    title: 'Best Quoting Software in South Africa (2026): By Type of Business',
+    description: 'Which quoting software fits which South African business: interior designers, electricians, home automation and CCTV installers, service trades and sole traders. Rand pricing, VAT and Sage compared.',
+    date: '2026-11-15',
+    category: 'Product Guides',
+    readTime: 6,
+    content: BestQuotingSoftwareSA,
+    reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
+    faqs: [
+      { q: 'What is the best quoting software in South Africa?', a: 'It depends on the business. For interior designers, electricians and home automation, AV or CCTV installers, QuotingHub is built in South Africa for those trades, with rand pricing, 15% VAT and Sage integration. For general service trades, global apps such as Tradify, Jobber and ServiceM8 work well. Sole traders with simple jobs can use a basic quoting app or template.' },
+      { q: 'What is the best quoting software in Johannesburg?', a: 'Johannesburg businesses use the same South African options. QuotingHub runs in the browser and on phones anywhere in Johannesburg and Gauteng, and is built for interior designers, electricians and home automation, AV and CCTV installers.' },
+      { q: 'Is there South African quoting software that works with Sage?', a: 'Yes. QuotingHub pushes invoices and claims to Sage Business Cloud Accounting, so the books stay in Sage while quoting runs in QuotingHub.' },
+    ],
+  },
   {
     slug: 'electrical-coc-guide-for-electricians-south-africa',
     title: 'Electrical COC Guide for South African Electricians (2026)',
