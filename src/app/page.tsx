@@ -357,6 +357,19 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Customer testimonial */}
+      <section className="pt-24 px-6">
+        <figure className="max-w-3xl mx-auto text-center">
+          <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-6">From a QuotingHub studio</p>
+          <blockquote className="font-serif text-2xl md:text-3xl text-[#1A1A18] leading-snug tracking-tight">
+            &ldquo;We&apos;re actually saving money with QuotingHub. We used to pay for several apps that each did one job. Now we just use QuotingHub.&rdquo;
+          </blockquote>
+          <figcaption className="mt-6 text-sm text-[#8A877F]">
+            <span className="font-medium text-[#1A1A18]">Elize Beltrame</span>, Elize Beltrame Interiors
+          </figcaption>
+        </figure>
+      </section>
+
       {/* CTA */}
       <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto text-center">
