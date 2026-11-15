@@ -74,6 +74,7 @@ export default async function AssistantPage() {
       mailbox={(mailbox as MailboxInfo | null) ?? null}
       driveAccount={driveAccountEmail()}
       canAsk={canAsk}
+      team={(team ?? []).filter(m => m.invited_email).map(m => ({ email: m.invited_email.toLowerCase(), name: m.full_name || m.invited_email }))}
       costs={costs}
       chase={chase}
       emails={((emails ?? []) as unknown as AgentEmailRow[]).map(e => ({

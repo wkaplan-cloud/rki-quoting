@@ -111,10 +111,11 @@ const NEW_PROJECT = '__new'
 
 const selectClass = 'w-full text-sm px-2.5 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer'
 
-export function AssistantView({ mailbox, driveAccount, canAsk, costs, chase, emails, projects, clients, suppliers }: {
+export function AssistantView({ mailbox, driveAccount, canAsk, team, costs, chase, emails, projects, clients, suppliers }: {
   mailbox: MailboxInfo | null
   driveAccount: string | null
   canAsk: boolean
+  team: { email: string; name: string }[]
   costs: Costs
   chase: ChaseList
   emails: AgentEmailRow[]
@@ -127,15 +128,26 @@ export function AssistantView({ mailbox, driveAccount, canAsk, costs, chase, ema
   const [showSettings, setShowSettings] = useState(false)
 
   const name = mailbox?.agent_name ?? 'Assistant'
-  const needs = useMemo(() => emails.filter(e => e.status !== 'done'), [emails])
-  const shown = tab === 'needs' ? needs : emails
+  const [person, setPerson] = useState('')
+
+  // Who an email went to: the addresses in its To and Cc lines.
+  const addressesOf = (e: AgentEmailRow) =>
+    [...e.sent_to, ...e.sent_cc].map(x => (x.match(/<([^<>]+)>/)?.[1] ?? x).toLowerCase())
+  // Team members who appear on at least one email, with how many.
+  const people = useMemo(() => team
+    .map(m => ({ ...m, count: emails.filter(e => addressesOf(e).includes(m.email)).length }))
+    .filter(m => m.count > 0)
+    .sort((a, b) => a.name.localeCompare(b.name)), [team, emails])
+  const mine = useMemo(() => person ? emails.filter(e => addressesOf(e).includes(person)) : emails, [emails, person])
+  const needs = useMemo(() => mine.filter(e => e.status !== 'done'), [mine])
+  const shown = tab === 'needs' ? needs : mine
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={name}
         subtitle={mailbox ? 'Files the supplier mail forwarded to her, and flags what needs doing' : 'Set up to start'}
-        count={mailbox ? needs.length : undefined}
+        count={mailbox ? emails.filter(e => e.status !== 'done').length : undefined}
       />
 
       <div className="p-4 md:p-8 space-y-4 max-w-5xl">
@@ -186,8 +198,9 @@ export function AssistantView({ mailbox, driveAccount, canAsk, costs, chase, ema
 
         {mailbox && (
           <>
-            <div className="flex gap-1 border-b border-[#D8D3C8]">
-              {([['needs', `Needs you (${needs.length})`], ['all', `All mail (${emails.length})`]] as const).map(([key, label]) => (
+            <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[#D8D3C8]">
+              <div className="flex gap-1">
+              {([['needs', `Needs you (${needs.length})`], ['all', `All mail (${mine.length})`]] as const).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
@@ -196,12 +209,26 @@ export function AssistantView({ mailbox, driveAccount, canAsk, costs, chase, ema
                   {label}
                 </button>
               ))}
+              </div>
+              {people.length > 0 && (
+                <label className="flex items-center gap-2 pb-1.5 text-xs text-[#5F5C55]">
+                  <span className="font-medium">Person</span>
+                  <select
+                    value={person}
+                    onChange={e => setPerson(e.target.value)}
+                    className="text-sm px-2.5 py-1 rounded-md border border-[#D8D3C8] bg-white outline-none hover:border-[#9A7B4F] focus-visible:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer"
+                  >
+                    <option value="">Everyone ({emails.length})</option>
+                    {people.map(m => <option key={m.email} value={m.email}>{m.name} ({m.count})</option>)}
+                  </select>
+                </label>
+              )}
             </div>
 
             {shown.length === 0 ? (
               <div className="py-16 text-center text-sm text-[#8A877F]">
                 <Inbox size={20} className="mx-auto mb-2 opacity-50" />
-                {tab === 'needs' ? 'Nothing waiting. Everything is filed.' : `Nothing in ${name}'s inbox yet. Forward a supplier email to ${mailbox.email}.`}
+                {person ? `No emails to ${people.find(m => m.email === person)?.name ?? 'this person'} here.` : tab === 'needs' ? 'Nothing waiting. Everything is filed.' : `Nothing in ${name}'s inbox yet. Forward a supplier email to ${mailbox.email}.`}
               </div>
             ) : (
               <div className="space-y-3">
