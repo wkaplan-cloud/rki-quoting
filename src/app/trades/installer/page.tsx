@@ -103,7 +103,7 @@ const FAQS = [
   },
   {
     q: 'How much does QuotingHub cost for installers?',
-    a: 'Installer is R2,999/month and covers quoting, projects, variation orders, progress claims, Sage, job cards, GPS clocking, the device register and handover packs, for up to 20 staff. Installer Pro is R4,499/month and adds support contracts with automatic recurring invoices. Extra staff over 20 are R40/month each, and setup and training is R2,500 once-off. There is a 30-day free trial and no contract.',
+    a: 'Installer is R3,499/month and covers quoting, projects, variation orders, progress claims, Sage, job cards, GPS clocking, the device register and handover packs, for up to 20 staff. Installer Pro is R4,999/month and adds support contracts with automatic recurring invoices. Extra staff over 20 are R40/month each, and setup and training is R2,500 once-off. There is a 30-day free trial and no contract.',
   },
   {
     q: 'Can I bring in my distributor price lists?',
@@ -254,7 +254,7 @@ export default function InstallerLandingPage() {
                   See pricing
                 </Link>
               </div>
-              <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · plans from R2,999/month · Cancel any time</p>
+              <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · plans from R3,499/month · Cancel any time</p>
             </div>
             <div className="flex-shrink-0 w-full lg:w-[440px] flex items-center justify-center">
               <QuoteMock />

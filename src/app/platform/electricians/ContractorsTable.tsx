@@ -30,8 +30,8 @@ const PLAN_OPTIONS: Record<TradeKind, { id: string; label: string; desc: string 
     { id: 'free',         label: 'Free',                     desc: 'No access'    },
   ],
   installer: [
-    { id: 'installer',     label: 'Installer — R2,999/mo',     desc: 'Quoting, kits, devices, handover' },
-    { id: 'installer_pro', label: 'Installer Pro — R4,499/mo', desc: '+ Support contracts'              },
+    { id: 'installer',     label: 'Installer — R3,499/mo',     desc: 'Quoting, kits, devices, handover' },
+    { id: 'installer_pro', label: 'Installer Pro — R4,999/mo', desc: '+ Support contracts'              },
     { id: 'free',          label: 'Free',                      desc: 'No access'                        },
   ],
 }

@@ -18,7 +18,7 @@ export default function TradifyVsQuotingHubSouthAfrica() {
         <strong>Tradify</strong> charges per user per month. Its South African listing on the Xero app store shows the Lite plan at R480 per user per month at the time of writing, so a team of eight costs several thousand rand a month and grows with every hire.
       </p>
       <p>
-        <strong>QuotingHub</strong> charges per business, with up to 20 staff included: R999, R1,999 or R3,199 a month for electricians, and R2,999 or R4,499 for installers. Extra staff are R40/month each. All plans have a 30-day free trial.
+        <strong>QuotingHub</strong> charges per business, with up to 20 staff included: R999, R1,999 or R3,199 a month for electricians, and R3,499 or R4,999 for installers. Extra staff are R40/month each. All plans have a 30-day free trial.
       </p>
 
       <h2>Accounting integration</h2>

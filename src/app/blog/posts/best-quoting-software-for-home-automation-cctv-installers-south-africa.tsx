@@ -26,8 +26,8 @@ export default function BestQuotingSoftwareForInstallersSouthAfrica() {
       </p>
       <p><strong>Pricing (ZAR, monthly):</strong></p>
       <ul>
-        <li>Installer — R2,999: quoting, projects, Sage, job cards, GPS clocking, device register and handover packs, up to 20 staff.</li>
-        <li>Installer Pro — R4,499: adds support contracts, automatic recurring invoicing and renewal reminders.</li>
+        <li>Installer — R3,499: quoting, projects, Sage, job cards, GPS clocking, device register and handover packs, up to 20 staff.</li>
+        <li>Installer Pro — R4,999: adds support contracts, automatic recurring invoicing and renewal reminders.</li>
       </ul>
       <p>Extra staff over 20 are R40/month each; setup and training is R2,500 once-off. 30-day free trial, month-to-month.</p>
       <p><strong>Best for:</strong> home automation, smart home, AV, CCTV, alarm and networking installers with a small to mid-sized team.</p>

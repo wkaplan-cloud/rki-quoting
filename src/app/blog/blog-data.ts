@@ -119,7 +119,7 @@ export const blogPosts: BlogPost[] = [
     content: DToolsVsQuotingHub,
     reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
     faqs: [
-      { q: 'Is D-Tools or QuotingHub better for South African installers?', a: 'D-Tools is the specialist tool for larger AV and smart home integrators, with a large manufacturer library and deep design tools, priced in US dollars. QuotingHub is built in South Africa for home automation, AV, CCTV and networking installers: room-by-room quotes from your own distributor price lists, a device register, handover packs and recurring support billing, at R2,999 or R4,499 a month with Sage included.' },
+      { q: 'Is D-Tools or QuotingHub better for South African installers?', a: 'D-Tools is the specialist tool for larger AV and smart home integrators, with a large manufacturer library and deep design tools, priced in US dollars. QuotingHub is built in South Africa for home automation, AV, CCTV and networking installers: room-by-room quotes from your own distributor price lists, a device register, handover packs and recurring support billing, at R3,499 or R4,999 a month with Sage included.' },
       { q: 'Is there a South African alternative to D-Tools?', a: 'Yes. QuotingHub is built in South Africa for installers and integrators, priced in rand, imports local distributor price lists, and integrates with Sage Business Cloud Accounting.' },
     ],
   },
@@ -177,7 +177,7 @@ export const blogPosts: BlogPost[] = [
     reviewedBy: { name: 'Warren Kaplan', role: 'Founder, QuotingHub' },
     faqs: [
       { q: 'What is the best quoting software for home automation installers in South Africa?', a: 'QuotingHub is built in South Africa for home automation, AV, CCTV and networking installers: room-by-room quotes with kits and good/better/best options, distributor price lists in rand, a device register, handover packs and support contracts that invoice automatically. Large integrators needing engineering drawings may prefer D-Tools, which is priced in US dollars per user.' },
-      { q: 'How much does installer quoting software cost in South Africa?', a: 'QuotingHub Installer is R2,999/month and Installer Pro, which adds support contracts with recurring invoicing, is R4,499/month, each with up to 20 staff. D-Tools publishes its System Integrator tier from US$150 per user per month.' },
+      { q: 'How much does installer quoting software cost in South Africa?', a: 'QuotingHub Installer is R3,499/month and Installer Pro, which adds support contracts with recurring invoicing, is R4,999/month, each with up to 20 staff. D-Tools publishes its System Integrator tier from US$150 per user per month.' },
       { q: 'Can CCTV installers track devices and support contracts?', a: 'Yes. QuotingHub keeps a device register per site with serial, MAC, IP, firmware and warranty for each device, produces a client handover pack, and on Installer Pro bills support contracts monthly or annually with renewal reminders.' },
     ],
   },

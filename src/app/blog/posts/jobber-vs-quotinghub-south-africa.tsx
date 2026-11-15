@@ -18,7 +18,7 @@ export default function JobberVsQuotingHubSouthAfrica() {
         <strong>Jobber</strong> sells tiered plans priced in US dollars. Each tier includes a set number of users, and larger teams pay for extra seats or move up a tier, so the cost rises with headcount and the exchange rate. Check Jobber&apos;s pricing page for current figures.
       </p>
       <p>
-        <strong>QuotingHub</strong> charges per business in rand, with up to 20 staff included: R999, R1,999 or R3,199 a month for electricians, and R2,999 or R4,499 for installers. Extra staff are R40/month each. Every plan has a 30-day free trial and no contract.
+        <strong>QuotingHub</strong> charges per business in rand, with up to 20 staff included: R999, R1,999 or R3,199 a month for electricians, and R3,499 or R4,999 for installers. Extra staff are R40/month each. Every plan has a 30-day free trial and no contract.
       </p>
 
       <h2>Accounting integration</h2>

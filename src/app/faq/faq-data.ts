@@ -106,7 +106,7 @@ export const faqs = [
     items: [
       {
         q: 'Does QuotingHub work for home automation, AV and CCTV installers?',
-        a: 'Yes. The installer product quotes room by room with kits and good/better/best options, imports distributor price lists, keeps a device register per site, produces client handover packs and bills support contracts automatically. Installer is R2,999/month and Installer Pro is R4,499/month.',
+        a: 'Yes. The installer product quotes room by room with kits and good/better/best options, imports distributor price lists, keeps a device register per site, produces client handover packs and bills support contracts automatically. Installer is R3,499/month and Installer Pro is R4,999/month.',
       },
       {
         q: 'What is the best quoting software for home automation and CCTV installers in South Africa?',
@@ -114,7 +114,7 @@ export const faqs = [
       },
       {
         q: 'How much does QuotingHub cost for installers?',
-        a: 'Installer is R2,999/month for up to 20 staff and covers quoting, projects, variation orders, progress claims, job cards, GPS clocking, the device register, handover packs and Sage. Installer Pro is R4,499/month and adds support contracts with automatic recurring invoices. Setup and training is R2,500 once-off.',
+        a: 'Installer is R3,499/month for up to 20 staff and covers quoting, projects, variation orders, progress claims, job cards, GPS clocking, the device register, handover packs and Sage. Installer Pro is R4,999/month and adds support contracts with automatic recurring invoices. Setup and training is R2,500 once-off.',
       },
       {
         q: 'What is a device register?',

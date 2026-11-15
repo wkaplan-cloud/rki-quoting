@@ -204,7 +204,7 @@ const webApplicationSchema = {
     '@type': 'AggregateOffer',
     priceCurrency: 'ZAR',
     lowPrice: '699',
-    highPrice: '4499',
+    highPrice: '4999',
     offerCount: 9,
   },
   featureList: [

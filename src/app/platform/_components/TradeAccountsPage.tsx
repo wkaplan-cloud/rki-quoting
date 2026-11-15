@@ -148,8 +148,8 @@ export async function TradeAccountsPage({ trade }: { trade: TradeKind }) {
 
   const tiles: Tile[] = trade === 'installer'
     ? [
-        { label: 'Installer',       value: planCount('installer'),     sub: 'R2,999/mo',  color: 'text-[#1F5C45]', bg: 'bg-emerald-50' },
-        { label: 'Installer Pro',   value: planCount('installer_pro'), sub: 'R4,499/mo',  color: 'text-[#10261D]', bg: 'bg-emerald-50' },
+        { label: 'Installer',       value: planCount('installer'),     sub: 'R3,499/mo',  color: 'text-[#1F5C45]', bg: 'bg-emerald-50' },
+        { label: 'Installer Pro',   value: planCount('installer_pro'), sub: 'R4,999/mo',  color: 'text-[#10261D]', bg: 'bg-emerald-50' },
         { label: 'Support plans',   value: (contracts ?? []).length,   sub: `R${Math.round(contractMonthly).toLocaleString('en-ZA')}/mo billed by installers`, color: 'text-[#1F5C45]', bg: 'bg-[#EFEBE3]' },
         { label: 'Devices logged',  value: (devices ?? []).length,     sub: 'across all sites', color: 'text-[#3F3D38]', bg: 'bg-[#EFEBE3]' },
         { label: 'Total Staff',     value: totalStaff,                 sub: 'across all', color: 'text-[#3F3D38]', bg: 'bg-[#EFEBE3]' },

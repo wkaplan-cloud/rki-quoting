@@ -45,7 +45,7 @@ Pricing (ZAR/month, up to 20 staff, extra staff R40/month each):
 
 Room-by-room quotes with cost, markup and margin per line; reusable kits (for example a 4-camera CCTV system or a Control4 starter); good/better/best options and optional extras chosen online by the client; distributor price-list import from CSV or Excel that updates instead of duplicating; projects, variation orders and progress claims; job cards, team calendar and GPS clocking with programming hours kept separate; a device register per site (serial, MAC, IP, firmware, warranty, encrypted logins) scanned from barcodes; handover pack PDFs; and support contracts that invoice monthly or annually, remind 30 days before renewal and mark callouts as covered or chargeable. Pushes to Sage.
 
-Pricing (ZAR/month, up to 20 staff): Installer R2,999; Installer Pro R4,499 (adds support contracts and recurring invoicing). Setup and training R2,500 once-off.
+Pricing (ZAR/month, up to 20 staff): Installer R3,499; Installer Pro R4,999 (adds support contracts and recurring invoicing). Setup and training R2,500 once-off.
 
 - [QuotingHub for installers](https://www.quotinghub.co.za/trades/installer)
 - [Best quoting software for home automation, AV and CCTV installers in South Africa](https://www.quotinghub.co.za/blog/best-quoting-software-for-home-automation-cctv-installers-south-africa)

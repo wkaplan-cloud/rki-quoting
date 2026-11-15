@@ -101,7 +101,7 @@ export const INSTALLER_PLANS = [
   {
     id:       'installer',
     label:    'Installer',
-    price:    2999,
+    price:    3499,
     tagline:  'Quote, install and hand over — the whole job in one place',
     envKey:   'PAYSTACK_PLAN_INSTALLER',
     features: [
@@ -116,7 +116,7 @@ export const INSTALLER_PLANS = [
   {
     id:       'installer_pro',
     label:    'Installer Pro',
-    price:    4499,
+    price:    4999,
     tagline:  'Everything in Installer, plus recurring support revenue',
     envKey:   'PAYSTACK_PLAN_INSTALLER_PRO',
     features: [

@@ -18,7 +18,7 @@ export default function ServiceM8VsQuotingHubSouthAfrica() {
         <strong>ServiceM8</strong> does not charge per user. Its plans are priced by how many jobs you create each month, so a business that does a lot of small callouts moves up the tiers as volume grows. Check ServiceM8&apos;s regional pricing page for current figures.
       </p>
       <p>
-        <strong>QuotingHub</strong> charges a flat monthly fee per business in rand, with no job limit and up to 20 staff included: R999, R1,999 or R3,199 a month for electricians, and R2,999 or R4,499 for installers. Extra staff are R40/month each. Every plan has a 30-day free trial and no contract.
+        <strong>QuotingHub</strong> charges a flat monthly fee per business in rand, with no job limit and up to 20 staff included: R999, R1,999 or R3,199 a month for electricians, and R3,499 or R4,999 for installers. Extra staff are R40/month each. Every plan has a 30-day free trial and no contract.
       </p>
 
       <h2>Accounting integration</h2>

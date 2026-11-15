@@ -18,7 +18,7 @@ export default function DToolsVsQuotingHubSouthAfrica() {
         <strong>D-Tools Cloud</strong> is sold in tiered monthly plans in US dollars, each with a set number of office and field users. At the time of writing its published pricing also lists a one-off setup fee and charges the QuickBooks/Xero integration as a monthly add-on. Check D-Tools&apos; pricing page for current figures.
       </p>
       <p>
-        <strong>QuotingHub</strong> is R2,999/month (Installer) or R4,499/month (Installer Pro, adding support contracts and recurring invoices), with up to 20 staff included, Sage included, and a R2,500 once-off setup and training fee. Every plan has a 30-day free trial and no contract.
+        <strong>QuotingHub</strong> is R3,499/month (Installer) or R4,999/month (Installer Pro, adding support contracts and recurring invoices), with up to 20 staff included, Sage included, and a R2,500 once-off setup and training fee. Every plan has a 30-day free trial and no contract.
       </p>
 
       <h2>Product data</h2>
