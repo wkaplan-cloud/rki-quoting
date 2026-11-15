@@ -1,3 +1,4 @@
+-- APPLIED 2026-11-15.
 -- Platform feature switches are set only by the platform admin (service role,
 -- /api/platform/studios/[id]/settings). Studio members may update their own
 -- settings row from the browser (Studio Settings, onboarding), so any change
@@ -38,6 +39,5 @@ begin
   return new;
 end $$;
 
-drop trigger if exists protect_platform_switches on settings;
-create trigger protect_platform_switches before insert or update on settings
+create or replace trigger protect_platform_switches before insert or update on settings
   for each row execute function protect_platform_switches();
