@@ -217,7 +217,7 @@ export default function PricingPage() {
           <h2 className="font-serif text-3xl text-[#1A1A18] mb-10 text-center">Common questions</h2>
           <div className="space-y-8">
             {[
-              { q: 'What happens after my 30-day trial?', a: "You'll be prompted to choose a plan to keep access. Your data is never deleted — if you subscribe within a few days of expiry, everything is exactly as you left it." },
+              { q: 'What happens after my 30-day trial?', a: "You'll be prompted to choose a plan to keep access. Your data is kept for 24 months, so if you subscribe later everything is exactly as you left it." },
               { q: 'Do I need a credit card to start?', a: 'No. Sign up with just your email address. You only enter payment details when you choose to subscribe after the trial.' },
               { q: 'What is Price Requests?', a: 'Price Requests is available on all plans. It lets you select items, attach images and descriptions, and send pricing requests directly to your suppliers — all from inside QuotingHub. It eliminates the back-and-forth email chains that slow down sourcing and quoting.' },
               { q: 'Can I upgrade my plan later?', a: 'Yes. You can upgrade at any time from your account settings. Your data and projects carry over seamlessly.' },
