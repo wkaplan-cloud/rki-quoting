@@ -227,6 +227,11 @@ export function AssistantView({ mailbox, driveAccount, canAsk, team, costs, chas
               )}
             </div>
 
+            {/* Only on one person's list, never on Everyone. */}
+            {tab === 'needs' && person && (
+              <MarkAllDone emails={needs} person={people.find(m => m.email === person)?.name ?? null} onDone={() => router.refresh()} />
+            )}
+
             {shown.length === 0 ? (
               <div className="py-16 text-center text-sm text-[#8A877F]">
                 <Inbox size={20} className="mx-auto mb-2 opacity-50" />
@@ -891,6 +896,52 @@ function CreditOut({ since, name, onDone }: { since: string; name: string; onDon
         </Button>
         {result && <span className="text-xs text-[#8A3A22]">{result}</span>}
       </div>
+    </div>
+  )
+}
+
+// Marks every email still 'new' on ONE person's list as done (never offered on Everyone), after a
+// second click to confirm. Emails that failed to read are left for "Read again".
+function MarkAllDone({ emails, person, onDone }: { emails: AgentEmailRow[]; person: string | null; onDone: () => void }) {
+  const ids = emails.filter(e => e.status === 'new').map(e => e.id)
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshing, startRefresh] = useTransition()
+
+  if (ids.length < 2 && !error) return null
+
+  async function markAll() {
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/agent/emails/done', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) setError(data.error ?? 'Could not mark them done')
+      else setConfirming(false)
+    } catch {
+      setError('Could not mark them done')
+    } finally {
+      setBusy(false)
+      startRefresh(onDone)
+    }
+  }
+
+  const whose = person ? `${person}'s ` : ''
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+      {error && <span className="text-[#B4472F] text-xs">{error}</span>}
+      {!confirming ? (
+        <Button size="sm" variant="secondary" onClick={() => setConfirming(true)} disabled={busy || refreshing}>
+          <Check size={12} /> Mark all {ids.length} {whose ? `of ${whose}` : ''}as done
+        </Button>
+      ) : (
+        <>
+          <span className="text-xs text-[#5F5C55]">Mark all {ids.length} of {whose || 'these '}emails as done?</span>
+          <Button size="sm" variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>Cancel</Button>
+          <Button size="sm" onClick={markAll} disabled={busy}>{busy ? 'Marking…' : `Yes, mark ${ids.length} done`}</Button>
+        </>
+      )}
     </div>
   )
 }
