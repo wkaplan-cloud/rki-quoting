@@ -107,7 +107,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
             number: p.project_number, name: p.project_name, status: p.status, date: p.date,
             accepted_by_client: ACCEPTED_STATUSES.has(p.status), archived: !!p.archived_at,
             client: clients.find(c => c.id === p.client_id)?.client_name ?? null,
-            design_fee: p.design_fee, line_count: own.length, ...totalsOf(own),
+            design_fee_rand_excl_vat: Number(p.design_fee ?? 0), line_count: own.length, ...totalsOf(own),
           }
         }),
       })
@@ -287,7 +287,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
         return {
           number: p.project_number, name: p.project_name, client: one(p.clients as unknown as { client_name: string } | null)?.client_name ?? null,
           status: p.status, accepted_by_client: ACCEPTED_STATUSES.has(p.status), archived: !!p.archived_at, date: p.date,
-          ...t, design_fee: rand(fee), total_profit: rand(t.item_profit + fee),
+          ...t, design_fee_rand_excl_vat: rand(fee), total_profit: rand(t.item_profit + fee),
         }
       }))
     },
