@@ -59,6 +59,8 @@ export interface AgentEmailRow {
   subject: string | null
   sent_to: string[]
   sent_cc: string[]
+  /** To + Cc addresses, lower case (sent_to/sent_cc show names instead). */
+  recipients: string[]
   received_at: string | null
   kind: string | null
   supplier_id: string | null
@@ -130,15 +132,12 @@ export function AssistantView({ mailbox, driveAccount, canAsk, team, costs, chas
   const name = mailbox?.agent_name ?? 'Assistant'
   const [person, setPerson] = useState('')
 
-  // Who an email went to: the addresses in its To and Cc lines.
-  const addressesOf = (e: AgentEmailRow) =>
-    [...e.sent_to, ...e.sent_cc].map(x => (x.match(/<([^<>]+)>/)?.[1] ?? x).toLowerCase())
   // Team members who appear on at least one email, with how many.
   const people = useMemo(() => team
-    .map(m => ({ ...m, count: emails.filter(e => addressesOf(e).includes(m.email)).length }))
+    .map(m => ({ ...m, count: emails.filter(e => e.recipients.includes(m.email)).length }))
     .filter(m => m.count > 0)
     .sort((a, b) => a.name.localeCompare(b.name)), [team, emails])
-  const mine = useMemo(() => person ? emails.filter(e => addressesOf(e).includes(person)) : emails, [emails, person])
+  const mine = useMemo(() => person ? emails.filter(e => e.recipients.includes(person)) : emails, [emails, person])
   const needs = useMemo(() => mine.filter(e => e.status !== 'done'), [mine])
   const shown = tab === 'needs' ? needs : mine
 

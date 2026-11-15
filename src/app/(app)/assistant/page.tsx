@@ -79,6 +79,8 @@ export default async function AssistantPage() {
       chase={chase}
       emails={((emails ?? []) as unknown as AgentEmailRow[]).map(e => ({
         ...e,
+        // Raw addresses, before names replace them, for the Person filter.
+        recipients: [...(e.sent_to ?? []), ...(e.sent_cc ?? [])].map((r: string) => (r.match(/<([^<>]+)>/)?.[1] ?? r).toLowerCase()),
         sent_to: withTeamNames(e.sent_to, teamNames),
         sent_cc: withTeamNames(e.sent_cc, teamNames),
       }))}
