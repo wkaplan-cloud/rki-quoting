@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import { Toaster } from 'react-hot-toast'
+import { PublicAnalytics } from './_components/PublicAnalytics'
 import './globals.css'
 
 // Fonts are self-hosted (latin subset, from Fontsource) rather than loaded via
@@ -264,6 +265,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full">
         {children}
+        <PublicAnalytics />
         <Toaster
           position="top-right"
           toastOptions={{

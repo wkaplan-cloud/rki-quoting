@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.99.3",
     "@types/canvas-confetti": "^1.9.0",
     "@types/papaparse": "^5.5.2",
+    "@vercel/analytics": "^2.0.1",
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
     "canvas-confetti": "^1.9.4",
