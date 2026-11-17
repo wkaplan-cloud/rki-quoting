@@ -15,9 +15,13 @@ export default function robots(): MetadataRoute.Robots {
       // Explicitly allow all known AI crawlers on public pages
       { userAgent: 'GPTBot',          allow: '/' },
       { userAgent: 'ChatGPT-User',    allow: '/' },
+      { userAgent: 'OAI-SearchBot',   allow: '/' },
       { userAgent: 'PerplexityBot',   allow: '/' },
       { userAgent: 'ClaudeBot',       allow: '/' },
       { userAgent: 'anthropic-ai',    allow: '/' },
+      { userAgent: 'Claude-SearchBot', allow: '/' },
+      { userAgent: 'Claude-User',     allow: '/' },
+      { userAgent: 'Perplexity-User', allow: '/' },
       { userAgent: 'Google-Extended', allow: '/' },
       { userAgent: 'Amazonbot',       allow: '/' },
       { userAgent: 'Applebot',        allow: '/' },

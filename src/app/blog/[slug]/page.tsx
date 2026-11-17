@@ -112,6 +112,19 @@ export default async function BlogPostPage(
           <Content />
         </div>
 
+        {/* The FAQPage schema above mirrors these answers, so they must be visible on the page too */}
+        {post.faqs && post.faqs.length > 0 && (
+          <section className="blog-content mt-12">
+            <h2>Quick answers</h2>
+            {post.faqs.map(({ q, a }) => (
+              <div key={q}>
+                <h3>{q}</h3>
+                <p>{a}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
         <hr className="border-[#D8D3C8] mt-16 mb-10" />
 
         {/* Back link */}

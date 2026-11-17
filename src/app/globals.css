@@ -62,6 +62,11 @@ body:has(.staff-portal) {
 .blog-content figure { margin: 2rem 0; }
 .blog-content figure img { width: 100%; height: auto; border-radius: 0.75rem; border: 1px solid #D8D3C8; }
 .blog-content figcaption { font-size: 0.8125rem; color: #6E6B63; line-height: 1.5; margin-top: 0.625rem; }
+.blog-content .table-wrap { overflow-x: auto; margin-bottom: 1.5rem; border: 1px solid #D8D3C8; border-radius: 0.75rem; }
+.blog-content table { width: 100%; border-collapse: collapse; font-size: 0.875rem; line-height: 1.5; }
+.blog-content th { text-align: left; font-weight: 600; color: var(--color-ink); background: #F5F2EC; padding: 0.625rem 0.875rem; border-bottom: 1px solid #D8D3C8; }
+.blog-content td { padding: 0.625rem 0.875rem; border-bottom: 1px solid #EDE9E1; vertical-align: top; }
+.blog-content tr:last-child td { border-bottom: 0; }
 .blog-content .cta-block { background: var(--color-ink); border-radius: 1rem; padding: 2rem; margin-top: 2.5rem; text-align: center; }
 .blog-content .cta-heading { font-family: var(--font-serif); font-size: 1.25rem; color: white; margin-bottom: 0.5rem; }
 .blog-content .cta-body { font-size: 0.875rem; color: rgba(255,255,255,0.6); margin-bottom: 1.25rem; }

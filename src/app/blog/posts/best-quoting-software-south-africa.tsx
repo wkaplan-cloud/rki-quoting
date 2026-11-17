@@ -10,6 +10,23 @@ export default function BestQuotingSoftwareSouthAfrica() {
         Short answer: the best quoting software in South Africa depends on what you sell. For interior designers, electricians, and home automation, AV and CCTV installers, QuotingHub is built in South Africa for exactly those businesses — rand pricing, 15% VAT, Sage integration and the paperwork each trade needs after the quote. For general service trades, global apps such as Tradify, Jobber and ServiceM8 are solid. This guide shows which fits which business.
       </p>
 
+      <h2>Comparison at a glance</h2>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Software</th><th>Built for</th><th>How it is priced</th><th>Accounting</th><th>SA COC</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>QuotingHub</strong></td><td>Interior designers, electricians, home automation/AV/CCTV installers</td><td>Per business, in rand (from R699/month)</td><td>Sage</td><td>Yes (SANS 10142-1)</td></tr>
+            <tr><td>Tradify</td><td>General trades</td><td>Per user, per month</td><td>Xero, QuickBooks</td><td>No</td></tr>
+            <tr><td>Jobber</td><td>Home and field service businesses</td><td>Tiered plans in US dollars, users per tier</td><td>Xero, QuickBooks Online</td><td>No</td></tr>
+            <tr><td>ServiceM8</td><td>Callout and service trades</td><td>By number of jobs per month</td><td>Xero, QuickBooks</td><td>No</td></tr>
+            <tr><td>D-Tools</td><td>Large AV and smart-home integrators</td><td>Tiered plans in US dollars</td><td>QuickBooks, Xero (add-on)</td><td>No</td></tr>
+            <tr><td>Excel / Word</td><td>Anyone</td><td>Free</td><td>None</td><td>No</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <h2>What South African businesses should look for</h2>
       <ul>
         <li><strong>Rand pricing and 15% VAT</strong> handled properly, including clear wording when you are not a VAT vendor.</li>
