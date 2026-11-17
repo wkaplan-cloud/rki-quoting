@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { decrypt } from '@/lib/sage-crypto'
 
 // OAuth (reseller/sandbox) endpoints
@@ -27,12 +28,19 @@ interface BasicAuthConnection {
 
 type SageConnection = OAuthConnection | BasicAuthConnection
 
-async function getConnection(): Promise<SageConnection> {
-  const supabase = await createClient()
-  const { data } = await supabase
+// No orgId: the signed-in user's own settings row (RLS picks it).
+// With orgId: that org's row via the admin client — for crons, which have no user.
+async function settingsDb(orgId?: string) {
+  return orgId ? supabaseAdmin : await createClient()
+}
+
+async function getConnection(orgId?: string): Promise<SageConnection> {
+  const supabase = await settingsDb(orgId)
+  let query = supabase
     .from('settings')
     .select('id, sage_access_token, sage_refresh_token, sage_token_expires_at, sage_company_id, sage_username, sage_password')
-    .maybeSingle()
+  if (orgId) query = query.eq('org_id', orgId)
+  const { data } = await query.maybeSingle()
 
   if (!data?.sage_company_id) {
     throw new Error('Sage not connected — connect your Sage account in Settings')
@@ -62,7 +70,7 @@ async function getConnection(): Promise<SageConnection> {
   throw new Error('Sage not connected — connect your Sage account in Settings')
 }
 
-async function refreshOAuthToken(conn: OAuthConnection): Promise<string> {
+async function refreshOAuthToken(conn: OAuthConnection, orgId?: string): Promise<string> {
   if (!conn.sage_refresh_token) {
     throw new Error('No refresh token — please reconnect Sage in Settings')
   }
@@ -85,7 +93,7 @@ async function refreshOAuthToken(conn: OAuthConnection): Promise<string> {
   const tokens = await res.json()
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
 
-  const supabase = await createClient()
+  const supabase = await settingsDb(orgId)
   await supabase.from('settings').update({
     sage_access_token: tokens.access_token,
     sage_refresh_token: tokens.refresh_token ?? conn.sage_refresh_token,
@@ -96,8 +104,8 @@ async function refreshOAuthToken(conn: OAuthConnection): Promise<string> {
 }
 
 /** Returns { authHeader, apiBase, companyId } ready for API calls. */
-async function getAuth(): Promise<{ authHeader: string; apiBase: string; companyId: string }> {
-  const conn = await getConnection()
+async function getAuth(orgId?: string): Promise<{ authHeader: string; apiBase: string; companyId: string }> {
+  const conn = await getConnection(orgId)
 
   if (conn.type === 'basic') {
     const password = decrypt(conn.sage_password)
@@ -112,7 +120,7 @@ async function getAuth(): Promise<{ authHeader: string; apiBase: string; company
   // OAuth — refresh if expiring soon
   const expiresAt = conn.sage_token_expires_at ? new Date(conn.sage_token_expires_at) : null
   const isExpiring = expiresAt ? expiresAt.getTime() - 60_000 < Date.now() : false
-  const token = isExpiring ? await refreshOAuthToken(conn) : conn.sage_access_token
+  const token = isExpiring ? await refreshOAuthToken(conn, orgId) : conn.sage_access_token
 
   return {
     authHeader: `Bearer ${token}`,
@@ -132,8 +140,9 @@ function buildUrl(apiBase: string, companyId: string, path: string, extra?: Reco
   return base
 }
 
-export async function sageGet(path: string, extra?: Record<string, string | number>) {
-  const { authHeader, apiBase, companyId } = await getAuth()
+/** Pass orgId only from server jobs with no signed-in user (crons). */
+export async function sageGet(path: string, extra?: Record<string, string | number>, orgId?: string) {
+  const { authHeader, apiBase, companyId } = await getAuth(orgId)
   const res = await fetch(buildUrl(apiBase, companyId, path, extra), {
     headers: {
       Authorization: authHeader,
