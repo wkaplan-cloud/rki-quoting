@@ -80,6 +80,7 @@ interface Props {
   duplicateEnabled?: boolean
   /** Per-org flag: pin the line items column headings while scrolling. */
   stickyHeaderEnabled?: boolean
+  undoDeleteEnabled?: boolean
   /**
    * Per-org override that unlocks the Job Cost Sheet on the Solo plan.
    * Additive only — Studio and Agency always have it regardless.
@@ -93,7 +94,7 @@ interface Props {
   initialPayments?: ProjectPayment[]
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false, jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {}, statementsEnabled = false, initialPayments = [] }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false, undoDeleteEnabled = false, jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {}, statementsEnabled = false, initialPayments = [] }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -1212,6 +1213,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           imagesEnabled={imagesEnabled}
           duplicateEnabled={duplicateEnabled}
           stickyHeaderEnabled={stickyHeaderEnabled}
+          undoDeleteEnabled={undoDeleteEnabled}
         />
 
         {/* Totals */}

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop, MessageCircleQuestion } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop, Undo2, MessageCircleQuestion } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -77,6 +77,7 @@ export function FeatureTogglesPanel({
   deliveryTimelineEnabled = false,
   duplicateLineEnabled = false,
   stickyLineHeaderEnabled = false,
+  undoDeleteEnabled = false,
   insightsEnabled = false,
   statementsEnabled = false,
   agentEnabled = false,
@@ -91,6 +92,7 @@ export function FeatureTogglesPanel({
   deliveryTimelineEnabled?: boolean
   duplicateLineEnabled?: boolean
   stickyLineHeaderEnabled?: boolean
+  undoDeleteEnabled?: boolean
   insightsEnabled?: boolean
   statementsEnabled?: boolean
   agentEnabled?: boolean
@@ -156,6 +158,14 @@ export function FeatureTogglesPanel({
           icon={<PanelTop size={16} className="text-[#7E6036]" />}
           title="Pinned column headings"
           description="Line items table scrolls in its own box so Item, Qty, Cost, Sale etc. stay visible at the top"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="undo_delete_enabled"
+          initial={undoDeleteEnabled}
+          icon={<Undo2 size={16} className="text-[#7E6036]" />}
+          title="Undo delete"
+          description="10-second Undo pop-up after deleting a line item; puts the line back with its links"
         />
         <FeatureToggle
           orgId={orgId}

@@ -38,6 +38,19 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
 
 type Supplier = { id: string; supplier_name: string; category: string | null; markup_percentage: number; delivery_address: string | null; delivery_contact_name: string | null; delivery_contact_number: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }
 
+// A deleted line held for the Undo pop-up (see deleteRowWithUndo).
+type DeletedLine = {
+  row: Record<string, unknown>
+  prevId: string | null
+  index: number
+  childIds: string[]
+  specIds: string[]
+  sessionItemIds: string[]
+  specQuoteIds: string[]
+  applications: Record<string, unknown>[]
+  restored: boolean
+}
+
 interface Props {
   projectId: string
   lineItems: LineItem[]
@@ -56,6 +69,7 @@ interface Props {
   duplicateEnabled?: boolean
   /** Per-org flag: the table scrolls in its own box so the column headings stay pinned. */
   stickyHeaderEnabled?: boolean
+  undoDeleteEnabled?: boolean
 }
 
 const COL = 'px-2 py-1.5'
@@ -169,7 +183,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, clientAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false, undoDeleteEnabled = false }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const dragItem = useRef<number | null>(null)
@@ -632,7 +646,104 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }
   }, [lineItems, onChange, supabase])
 
+  // Undo (orgs with undo_delete_enabled): the line is deleted straight away, so
+  // quotes/PDFs/Sage never see it, but a full copy is kept for 10 seconds. The
+  // database clears links to a deleted line (sub-items, Studio specs, sourcing
+  // items, spec quotes) and drops its spec quote applications, so the copy
+  // holds those too and Undo puts every one back.
+  const deletingIds = useRef(new Set<string>())
+
+  const restoreRow = useCallback(async (snap: DeletedLine) => {
+    if (snap.restored) return
+    snap.restored = true
+    const id = snap.row.id as string
+    // Insert at a free sort_order first (unique per project), then move into place below.
+    const sort_order = lineItemsRef.current.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1
+    const { data, error } = await supabase.from('line_items').insert({ ...snap.row, sort_order }).select().single()
+    if (error || !data) { snap.restored = false; toast.error('Could not bring the line back'); return }
+
+    const results = await Promise.all([
+      snap.childIds.length ? supabase.from('line_items').update({ parent_item_id: id }).in('id', snap.childIds) : null,
+      snap.specIds.length ? supabase.from('studio_specs').update({ line_item_id: id }).in('id', snap.specIds) : null,
+      snap.sessionItemIds.length ? supabase.from('sourcing_session_items').update({ line_item_id: id }).in('id', snap.sessionItemIds) : null,
+      snap.specQuoteIds.length ? supabase.from('spec_quotes').update({ applied_to_line_item_id: id }).in('id', snap.specQuoteIds) : null,
+      snap.applications.length ? supabase.from('spec_quote_applications').insert(snap.applications) : null,
+    ])
+    const linksFailed = results.some(r => r?.error)
+
+    // Back under the row it sat under (rows may have moved in the 10 seconds).
+    const latest = lineItemsRef.current
+    const prevIndex = snap.prevId ? latest.findIndex(i => i.id === snap.prevId) : -1
+    const at = prevIndex >= 0 ? prevIndex + 1 : snap.prevId === null ? 0 : Math.min(snap.index, latest.length)
+    const spliced = [...latest]
+    spliced.splice(at, 0, data)
+    const renumbered = spliced.map((item, i) => ({ ...item, sort_order: i }))
+    onChange(renumbered)
+    const { error: reorderError } = await supabase.from('line_items')
+      .upsert(renumbered.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
+
+    if (linksFailed) toast.error('Line is back, but some of its links could not be restored')
+    else if (reorderError) toast.error('Line is back — please refresh to see it in the right place')
+    else toast.success('Line restored')
+  }, [onChange, supabase, projectId])
+
+  const deleteRowWithUndo = useCallback(async (id: string) => {
+    if (deletingIds.current.has(id)) return
+    deletingIds.current.add(id)
+    try {
+      const index = lineItems.findIndex(i => i.id === id)
+      const [row, specs, sessionItems, specQuotes, applications] = await Promise.all([
+        supabase.from('line_items').select('*').eq('id', id).single(),
+        supabase.from('studio_specs').select('id').eq('line_item_id', id),
+        supabase.from('sourcing_session_items').select('id').eq('line_item_id', id),
+        supabase.from('spec_quotes').select('id').eq('applied_to_line_item_id', id),
+        supabase.from('spec_quote_applications').select('*').eq('line_item_id', id),
+      ])
+      if (row.error || !row.data || specs.error || sessionItems.error || specQuotes.error || applications.error) {
+        toast.error('Could not delete the line — please try again')
+        return
+      }
+      const snap: DeletedLine = {
+        row: row.data,
+        prevId: index > 0 ? lineItems[index - 1].id : null,
+        index: Math.max(index, 0),
+        childIds: lineItems.filter(i => i.parent_item_id === id).map(i => i.id),
+        specIds: (specs.data ?? []).map(s => s.id),
+        sessionItemIds: (sessionItems.data ?? []).map(s => s.id),
+        specQuoteIds: (specQuotes.data ?? []).map(s => s.id),
+        applications: applications.data ?? [],
+        restored: false,
+      }
+
+      const { error } = await supabase.from('line_items').delete().eq('id', id)
+      if (error) { toast.error('Could not delete the line — please try again'); return }
+      const renumbered = lineItemsRef.current.filter(item => item.id !== id).map((item, i) => ({ ...item, sort_order: i }))
+      onChange(renumbered)
+      const { error: reorderError } = await supabase.from('line_items')
+        .upsert(renumbered.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
+      if (reorderError) toast.error('Failed to renumber remaining rows — please refresh')
+
+      const name = typeof row.data.item_name === 'string' ? row.data.item_name.trim() : ''
+      const label = row.data.row_type === 'section' ? 'Section deleted' : name ? `“${name.length > 40 ? `${name.slice(0, 40)}…` : name}” deleted` : 'Line deleted'
+      toast(t => (
+        <span className="flex items-center gap-3 text-sm">
+          <span>{label}</span>
+          <button
+            type="button"
+            onClick={() => { toast.dismiss(t.id); void restoreRow(snap) }}
+            className="font-semibold text-[#9A7B4F] hover:text-[#7E6036] active:scale-95 rounded px-1.5 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A7B4F] cursor-pointer transition-transform"
+          >
+            Undo
+          </button>
+        </span>
+      ), { duration: 10_000 })
+    } finally {
+      deletingIds.current.delete(id)
+    }
+  }, [lineItems, onChange, supabase, projectId, restoreRow])
+
   const deleteRow = useCallback(async (id: string) => {
+    if (undoDeleteEnabled) { await deleteRowWithUndo(id); return }
     await supabase.from('line_items').delete().eq('id', id)
     const renumbered = lineItems.filter(item => item.id !== id).map((item, i) => ({ ...item, sort_order: i }))
     onChange(renumbered)
@@ -641,7 +752,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (reorderError) {
       toast.error('Failed to renumber remaining rows — please refresh')
     }
-  }, [lineItems, onChange, supabase, projectId])
+  }, [lineItems, onChange, supabase, projectId, undoDeleteEnabled, deleteRowWithUndo])
 
   const handleDragEnd = useCallback(async () => {
     const from = dragItem.current
