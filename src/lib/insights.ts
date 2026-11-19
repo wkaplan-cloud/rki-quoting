@@ -5,7 +5,7 @@
 // Scope is accepted work: projects Paid in Full, or Approved / Deposit /
 // Invoice / Completed. Drafts, Quotes, Cancelled and archived projects are out.
 
-import { computeLineItem, type LineItemCalcInput } from './quoting'
+import { computeLineItem, discountAmount, type LineItemCalcInput } from './quoting'
 
 export const MIN_PAID_PROJECTS = 10
 
@@ -16,6 +16,9 @@ export interface InsightsProject {
   project_name: string
   status: string
   design_fee: number | null
+  discount_value?: number | null
+  discount_is_pct?: boolean | null
+  delivery_fee?: number | null
   vat_rate: number | null
   client_id: string | null
   client_name: string | null
@@ -144,12 +147,16 @@ export function computeInsights(projects: InsightsProject[], lineItems: Insights
     t.profit += l.profit
     perProject.set(l.project_id, t)
   }
-  const projectFee = (p: InsightsProject) => (perProject.get(p.id)?.sales ?? 0) * ((p.design_fee ?? 0) / 100)
+  const projectSales = (p: InsightsProject) => perProject.get(p.id)?.sales ?? 0
+  // Discount comes off the items; the design fee % is worked out on what is left
+  const projectDiscount = (p: InsightsProject) => discountAmount(projectSales(p), p)
+  const projectFee = (p: InsightsProject) => (projectSales(p) - projectDiscount(p)) * ((p.design_fee ?? 0) / 100)
 
   const sales = lines.reduce((s, l) => s + l.sales, 0)
   const itemProfit = lines.reduce((s, l) => s + l.profit, 0)
   const designFees = accepted.reduce((s, p) => s + projectFee(p), 0)
-  const profit = itemProfit + designFees
+  const discounts = accepted.reduce((s, p) => s + projectDiscount(p), 0)
+  const profit = itemProfit - discounts + designFees
 
   // Clients
   const byClient = new Map<string, { id: string | null; name: string; projects: number; sales: number; profit: number }>()
@@ -159,7 +166,7 @@ export function computeInsights(projects: InsightsProject[], lineItems: Insights
     const pp = perProject.get(p.id) ?? { sales: 0, profit: 0 }
     t.projects += 1
     t.sales += pp.sales
-    t.profit += pp.profit + projectFee(p)
+    t.profit += pp.profit - projectDiscount(p) + projectFee(p)
     byClient.set(key, t)
   }
   const clientRows = [...byClient.values()]
@@ -204,7 +211,7 @@ export function computeInsights(projects: InsightsProject[], lineItems: Insights
   const completedUnpaid = accepted
     .filter(p => p.status === 'Completed' && !p.paid)
     .map(p => {
-      const exVat = (perProject.get(p.id)?.sales ?? 0) + projectFee(p)
+      const exVat = projectSales(p) - projectDiscount(p) + projectFee(p) + Math.max(0, Number(p.delivery_fee) || 0)
       return {
         project: ref(p),
         client: p.client_name,

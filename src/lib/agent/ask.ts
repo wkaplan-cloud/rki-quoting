@@ -14,6 +14,7 @@ import { computeLineItem } from '@/lib/quoting'
 import { ACCEPTED_STATUSES } from '@/lib/insights'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { projectProfit } from '@/lib/profit'
+import type { TotalsAdjustments } from '@/lib/quoting'
 import { loadChaseList } from './chase'
 import { AGENT_MODEL, costOf, type CallUsage } from './classify'
 
@@ -83,9 +84,9 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
   }
 
   /** Design fee (a percentage of the items' sale total) and total profit, as Admin → Profit works them out. */
-  function feeOf(lines: Awaited<ReturnType<typeof linesFor>>, designFeePct: number | null) {
-    const p = projectProfit(lines, designFeePct)
-    return { design_fee_amount: rand(p.designFee), total_profit_incl_design_fee: rand(p.profit) }
+  function feeOf(lines: Awaited<ReturnType<typeof linesFor>>, designFeePct: number | null, adj?: TotalsAdjustments | null) {
+    const p = projectProfit(lines, designFeePct, adj)
+    return { design_fee_amount: rand(p.designFee), discount_amount: rand(p.discount), total_profit_incl_design_fee: rand(p.profit) }
   }
 
   const profitReport = betaZodTool({
@@ -95,16 +96,17 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
     run: async ({ year }) => {
       const { rows: projects, error } = await fetchAllRows<{
         id: string; project_number: string | null; project_name: string; status: string; date: string; design_fee: number | null
+        discount_value: number; discount_is_pct: boolean; delivery_fee: number
         clients: unknown; project_stages: unknown
       }>((a, b) => db.from('projects')
-        .select('id, project_number, project_name, status, date, design_fee, clients(client_name), project_stages(final_invoice_paid)')
+        .select('id, project_number, project_name, status, date, design_fee, discount_value, discount_is_pct, delivery_fee, clients(client_name), project_stages(final_invoice_paid)')
         .eq('org_id', orgId).is('archived_at', null).order('id').range(a, b))
       if (error) throw new Error(error)
       const paidOf = (p: { project_stages: unknown }) => one(p.project_stages as { final_invoice_paid: boolean | null } | null)?.final_invoice_paid === true
       const paid = projects.filter(paidOf)
       const pipeline = projects.filter(p => !paidOf(p) && p.status !== 'Draft' && p.status !== 'Cancelled')
       const lines = await linesFor([...paid, ...pipeline].map(p => p.id))
-      const profitOf = (p: { id: string; design_fee: number | null }) => projectProfit(lines.filter(l => l.project_id === p.id), p.design_fee)
+      const profitOf = (p: { id: string; design_fee: number | null } & TotalsAdjustments) => projectProfit(lines.filter(l => l.project_id === p.id), p.design_fee, p)
 
       const byYear = new Map<number, { profit: number; projects: { number: string | null; name: string; client: string | null; profit: number; sale: number; design_fee: number }[] }>()
       for (const p of paid) {
@@ -146,7 +148,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
       if (error) throw new Error(error.message)
       if (!clients?.length) return `No client matching "${client}".`
       const { data: projects, error: pErr } = await db.from('projects')
-        .select('id, project_number, project_name, status, date, design_fee, archived_at, client_id').eq('org_id', orgId)
+        .select('id, project_number, project_name, status, date, design_fee, discount_value, discount_is_pct, delivery_fee, archived_at, client_id').eq('org_id', orgId)
         .in('client_id', clients.map(c => c.id))
         .order('date', { ascending: false }).limit(15)
       if (pErr) throw new Error(pErr.message)
@@ -161,7 +163,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
             accepted_by_client: ACCEPTED_STATUSES.has(p.status), archived: !!p.archived_at,
             client: clients.find(c => c.id === p.client_id)?.client_name ?? null,
             line_count: own.length, ...totalsOf(own),
-            design_fee_percent: Number(p.design_fee ?? 0), ...feeOf(own, p.design_fee),
+            design_fee_percent: Number(p.design_fee ?? 0), ...feeOf(own, p.design_fee, p),
           }
         }),
       })
@@ -316,7 +318,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
     run: async ({ search }) => {
       const or = wordsFilter(search, ['project_number', 'project_name'])
       if (or.length === 0) return 'Give a project number, name or client.'
-      let q = db.from('projects').select('id, project_number, project_name, status, date, design_fee, archived_at, clients(client_name)').eq('org_id', orgId)
+      let q = db.from('projects').select('id, project_number, project_name, status, date, design_fee, discount_value, discount_is_pct, delivery_fee, archived_at, clients(client_name)').eq('org_id', orgId)
       for (const f of or) q = q.or(f)
       let { data: projects, error } = await q.order('date', { ascending: false }).limit(10)
       if (error) throw new Error(error.message)
@@ -327,7 +329,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
         const { data: clients } = await c.limit(10)
         if (clients?.length) {
           ({ data: projects, error } = await db.from('projects')
-            .select('id, project_number, project_name, status, date, design_fee, archived_at, clients(client_name)').eq('org_id', orgId)
+            .select('id, project_number, project_name, status, date, design_fee, discount_value, discount_is_pct, delivery_fee, archived_at, clients(client_name)').eq('org_id', orgId)
             .in('client_id', clients.map(x => x.id)).order('date', { ascending: false }).limit(10))
           if (error) throw new Error(error.message)
         }
@@ -341,7 +343,7 @@ function buildTools(db: SupabaseClient, orgId: string, sources: AskSource[], dra
         return {
           number: p.project_number, name: p.project_name, client: one(p.clients as unknown as { client_name: string } | null)?.client_name ?? null,
           status: p.status, accepted_by_client: ACCEPTED_STATUSES.has(p.status), archived: !!p.archived_at, date: p.date,
-          ...t, design_fee_percent: Number(p.design_fee ?? 0), ...feeOf(own, p.design_fee),
+          ...t, design_fee_percent: Number(p.design_fee ?? 0), ...feeOf(own, p.design_fee, p),
         }
       }))
     },

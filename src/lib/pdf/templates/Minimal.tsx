@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { todaySA } from '@/lib/dates'
-import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
+import { computeLineItems, computeTotals, discountLabel, formatZAR } from '@/lib/quoting'
 import type { TemplateProps } from './types'
 
 function cap(s: string | null | undefined): string {
@@ -20,7 +20,7 @@ function addDays(iso: string, days: number): string {
 
 export function MinimalTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, invoicedDate, validityDays, paymentTerms, leadTime, itemImages, acceptance }: TemplateProps) {
   const computed = computeLineItems(lineItems)
-  const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
+  const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct, project)
   // Never show more paid than the invoice is worth, or a negative amount due
   const depositReceived = Math.min(Math.max(amountPaid, 0), totals.grand_total)
   const amountDue = totals.grand_total - depositReceived
@@ -159,10 +159,22 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
                 <Text style={{ fontSize: 8, color: theme.muted }}>Subtotal</Text>
                 <Text style={{ fontSize: 8, color: theme.text }}>{formatZAR(totals.subtotal)}</Text>
               </View>
+              {totals.discount > 0 ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 8, color: theme.muted }}>{discountLabel(project)}</Text>
+                  <Text style={{ fontSize: 8, color: theme.text }}>-{formatZAR(totals.discount)}</Text>
+                </View>
+              ) : null}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
                 <Text style={{ fontSize: 8, color: theme.muted }}>Design Fee ({project.design_fee ?? 0}%)</Text>
                 <Text style={{ fontSize: 8, color: theme.text }}>{formatZAR(totals.design_fee)}</Text>
               </View>
+              {totals.delivery > 0 ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 8, color: theme.muted }}>Delivery</Text>
+                  <Text style={{ fontSize: 8, color: theme.text }}>{formatZAR(totals.delivery)}</Text>
+                </View>
+              ) : null}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
                 <Text style={{ fontSize: 8, color: theme.muted }}>VAT ({vatRate}%)</Text>
                 <Text style={{ fontSize: 8, color: theme.text }}>{formatZAR(totals.vat_amount)}</Text>

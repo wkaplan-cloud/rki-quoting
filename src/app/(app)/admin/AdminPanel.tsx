@@ -39,6 +39,9 @@ interface CompletedProject {
   date: string
   status?: string
   design_fee: number
+  discount_value: number
+  discount_is_pct: boolean
+  delivery_fee: number
   vat_rate: number | null
   client: { client_name: string } | { client_name: string }[] | null
   stages?: { final_invoice_paid: boolean } | { final_invoice_paid: boolean }[] | null
@@ -165,7 +168,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
   // Profit (ex VAT) on one project: line profit plus design fee
   const projectProfit = (p: CompletedProject, lineItems: LineItemRow[]) =>
-    sharedProjectProfit(lineItems.filter(li => li.project_id === p.id), p.design_fee).profit
+    sharedProjectProfit(lineItems.filter(li => li.project_id === p.id), p.design_fee, p).profit
 
   // Pipeline = not Draft/Cancelled, final invoice not yet paid. Split into work the
   // client has accepted (Approved onwards) and quotes still awaiting acceptance.

@@ -45,6 +45,11 @@ export interface Project {
   date: string
   status: ProjectStatus
   design_fee: number
+  /** A % when discount_is_pct, otherwise rand excl. VAT. 0 = no discount. */
+  discount_value: number
+  discount_is_pct: boolean
+  /** Rand excl. VAT. 0 = no delivery line. */
+  delivery_fee: number
   vat_rate: number | null
   deposit_percentage: number | null
   notes: string | null
@@ -172,6 +177,10 @@ export function statusFromStages(stages: ProjectStages | null | undefined): Proj
 
 export interface ProjectTotals {
   subtotal: number
+  /** Rand discount off the items subtotal (excl. VAT). */
+  discount: number
+  /** Rand delivery charge (excl. VAT). */
+  delivery: number
   design_fee: number
   vat_base: number
   vat_amount: number

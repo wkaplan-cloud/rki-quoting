@@ -1,6 +1,6 @@
 import { Document, Image, Page, Text, View } from '@react-pdf/renderer'
 import { StyleSheet } from '@react-pdf/renderer'
-import { computeLineItem, computeLineItems, formatZAR, computeTotals } from '../quoting'
+import { computeLineItem, computeLineItems, formatZAR, computeTotals, discountLabel } from '../quoting'
 import type { Project, LineItem, Supplier } from '../types'
 
 const s = StyleSheet.create({
@@ -92,8 +92,8 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
   const showImages = Object.keys(images).length > 0
   const w = showImages ? W_WITH_IMAGES : W
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
-  const totals = computeTotals(lineItems, project.design_fee, vatRate)
-  const grossProfit = computeLineItems(lineItems).reduce((sum, i) => sum + i.profit, 0) + totals.design_fee
+  const totals = computeTotals(lineItems, project.design_fee, vatRate, undefined, project)
+  const grossProfit = computeLineItems(lineItems).reduce((sum, i) => sum + i.profit, 0) - totals.discount + totals.design_fee
   const clientName = (() => {
     const c = (project as { client?: { client_name?: string | null } | { client_name?: string | null }[] | null }).client
     if (!c) return null
@@ -195,7 +195,9 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
           </View>
           <View style={{ width: 240, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12 }}>
             <View style={s.totalsRow}><Text style={s.totalsLabel}>Subtotal</Text><Text style={s.totalsVal}>{formatZAR(totals.subtotal)}</Text></View>
+            {totals.discount > 0 ? <View style={s.totalsRow}><Text style={s.totalsLabel}>{discountLabel(project)}</Text><Text style={s.totalsVal}>-{formatZAR(totals.discount)}</Text></View> : null}
             <View style={s.totalsRow}><Text style={s.totalsLabel}>Design Fee ({project.design_fee ?? 0}%)</Text><Text style={s.totalsVal}>{formatZAR(totals.design_fee)}</Text></View>
+            {totals.delivery > 0 ? <View style={s.totalsRow}><Text style={s.totalsLabel}>Delivery</Text><Text style={s.totalsVal}>{formatZAR(totals.delivery)}</Text></View> : null}
             <View style={s.totalsRow}><Text style={s.totalsLabel}>VAT ({vatRate}%)</Text><Text style={s.totalsVal}>{formatZAR(totals.vat_amount)}</Text></View>
             <View style={s.divider} />
             <View style={s.totalsBig}><Text style={s.totalsBigLabel}>TOTAL</Text><Text style={s.totalsBigVal}>{formatZAR(totals.grand_total)}</Text></View>

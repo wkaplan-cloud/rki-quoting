@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 import { xeroGet, xeroPost } from '@/lib/xero'
-import { computeLineItems } from '@/lib/quoting'
+import { computeLineItems, computeTotals, discountLabel } from '@/lib/quoting'
 import { apiError } from '@/lib/api-error'
 import { sendAccountingNotification } from '@/lib/accounting-notification'
 
@@ -59,15 +59,13 @@ export async function POST(req: NextRequest) {
         }
       })
 
-    if (project.design_fee > 0) {
-      const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
-      xeroLines.push({
-        Description: `Design Fee (${project.design_fee}%)`,
-        Quantity: 1,
-        UnitAmount: parseFloat(((subtotal * project.design_fee) / 100).toFixed(2)),
-        AccountCode: '200',
-      })
-    }
+    // Discount, design fee and delivery lines, worked out exactly as the quote PDF does
+    const totals = computeTotals(lineItems ?? [], project.design_fee ?? 0, 15, 0, project)
+    const extraLine = (Description: string, amount: number) =>
+      xeroLines.push({ Description, Quantity: 1, UnitAmount: parseFloat(amount.toFixed(2)), AccountCode: '200' })
+    if (totals.discount > 0) extraLine(discountLabel(project), -totals.discount)
+    if (project.design_fee > 0) extraLine(`Design Fee (${project.design_fee}%)`, totals.design_fee)
+    if (totals.delivery > 0) extraLine('Delivery', totals.delivery)
 
     const invoiceDate = todaySA()
     const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -112,7 +110,7 @@ export async function POST(req: NextRequest) {
     await sendAccountingNotification({
       platform: 'xero',
       userId: user.id,
-      project: { id: projectId, project_name: project.project_name, project_number: project.project_number, design_fee: project.design_fee },
+      project: { id: projectId, project_name: project.project_name, project_number: project.project_number, design_fee: project.design_fee, discount_value: project.discount_value, discount_is_pct: project.discount_is_pct, delivery_fee: project.delivery_fee },
       clientName: clientName ?? null,
       lineItems: lineItems ?? [],
       vatRate: settings?.vat_rate ?? 15,

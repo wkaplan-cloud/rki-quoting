@@ -64,7 +64,7 @@ export default async function AdminPage() {
     supabaseAdmin.from('audit_logs').select('id, user_email, action, table_name, record_id, old_data, new_data, created_at').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
     supabase.from('settings').select('*').maybeSingle(),
     supabase.from('projects')
-      .select('id, project_name, project_number, status, date, created_at, design_fee, vat_rate, client_id, client:clients(client_name), stages:project_stages(final_invoice_paid, final_invoice_sent, final_invoice_sent_at)')
+      .select('id, project_name, project_number, status, date, created_at, design_fee, discount_value, discount_is_pct, delivery_fee, vat_rate, client_id, client:clients(client_name), stages:project_stages(final_invoice_paid, final_invoice_sent, final_invoice_sent_at)')
       .is('archived_at', null)
       .order('date', { ascending: false }),
   ])
@@ -111,7 +111,7 @@ export default async function AdminPage() {
         const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
         const client = Array.isArray(p.client) ? p.client[0] : p.client
         return {
-          id: p.id, project_name: p.project_name, status: p.status, design_fee: p.design_fee, vat_rate: p.vat_rate,
+          id: p.id, project_name: p.project_name, status: p.status, design_fee: p.design_fee, discount_value: p.discount_value, discount_is_pct: p.discount_is_pct, delivery_fee: p.delivery_fee, vat_rate: p.vat_rate,
           client_id: p.client_id, client_name: client?.client_name ?? null,
           paid: stages?.final_invoice_paid === true,
           final_invoice_sent: stages?.final_invoice_sent === true,

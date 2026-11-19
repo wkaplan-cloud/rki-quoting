@@ -26,6 +26,26 @@ function clampPct(raw: string): number {
   return Math.min(Math.max(n, 0), 100)
 }
 
+/** Rand amount typed the South African way: "R1 500,50", "1500.50" or "1,500". */
+function parseRand(raw: string): number {
+  let t = raw.replace(/[Rr\s\u00a0]/g, '')
+  t = t.includes('.') ? t.replace(/,/g, '') : t.replace(',', '.')
+  const n = parseFloat(t)
+  return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0
+}
+
+/** One discount box: "5%" is a percentage, "1500" is rands off. Empty = no discount. */
+function parseDiscount(raw: string): { value: number; isPct: boolean } {
+  const t = raw.trim()
+  if (t.endsWith('%')) return { value: clampPct(t.slice(0, -1)), isPct: true }
+  return { value: parseRand(t), isPct: false }
+}
+
+function discountText(value: number, isPct: boolean): string {
+  if (!value) return ''
+  return isPct ? `${value}%` : String(value)
+}
+
 interface SageCustomer { id: string; name: string; reference?: string }
 interface SageInvoice { id: string; reference: string; customerName: string; total: number; status: string; date: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
@@ -88,6 +108,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [vatRateDraft, setVatRateDraft] = useState(String(initialVatRate))
   const [depositPctDraft, setDepositPctDraft] = useState(String(initialDepositPct))
   const savedPcts = useRef({ design_fee: initial.design_fee ?? 0, vat_rate: initialVatRate, deposit_percentage: initialDepositPct })
+  // Discount and delivery: typed freely, saved on blur like the percentages above
+  const [discountDraft, setDiscountDraft] = useState(discountText(initial.discount_value ?? 0, initial.discount_is_pct ?? true))
+  const [deliveryDraft, setDeliveryDraft] = useState(initial.delivery_fee ? String(initial.delivery_fee) : '')
+  const savedAdj = useRef({ discount_value: initial.discount_value ?? 0, discount_is_pct: initial.discount_is_pct ?? true, delivery_fee: initial.delivery_fee ?? 0 })
   const [poMenuOpen, setPoMenuOpen] = useState(false)
   const poMenuRef = useRef<HTMLDivElement>(null)
   const [sendPoMenuOpen, setSendPoMenuOpen] = useState(false)
@@ -187,7 +211,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   }, [])
 
   const computed = computeLineItems(lineItems)
-  const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct)
+  const liveDiscount = parseDiscount(discountDraft)
+  const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct, {
+    discount_value: liveDiscount.value, discount_is_pct: liveDiscount.isPct, delivery_fee: parseRand(deliveryDraft),
+  })
   // Documents print at most MAX_DOCUMENT_IMAGES thumbnails; rows past that print without one
   const imageRowCount = imagesEnabled ? countDocumentImages(lineItems) : 0
   // Only quotes built from a Studio board can have supplier pricing waiting
@@ -220,6 +247,32 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       toast.error('Failed to save — please try again')
     }
   }, [project.id, supabase])
+
+  const commitAdjustments = useCallback(async (patch: Partial<typeof savedAdj.current>) => {
+    const previous = { ...savedAdj.current }
+    const next = { ...previous, ...patch }
+    if (next.discount_value === previous.discount_value && next.discount_is_pct === previous.discount_is_pct && next.delivery_fee === previous.delivery_fee) return
+    savedAdj.current = next
+    const { error } = await supabase.from('projects').update(patch).eq('id', project.id)
+    if (error) {
+      savedAdj.current = previous
+      setDiscountDraft(discountText(previous.discount_value, previous.discount_is_pct))
+      setDeliveryDraft(previous.delivery_fee ? String(previous.delivery_fee) : '')
+      toast.error('Failed to save — please try again')
+    }
+  }, [project.id, supabase])
+
+  const commitDiscount = useCallback((raw: string) => {
+    const d = parseDiscount(raw)
+    setDiscountDraft(discountText(d.value, d.isPct))
+    commitAdjustments(d.value ? { discount_value: d.value, discount_is_pct: d.isPct } : { discount_value: 0 })
+  }, [commitAdjustments])
+
+  const commitDelivery = useCallback((raw: string) => {
+    const v = parseRand(raw)
+    setDeliveryDraft(v ? String(v) : '')
+    commitAdjustments({ delivery_fee: v })
+  }, [commitAdjustments])
 
   const handleDesignFeeInput = useCallback((raw: string) => {
     setDesignFeeDraft(raw)
@@ -1061,10 +1114,22 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             <span>Subtotal</span>
             <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.subtotal)}</span>
           </div>
+          {totals.discount > 0 && (
+            <div className="flex justify-between text-sm text-[#8A877F]">
+              <span>{liveDiscount.isPct ? `Discount (${liveDiscount.value}%)` : 'Discount'}</span>
+              <span className="font-medium text-[#2C2C2A]">−{formatZAR(totals.discount)}</span>
+            </div>
+          )}
           {totals.design_fee > 0 && (
             <div className="flex justify-between text-sm text-[#8A877F]">
               <span>Design Fee ({designFeePct}%)</span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.design_fee)}</span>
+            </div>
+          )}
+          {totals.delivery > 0 && (
+            <div className="flex justify-between text-sm text-[#8A877F]">
+              <span>Delivery</span>
+              <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.delivery)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm text-[#8A877F]">
@@ -1093,7 +1158,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           )}
           <div className="border-t border-[#D8D3C8] pt-2 flex justify-between items-baseline text-sm text-green-700">
             <span>Gross Profit <span className="text-xs text-green-500">excl. VAT</span></span>
-            <span className="font-semibold">{formatZAR(computed.reduce((sum, i) => sum + i.profit, 0) + totals.design_fee)}</span>
+            <span className="font-semibold">{formatZAR(computed.reduce((sum, i) => sum + i.profit, 0) - totals.discount + totals.design_fee)}</span>
           </div>
         </div>
       </div>
@@ -1155,7 +1220,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           <div className="bg-green-50 border border-green-200 rounded p-5 text-center">
             <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Gross Profit</p>
             <p className="text-xl font-semibold text-green-700">
-              {formatZAR(computed.reduce((sum, i) => sum + i.profit, 0) + totals.design_fee)}
+              {formatZAR(computed.reduce((sum, i) => sum + i.profit, 0) - totals.discount + totals.design_fee)}
             </p>
             <p className="text-xs text-green-500 mt-1">excl. VAT</p>
           </div>
@@ -1164,6 +1229,24 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             <div className="flex justify-between text-sm text-[#8A877F]">
               <span>Subtotal</span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.subtotal)}</span>
+            </div>
+            {/* Discount — one box: "5%" takes a percentage off the items, "1500" takes rands off */}
+            <div className="flex justify-between text-sm text-[#8A877F] items-center gap-3">
+              <label htmlFor="project-discount" className="flex items-center gap-1.5 cursor-text">
+                Discount
+                <input
+                  id="project-discount"
+                  type="text" inputMode="decimal"
+                  value={discountDraft}
+                  onChange={e => setDiscountDraft(e.target.value)}
+                  onBlur={e => commitDiscount(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                  disabled={isPaid}
+                  title="Type 5% for a percentage, or 1500 for a rand amount"
+                  className="w-16 text-right text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] hover:border-[#9A7B4F] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50"
+                />
+              </label>
+              <span className="font-medium text-[#2C2C2A]">{totals.discount > 0 ? `−${formatZAR(totals.discount)}` : formatZAR(0)}</span>
             </div>
             {/* Design fee — editable % */}
             <div className="flex justify-between text-sm text-[#8A877F] items-center">
@@ -1181,6 +1264,24 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 %)
               </span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.design_fee)}</span>
+            </div>
+            {/* Delivery — rand amount, no design fee on it */}
+            <div className="flex justify-between text-sm text-[#8A877F] items-center gap-3">
+              <label htmlFor="project-delivery" className="flex items-center gap-1.5 cursor-text">
+                Delivery R
+                <input
+                  id="project-delivery"
+                  type="text" inputMode="decimal"
+                  value={deliveryDraft}
+                  onChange={e => setDeliveryDraft(e.target.value)}
+                  onBlur={e => commitDelivery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                  disabled={isPaid}
+                  title="Delivery charge in rands, before VAT"
+                  className="w-16 text-right text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] hover:border-[#9A7B4F] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50"
+                />
+              </label>
+              <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.delivery)}</span>
             </div>
             {/* VAT — admin-only editable % */}
             <div className="flex justify-between text-sm text-[#8A877F] items-center">

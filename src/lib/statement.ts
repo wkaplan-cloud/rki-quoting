@@ -74,6 +74,9 @@ interface StatementProjectRow {
   project_name: string
   status: ProjectStatus
   design_fee: number
+  discount_value: number
+  discount_is_pct: boolean
+  delivery_fee: number
   vat_rate: number | null
   invoiced_date: string | null
   quoted_date: string | null
@@ -102,7 +105,7 @@ export async function loadStatement(
     supabase.from('clients').select('*').eq('id', clientId).maybeSingle(),
     supabase
       .from('projects')
-      .select('id, project_number, project_name, status, design_fee, vat_rate, invoiced_date, quoted_date, created_at, archived_at, sage_invoice_id, deposit_amount_received, stages:project_stages(final_invoice_paid)')
+      .select('id, project_number, project_name, status, design_fee, discount_value, discount_is_pct, delivery_fee, vat_rate, invoiced_date, quoted_date, created_at, archived_at, sage_invoice_id, deposit_amount_received, stages:project_stages(final_invoice_paid)')
       .eq('client_id', clientId)
       .neq('status', 'Cancelled'),
     supabase.from('settings').select('vat_rate').maybeSingle(),
@@ -148,7 +151,7 @@ export async function loadStatement(
     const recorded = paymentsByProject.get(p.id) ?? []
     if (!BILLED_STATUSES.includes(p.status) && recorded.length === 0) continue
 
-    const total = cents(computeTotals(linesByProject.get(p.id) ?? [], p.design_fee, p.vat_rate ?? defaultVat).grand_total)
+    const total = cents(computeTotals(linesByProject.get(p.id) ?? [], p.design_fee, p.vat_rate ?? defaultVat, undefined, p).grand_total)
 
     const entries: StatementLine[] = p.sage_invoice_id
       ? (p.deposit_amount_received ?? 0) > 0

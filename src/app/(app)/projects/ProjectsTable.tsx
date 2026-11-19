@@ -200,7 +200,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
         {/* Mobile cards */}
         <div className="md:hidden space-y-2">
           {filtered.map(p => {
-            const total = formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, p.vat_rate ?? 15).grand_total)
+            const total = formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, p.vat_rate ?? 15, undefined, p).grand_total)
             return (
               <Link
                 key={p.id}
@@ -253,7 +253,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                     {userEmailMap[p.assigned_to ?? p.user_id ?? ''] ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-[#2C2C2A] whitespace-nowrap">
-                    {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, p.vat_rate ?? 15).grand_total)}
+                    {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, p.vat_rate ?? 15, undefined, p).grand_total)}
                   </td>
                   {showArchived && (
                     <td className="px-4 py-3 text-right">

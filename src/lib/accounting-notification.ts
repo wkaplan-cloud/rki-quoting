@@ -1,12 +1,12 @@
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { computeLineItems, formatZAR } from '@/lib/quoting'
+import { computeTotals, discountLabel, formatZAR, type TotalsAdjustments } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
 
 export interface AccountingNotificationParams {
   platform: 'sage' | 'xero'
   userId: string
-  project: { id: string; project_name: string; project_number: string; design_fee: number }
+  project: { id: string; project_name: string; project_number: string; design_fee: number } & TotalsAdjustments
   clientName: string | null | undefined
   lineItems: LineItem[]
   vatRate: number
@@ -50,10 +50,10 @@ export async function sendAccountingNotification(params: AccountingNotificationP
 
     if (!recipient) return
 
-    const computed = computeLineItems(lineItems)
-    const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
-    const designFeeAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
-    const netExclVat = subtotal + designFeeAmt - depositDeductionExclVat
+    const totals = computeTotals(lineItems, project.design_fee ?? 0, vatRate, 0, project)
+    const subtotal = totals.subtotal
+    const designFeeAmt = project.design_fee > 0 ? totals.design_fee : 0
+    const netExclVat = totals.vat_base - depositDeductionExclVat
     const vatAmt = netExclVat * (vatRate / 100)
     const totalInclVat = netExclVat + vatAmt
 
@@ -70,7 +70,9 @@ export async function sendAccountingNotification(params: AccountingNotificationP
 
     const rows = [
       { label: 'Subtotal (excl. VAT)', value: formatZAR(subtotal) },
+      ...(totals.discount > 0 ? [{ label: discountLabel(project), value: `−${formatZAR(totals.discount)}` }] : []),
       ...(designFeeAmt > 0 ? [{ label: `Design fee (${project.design_fee}%)`, value: formatZAR(designFeeAmt) }] : []),
+      ...(totals.delivery > 0 ? [{ label: 'Delivery', value: formatZAR(totals.delivery) }] : []),
       ...(depositDeductionExclVat > 0 ? [{ label: 'Deposit received', value: `−${formatZAR(depositDeductionExclVat)}` }] : []),
       { label: `VAT (${vatRate}%)`, value: formatZAR(vatAmt) },
       { label: 'Total (incl. VAT)', value: formatZAR(totalInclVat), bold: true },
@@ -99,7 +101,9 @@ export async function sendAccountingNotification(params: AccountingNotificationP
         '',
         'Invoice summary:',
         `  Subtotal (excl. VAT):           ${formatZAR(subtotal)}`,
+        totals.discount > 0 ? `  ${discountLabel(project)}:                −${formatZAR(totals.discount)}` : '',
         designFeeAmt > 0 ? `  Design fee (${project.design_fee}%):              ${formatZAR(designFeeAmt)}` : '',
+        totals.delivery > 0 ? `  Delivery:                       ${formatZAR(totals.delivery)}` : '',
         depositDeductionExclVat > 0 ? `  Deposit received:               −${formatZAR(depositDeductionExclVat)}` : '',
         `  VAT (${vatRate}%):                      ${formatZAR(vatAmt)}`,
         `  Total (incl. VAT):              ${formatZAR(totalInclVat)}`,

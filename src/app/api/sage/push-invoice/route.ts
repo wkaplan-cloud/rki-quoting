@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sageGet, sagePost } from '@/lib/sage'
-import { computeLineItems } from '@/lib/quoting'
+import { computeLineItems, computeTotals, discountLabel } from '@/lib/quoting'
 import { sendAccountingNotification } from '@/lib/accounting-notification'
 
 export const maxDuration = 30
@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
     }
 
     const computed = computeLineItems(lineItems ?? [])
+    // Discount, design fee and delivery worked out exactly as the quote PDF does
+    const totals = computeTotals(lineItems ?? [], project.design_fee ?? 0, 15, 0, project)
 
     // Fetch tax types and the full customer record in parallel
     // Try direct path first; fall back to OData filter — both return formats are handled
@@ -82,19 +84,18 @@ export async function POST(req: NextRequest) {
         }
       })
 
-    // Add design fee line if applicable
-    if (project.design_fee > 0) {
-      const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
-      const designFeeAmount = (subtotal * project.design_fee) / 100
-      lines.push({
-        SelectionId: selectionId,
-        LineType: 0,
-        Description: `Design Fee (${project.design_fee}%)`,
-        Quantity: 1,
-        UnitPriceExclusive: parseFloat(designFeeAmount.toFixed(2)),
-        TaxTypeId: taxTypeId,
-      })
-    }
+    // Discount, design fee and delivery lines, in the same order as the quote
+    const extraLine = (Description: string, amount: number) => lines.push({
+      SelectionId: selectionId,
+      LineType: 0,
+      Description,
+      Quantity: 1,
+      UnitPriceExclusive: parseFloat(amount.toFixed(2)),
+      TaxTypeId: taxTypeId,
+    })
+    if (totals.discount > 0) extraLine(discountLabel(project), -totals.discount)
+    if (project.design_fee > 0) extraLine(`Design Fee (${project.design_fee}%)`, totals.design_fee)
+    if (totals.delivery > 0) extraLine('Delivery', totals.delivery)
 
     // Add deposit line if deposit has been received — uses actual paid amount from Sage when available
     let depositDeductionExclVat = 0
@@ -111,17 +112,13 @@ export async function POST(req: NextRequest) {
           depositExclVat = parseFloat((actualPaidInclVat / (1 + vatRate / 100)).toFixed(2))
         } catch {
           // Fallback to configured percentage if Sage call fails
-          const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
-          const dfAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
           const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 50
-          depositExclVat = parseFloat(((subtotal + dfAmt) * (depositPct / 100)).toFixed(2))
+          depositExclVat = parseFloat((totals.vat_base * (depositPct / 100)).toFixed(2))
         }
       } else {
         // No existing invoice yet — use configured deposit percentage
-        const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
-        const dfAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
         const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 50
-        depositExclVat = parseFloat(((subtotal + dfAmt) * (depositPct / 100)).toFixed(2))
+        depositExclVat = parseFloat((totals.vat_base * (depositPct / 100)).toFixed(2))
       }
 
       if (depositExclVat > 0) {
@@ -212,7 +209,7 @@ export async function POST(req: NextRequest) {
     await sendAccountingNotification({
       platform: 'sage',
       userId: user.id,
-      project: { id: projectId, project_name: project.project_name, project_number: project.project_number, design_fee: project.design_fee },
+      project: { id: projectId, project_name: project.project_name, project_number: project.project_number, design_fee: project.design_fee, discount_value: project.discount_value, discount_is_pct: project.discount_is_pct, delivery_fee: project.delivery_fee },
       clientName,
       lineItems: lineItems ?? [],
       vatRate: settings?.vat_rate ?? 15,
