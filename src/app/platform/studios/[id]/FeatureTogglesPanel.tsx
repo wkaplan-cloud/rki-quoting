@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop, Undo2, MessageCircleQuestion } from 'lucide-react'
+import { Presentation, Images, Printer, CalendarClock, Lightbulb, ReceiptText, Inbox, Hotel, Copy, PanelTop, Undo2, ListOrdered, MessageCircleQuestion } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -78,6 +78,7 @@ export function FeatureTogglesPanel({
   duplicateLineEnabled = false,
   stickyLineHeaderEnabled = false,
   undoDeleteEnabled = false,
+  paymentPlanEnabled = false,
   insightsEnabled = false,
   statementsEnabled = false,
   agentEnabled = false,
@@ -93,6 +94,7 @@ export function FeatureTogglesPanel({
   duplicateLineEnabled?: boolean
   stickyLineHeaderEnabled?: boolean
   undoDeleteEnabled?: boolean
+  paymentPlanEnabled?: boolean
   insightsEnabled?: boolean
   statementsEnabled?: boolean
   agentEnabled?: boolean
@@ -166,6 +168,14 @@ export function FeatureTogglesPanel({
           icon={<Undo2 size={16} className="text-[#7E6036]" />}
           title="Undo delete"
           description="10-second Undo pop-up after deleting a line item; puts the line back with its links"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="payment_plan_enabled"
+          initial={paymentPlanEnabled}
+          icon={<ListOrdered size={16} className="text-[#7E6036]" />}
+          title="Payment plan + Not included"
+          description="Saved payment plans (stages adding to 100%) and 'Not included in this quote' lists, picked per quote and printed on the quote PDF"
         />
         <FeatureToggle
           orgId={orgId}

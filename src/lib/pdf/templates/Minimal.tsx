@@ -2,6 +2,7 @@ import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { todaySA } from '@/lib/dates'
 import { computeLineItems, computeTotals, discountLabel, formatZAR } from '@/lib/quoting'
 import type { TemplateProps } from './types'
+import { NotIncludedBlock, PaymentPlanRows, quotePlan } from './QuoteExtras'
 
 function cap(s: string | null | undefined): string {
   if (!s) return ''
@@ -184,7 +185,9 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
                 <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: theme.primary, letterSpacing: 0.5 }}>TOTAL</Text>
                 <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: theme.primary }}>{formatZAR(totals.grand_total)}</Text>
               </View>
-              {type === 'quote' ? (
+              {type === 'quote' && quotePlan(project) ? (
+                <PaymentPlanRows project={project} grandTotal={totals.grand_total} theme={theme} bold={false} />
+              ) : type === 'quote' ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
                   <Text style={{ fontSize: 8, color: theme.accent }}>{depositPct}% Deposit</Text>
                   <Text style={{ fontSize: 8, color: theme.accent }}>{formatZAR(totals.deposit)}</Text>
@@ -203,6 +206,10 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
               ) : null}
             </View>
           </View>
+
+          {type === 'quote' ? (
+            <NotIncludedBlock project={project} theme={theme} container={{ marginTop: 28 }} headingStyle={{ fontSize: 7, color: theme.muted, letterSpacing: 1.5, marginBottom: 8 }} />
+          ) : null}
 
           {/* Terms — plain, no box */}
           {termsConditions ? (

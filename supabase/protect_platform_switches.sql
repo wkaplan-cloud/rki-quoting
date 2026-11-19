@@ -1,4 +1,4 @@
--- APPLIED 2026-11-15; undo_delete_enabled added 2026-11-19.
+-- APPLIED 2026-11-15; undo_delete_enabled and payment_plan_enabled added 2026-11-19.
 -- Platform feature switches are set only by the platform admin (service role,
 -- /api/platform/studios/[id]/settings). Studio members may update their own
 -- settings row from the browser (Studio Settings, onboarding), so any change
@@ -19,6 +19,7 @@ begin
       new.duplicate_line_enabled := false;
       new.sticky_line_header_enabled := false;
       new.undo_delete_enabled := false;
+      new.payment_plan_enabled := false;
       new.agent_enabled := false;
       new.ask_mia_enabled := false;
       new.capital_hotels_enabled := false;
@@ -33,6 +34,7 @@ begin
       new.duplicate_line_enabled := old.duplicate_line_enabled;
       new.sticky_line_header_enabled := old.sticky_line_header_enabled;
       new.undo_delete_enabled := old.undo_delete_enabled;
+      new.payment_plan_enabled := old.payment_plan_enabled;
       new.agent_enabled := old.agent_enabled;
       new.ask_mia_enabled := old.ask_mia_enabled;
       new.capital_hotels_enabled := old.capital_hotels_enabled;

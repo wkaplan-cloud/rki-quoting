@@ -2,6 +2,7 @@ import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { todaySA } from '@/lib/dates'
 import { computeLineItems, computeTotals, discountLabel, formatZAR } from '@/lib/quoting'
 import type { TemplateProps } from './types'
+import { NotIncludedBlock, PaymentPlanRows, quotePlan } from './QuoteExtras'
 
 function cap(s: string | null | undefined): string {
   if (!s) return ''
@@ -163,7 +164,9 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                 <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: theme.primary }}>TOTAL</Text>
                 <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: theme.primary }}>{formatZAR(totals.grand_total)}</Text>
               </View>
-              {type === 'quote' ? (
+              {type === 'quote' && quotePlan(project) ? (
+                <PaymentPlanRows project={project} grandTotal={totals.grand_total} theme={theme} />
+              ) : type === 'quote' ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
                   <Text style={{ fontSize: 8, color: theme.accent }}>{depositPct}% Deposit Required</Text>
                   <Text style={{ fontSize: 8, color: theme.accent, fontFamily: 'Helvetica-Bold' }}>{formatZAR(totals.deposit)}</Text>
@@ -182,6 +185,10 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
               ) : null}
             </View>
           </View>
+
+          {type === 'quote' ? (
+            <NotIncludedBlock project={project} theme={theme} container={{ marginTop: 16, borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12 }} headingStyle={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.muted, marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }} />
+          ) : null}
 
           {/* Terms */}
           {termsConditions ? (

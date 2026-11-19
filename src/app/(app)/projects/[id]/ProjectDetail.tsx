@@ -18,6 +18,8 @@ import type { SupplierDates } from '@/lib/deliveries'
 import toast from 'react-hot-toast'
 import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown, ReceiptText } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { QuoteExtrasPanel } from './QuoteExtrasPanel'
+import type { ExclusionPreset, PaymentPlanPreset, PlanStage } from '@/lib/payment-plan'
 
 // Percentage fields are typed into freely; only sane values ever reach the database.
 function clampPct(raw: string): number {
@@ -81,6 +83,9 @@ interface Props {
   /** Per-org flag: pin the line items column headings while scrolling. */
   stickyHeaderEnabled?: boolean
   undoDeleteEnabled?: boolean
+  paymentPlanEnabled?: boolean
+  planPresets?: PaymentPlanPreset[]
+  exclusionPresets?: ExclusionPreset[]
   /**
    * Per-org override that unlocks the Job Cost Sheet on the Solo plan.
    * Additive only — Studio and Agency always have it regardless.
@@ -94,7 +99,7 @@ interface Props {
   initialPayments?: ProjectPayment[]
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false, undoDeleteEnabled = false, jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {}, statementsEnabled = false, initialPayments = [] }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, duplicateEnabled = false, stickyHeaderEnabled = false, undoDeleteEnabled = false, paymentPlanEnabled = false, planPresets = [], exclusionPresets = [], jobCostSheetEnabled = false, deliveryTimelineEnabled = false, supplierDeliveryDates = {}, statementsEnabled = false, initialPayments = [] }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -112,6 +117,17 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   // Discount and delivery: typed freely, saved on blur like the percentages above
   const [discountDraft, setDiscountDraft] = useState(discountText(initial.discount_value ?? 0, initial.discount_is_pct ?? true))
   const [deliveryDraft, setDeliveryDraft] = useState(initial.delivery_fee ? String(initial.delivery_fee) : '')
+  // Payment plan (orgs with payment_plan_enabled): its first stage is the deposit
+  const [paymentPlan, setPaymentPlan] = useState<PlanStage[] | null>(initial.payment_plan ?? null)
+  const planActive = paymentPlanEnabled && !!paymentPlan?.length
+  const handlePlanSaved = useCallback((stages: PlanStage[] | null) => {
+    setPaymentPlan(stages)
+    if (stages?.length) {
+      setDepositPct(stages[0].pct)
+      setDepositPctDraft(String(stages[0].pct))
+      savedPcts.current.deposit_percentage = stages[0].pct
+    }
+  }, [])
   const savedAdj = useRef({ discount_value: initial.discount_value ?? 0, discount_is_pct: initial.discount_is_pct ?? true, delivery_fee: initial.delivery_fee ?? 0 })
   const [poMenuOpen, setPoMenuOpen] = useState(false)
   const poMenuRef = useRef<HTMLDivElement>(null)
@@ -1318,7 +1334,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   onChange={e => handleDepositPctInput(e.target.value)}
                   onBlur={e => commitPct('deposit_percentage', e.target.value, setDepositPct, setDepositPctDraft)}
                   onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                  disabled={isPaid}
+                  disabled={isPaid || planActive}
+                  title={planActive ? 'Set by the first stage of the payment plan' : undefined}
                   className={`w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${NO_SPINNER}`}
                 />
                 %)
@@ -1364,6 +1381,20 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           </div>
         </div>
       </div>
+
+      {paymentPlanEnabled && (
+        <QuoteExtrasPanel
+          projectId={project.id}
+          initialPlan={initial.payment_plan ?? null}
+          initialExclusions={initial.exclusions ?? null}
+          planPresets={planPresets}
+          exclusionPresets={exclusionPresets}
+          grandTotal={totals.grand_total}
+          depositPct={depositPct}
+          locked={isPaid}
+          onPlanSaved={handlePlanSaved}
+        />
+      )}
 
       {paymentsLedger && (
         <PaymentsPanel

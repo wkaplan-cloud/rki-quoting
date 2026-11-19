@@ -2,6 +2,7 @@ import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { todaySA } from '@/lib/dates'
 import { computeLineItems, computeTotals, discountLabel, formatZAR } from '@/lib/quoting'
 import type { TemplateProps } from './types'
+import { NotIncludedBlock, PaymentPlanRows, quotePlan } from './QuoteExtras'
 
 function cap(s: string | null | undefined): string {
   if (!s) return ''
@@ -187,7 +188,9 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
                 <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: theme.headerText }}>TOTAL</Text>
                 <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: theme.headerText }}>{formatZAR(totals.grand_total)}</Text>
               </View>
-              {type === 'quote' ? (
+              {type === 'quote' && quotePlan(project) ? (
+                <PaymentPlanRows project={project} grandTotal={totals.grand_total} theme={theme} rowStyle={{ paddingHorizontal: 2 }} />
+              ) : type === 'quote' ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingHorizontal: 2 }}>
                   <Text style={{ fontSize: 8, color: theme.accent }}>{depositPct}% Deposit Required</Text>
                   <Text style={{ fontSize: 8, color: theme.accent, fontFamily: 'Helvetica-Bold' }}>{formatZAR(totals.deposit)}</Text>
@@ -206,6 +209,10 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
               ) : null}
             </View>
           </View>
+
+          {type === 'quote' ? (
+            <NotIncludedBlock project={project} theme={theme} container={{ marginTop: 20, backgroundColor: theme.surface, borderRadius: 4, padding: 14 }} headingStyle={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1, marginBottom: 6 }} />
+          ) : null}
 
           {/* Terms */}
           {termsConditions ? (

@@ -50,6 +50,10 @@ export interface Project {
   discount_is_pct: boolean
   /** Rand excl. VAT. 0 = no delivery line. */
   delivery_fee: number
+  /** Payment plan stages (orgs with payment_plan_enabled). Null = single deposit line. */
+  payment_plan?: import('./payment-plan').PlanStage[] | null
+  /** "Not included in this quote" lines. Null = none. */
+  exclusions?: import('./payment-plan').ExclusionLine[] | null
   vat_rate: number | null
   deposit_percentage: number | null
   notes: string | null

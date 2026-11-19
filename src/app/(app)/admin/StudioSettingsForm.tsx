@@ -12,6 +12,8 @@ import { compressImage } from '@/lib/compressImage'
 import { THEMES } from '@/lib/pdf/themes'
 import { DEFAULT_ACCEPTANCE_HEADING, DEFAULT_ACCEPTANCE_TEXT, DEFAULT_ACCEPTANCE_LABELS } from '@/lib/acceptance'
 import type { ThemeKey, PdfTheme } from '@/lib/pdf/themes'
+import { QuoteExtrasSettings } from './QuoteExtrasSettings'
+import type { ExclusionPreset, PaymentPlanPreset } from '@/lib/payment-plan'
 
 // ─── Template preview helpers ─────────────────────────────────────────────────
 
@@ -260,6 +262,9 @@ export interface Settings {
   footer_text?: string | null
   terms_conditions?: string | null
   acceptance_enabled?: boolean | null
+  payment_plan_enabled?: boolean | null
+  payment_plan_presets?: PaymentPlanPreset[] | null
+  exclusion_presets?: ExclusionPreset[] | null
   acceptance_heading?: string | null
   acceptance_text?: string | null
   acceptance_signature_labels?: string | null
@@ -655,6 +660,14 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                   </div>
                 )}
               </div>
+
+              {settings?.payment_plan_enabled && settings.id && (
+                <QuoteExtrasSettings
+                  settingsId={settings.id}
+                  initialPlans={settings.payment_plan_presets ?? []}
+                  initialLists={settings.exclusion_presets ?? []}
+                />
+              )}
             </section>
             <section className="space-y-4">
               <div>
