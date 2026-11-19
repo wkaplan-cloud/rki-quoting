@@ -18,6 +18,9 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
+/** Printable top/bottom margin (pt) on every page. */
+const PAGE_Y = 40
+
 export function BoldTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, invoicedDate, validityDays, paymentTerms, leadTime, itemImages, acceptance }: TemplateProps) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
@@ -29,10 +32,13 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
 
   return (
     <Document>
-      <Page size="A4" style={{ fontFamily: 'Helvetica', fontSize: 9, color: theme.text, padding: 0, flexDirection: 'column' }}>
+      {/* Top/bottom page padding repeats on every page, so rows that flow onto
+          page 2+ keep a printable margin. The header and footer bands pull
+          into that padding with negative margins so they still bleed. */}
+      <Page size="A4" style={{ fontFamily: 'Helvetica', fontSize: 9, color: theme.text, paddingTop: PAGE_Y, paddingBottom: PAGE_Y, flexDirection: 'column' }}>
 
         {/* Dark full-width header band */}
-        <View style={{ backgroundColor: theme.headerBg, paddingVertical: 32, paddingHorizontal: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ marginTop: -PAGE_Y, backgroundColor: theme.headerBg, paddingVertical: 32, paddingHorizontal: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
               ? <View style={{ alignItems: 'flex-start' }}><Image src={logoUrl} style={{ maxWidth: 220, maxHeight: 60, objectFit: 'contain' }} /></View>
@@ -105,7 +111,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
             <View style={{ flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 3 }}>
               <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', width: 22 }}>#</Text>
               <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', flex: 1 }}>ITEM</Text>
-              <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', width: 44, textAlign: 'right', paddingRight: 8 }}>QTY</Text>
+              <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', width: 56, textAlign: 'right', paddingRight: 8 }}>QTY</Text>
               <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', width: 72, textAlign: 'right' }}>UNIT PRICE</Text>
               <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', width: 80, textAlign: 'right' }}>TOTAL</Text>
             </View>
@@ -115,7 +121,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
               return lineItems.map(item => {
                 if (item.row_type === 'section') {
                   return (
-                    <View key={item.id} style={{ flexDirection: 'row', paddingVertical: 7, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: theme.accent, marginTop: 6 }}>
+                    <View key={item.id} wrap={false} minPresenceAhead={30} style={{ flexDirection: 'row', paddingVertical: 7, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: theme.accent, marginTop: 6 }}>
                       <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 0.5 }}>{(item.item_name || 'Section').toUpperCase()}</Text>
                     </View>
                   )
@@ -132,7 +138,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
                       {img ? <Image src={img} style={{ width: 42.5, height: 42.5, borderRadius: 2, objectFit: 'contain', marginRight: 8 }} /> : null}
                       <Text style={{ fontSize: 9, color: theme.text, flex: 1 }}>{cap(item.item_name)}</Text>
                     </View>
-                    <Text style={{ fontSize: 9, color: theme.text, width: 44, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
+                    <Text style={{ fontSize: 9, color: theme.text, width: 56, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                     <Text style={{ fontSize: 9, color: theme.text, width: 72, textAlign: 'right' }}>{formatZAR(c.sale_price)}</Text>
                     <Text style={{ fontSize: 9, color: theme.primary, width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>{formatZAR(c.total_price)}</Text>
                   </View>
@@ -142,7 +148,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
           </View>
 
           {/* Totals + banking */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 28 }}>
+          <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 28 }}>
             {bankName || bankAccount ? (
               <View style={{ width: 200 }}>
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1, marginBottom: 8 }}>BANKING DETAILS</Text>
@@ -191,14 +197,14 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
 
           {/* Terms */}
           {termsConditions ? (
-            <View style={{ marginTop: 20, backgroundColor: theme.surface, borderRadius: 4, padding: 14 }}>
+            <View wrap={false} style={{ marginTop: 20, backgroundColor: theme.surface, borderRadius: 4, padding: 14 }}>
               <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1, marginBottom: 6 }}>TERMS &amp; CONDITIONS</Text>
               <Text style={{ fontSize: 7, color: theme.text, lineHeight: 1.5 }}>{termsConditions}</Text>
             </View>
           ) : null}
 
           {(paymentTerms || leadTime) ? (
-            <View style={{ marginTop: 12, flexDirection: 'row', gap: 12 }}>
+            <View wrap={false} style={{ marginTop: 12, flexDirection: 'row', gap: 12 }}>
               {paymentTerms ? (
                 <View style={{ flex: 1, backgroundColor: theme.surface, borderRadius: 4, padding: 12 }}>
                   <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1, marginBottom: 5 }}>PAYMENT TERMS</Text>
@@ -216,7 +222,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
 
           {/* Acceptance — heading, wording and rules all come from studio settings */}
           {type === 'quote' && acceptance ? (
-            <View style={{ marginTop: 20, borderTopWidth: 2, borderTopColor: theme.primary, paddingTop: 14 }}>
+            <View wrap={false} style={{ marginTop: 20, borderTopWidth: 2, borderTopColor: theme.primary, paddingTop: 14 }}>
               {acceptance.heading ? (
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1, marginBottom: 8 }}>{acceptance.heading}</Text>
               ) : null}
@@ -239,7 +245,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
         </View>
 
         {/* Footer */}
-        <View style={{ backgroundColor: theme.surface, paddingVertical: 12, paddingHorizontal: 48, borderTopWidth: 1, borderTopColor: theme.border }}>
+        <View style={{ marginBottom: -PAGE_Y, backgroundColor: theme.surface, paddingVertical: 12, paddingHorizontal: 48, borderTopWidth: 1, borderTopColor: theme.border }}>
           <Text style={{ fontSize: 8, color: theme.muted, textAlign: 'center' }}>{footerText ?? 'Thank you for your business.'}</Text>
         </View>
       </Page>

@@ -59,6 +59,8 @@ interface Props {
 }
 
 const COL = 'px-2 py-1.5'
+/** Suggested units. Users can still type any unit of their own. */
+const UNIT_SUGGESTIONS = ['each', 'm', 'm²', 'lm', 'roll', 'pair', 'set', 'kg', 'hrs', 'day', 'km']
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 
 // Makes a text field hug its content so the image button sits right after the
@@ -155,7 +157,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Dimensions', tip: 'Width × height or other measurements (e.g. 2400 × 800). Shown on the Job Cost Sheet. Not visible to the client.' },
   { col: 'Colour', tip: 'Colour, finish, or colourway of the item. Shown on the Job Cost Sheet. Not visible to the client.' },
   { col: 'Description', tip: 'Optional detail shown on the Purchase Order PDF — fabric code, SKU, etc. Not shown on quotes or invoices.' },
-  { col: 'Qty / Unit', tip: 'Quantity and unit of measure (e.g. 2 m², 4 each). Unit is shown alongside quantity on all documents.' },
+  { col: 'Qty / Unit', tip: 'Quantity and unit of measure (e.g. 2 m², 4 each, 3 hrs). Pick a unit from the list or type your own. Unit is shown alongside quantity on all documents.' },
   { col: 'Supplier', tip: 'Select the supplier for this item. Their default markup % will be applied automatically.' },
   { col: 'Deliver To', tip: 'Where this item should be delivered. Defaults to your office address.' },
   { col: 'Lead', tip: 'Estimated delivery time in weeks. Shown on Purchase Orders only — useful for tracking what to chase.' },
@@ -675,7 +677,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />
               <th className="text-left px-2 py-2 w-[300px] min-w-[300px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px] border-r border-[#EDEBE6]">Description</th>
-              <th className="text-right px-2 py-2 w-[86px] min-w-[86px] max-w-[86px] whitespace-nowrap">Qty / Unit</th>
+              <th className="text-right px-2 py-2 w-[104px] min-w-[104px] max-w-[104px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
               <th className="text-right px-1 py-2 min-w-[52px] whitespace-nowrap border-r border-[#EDEBE6]">Lead</th>
@@ -1063,11 +1065,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         onBlur={e => saveField(item.id, 'unit', e.target.value)}
                         onFocus={e => e.target.select()}
                         placeholder="unit"
+                        title="Pick a unit or type your own (e.g. hrs, km)"
+                        maxLength={12}
                         readOnly={locked}
-                        className="w-8 shrink-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                        className="w-12 shrink-0 bg-transparent outline-none text-xs text-[#8A877F] border-b border-dashed border-[#D9D4CA] hover:border-[#9A7B4F] focus:border-transparent focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded-sm px-1 py-0.5 placeholder-[#C4BFB5] truncate"
                       />
                       <datalist id={`units-${item.id}`}>
-                        {['each','m','m²','lm','roll','pair','set','kg'].map(u => <option key={u} value={u} />)}
+                        {UNIT_SUGGESTIONS.map(u => <option key={u} value={u} />)}
                       </datalist>
                     </div>
                   </td>

@@ -86,7 +86,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
               <View style={{ flexDirection: 'row', backgroundColor: theme.surface, paddingVertical: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.border }}>
                 <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', width: 20 }}>#</Text>
                 <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', flex: 1 }}>ITEM</Text>
-                <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', width: 44, textAlign: 'right', paddingRight: 8 }}>QTY</Text>
+                <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', width: 56, textAlign: 'right', paddingRight: 8 }}>QTY</Text>
                 <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', width: 72, textAlign: 'right' }}>SALE PRICE</Text>
                 <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', width: 80, textAlign: 'right' }}>TOTAL</Text>
               </View>
@@ -96,7 +96,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                 return lineItems.map(item => {
                   if (item.row_type === 'section') {
                     return (
-                      <View key={item.id} style={{ flexDirection: 'row', backgroundColor: theme.surface, paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border, marginTop: 4 }}>
+                      <View key={item.id} wrap={false} minPresenceAhead={30} style={{ flexDirection: 'row', backgroundColor: theme.surface, paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border, marginTop: 4 }}>
                         <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: theme.muted }}>{(item.item_name || 'Section').toUpperCase()}</Text>
                       </View>
                     )
@@ -113,7 +113,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                         {img ? <Image src={img} style={{ width: 42.5, height: 42.5, borderRadius: 2, objectFit: 'contain', marginRight: 8 }} /> : null}
                         <Text style={{ fontSize: 9, color: theme.text, flex: 1 }}>{cap(item.item_name)}</Text>
                       </View>
-                      <Text style={{ fontSize: 9, color: theme.text, width: 44, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
+                      <Text style={{ fontSize: 9, color: theme.text, width: 56, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                       <Text style={{ fontSize: 9, color: theme.text, width: 72, textAlign: 'right' }}>{formatZAR(c.sale_price)}</Text>
                       <Text style={{ fontSize: 9, color: theme.text, width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>{formatZAR(c.total_price)}</Text>
                     </View>
@@ -124,7 +124,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
           </View>
 
           {/* Totals row */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 36 }}>
+          <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 36 }}>
             {bankName || bankAccount ? (
               <View style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12, width: 220 }}>
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.muted, marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }}>BANKING DETAILS</Text>
@@ -173,7 +173,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
 
           {/* Terms */}
           {termsConditions ? (
-            <View style={{ marginTop: 16, borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12 }}>
+            <View wrap={false} style={{ marginTop: 16, borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12 }}>
               <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.muted, marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }}>TERMS &amp; CONDITIONS</Text>
               <Text style={{ fontSize: 7, color: theme.text, lineHeight: 1.5 }}>{termsConditions}</Text>
             </View>
@@ -181,7 +181,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
 
           {/* Payment Terms + Lead Time */}
           {(paymentTerms || leadTime) ? (
-            <View style={{ marginTop: 12, flexDirection: 'row', gap: 12 }}>
+            <View wrap={false} style={{ marginTop: 12, flexDirection: 'row', gap: 12 }}>
               {paymentTerms ? (
                 <View style={{ flex: 1, borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 10 }}>
                   <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.muted, marginBottom: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 3 }}>PAYMENT TERMS</Text>
@@ -199,7 +199,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
 
           {/* Acceptance block — heading, wording and rules all come from studio settings */}
           {type === 'quote' && acceptance ? (
-            <View style={{ marginTop: 16, borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12 }}>
+            <View wrap={false} style={{ marginTop: 16, borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12 }}>
               {acceptance.heading ? (
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.muted, marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }}>{acceptance.heading}</Text>
               ) : null}

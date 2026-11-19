@@ -106,7 +106,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
             <View style={{ flexDirection: 'row', paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: theme.primary }}>
               <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, width: 22 }}>#</Text>
               <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, flex: 1 }}>ITEM</Text>
-              <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, width: 44, textAlign: 'right', paddingRight: 8 }}>QTY</Text>
+              <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, width: 56, textAlign: 'right', paddingRight: 8 }}>QTY</Text>
               <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, width: 72, textAlign: 'right' }}>PRICE</Text>
               <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, width: 80, textAlign: 'right' }}>TOTAL</Text>
             </View>
@@ -116,7 +116,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
               return lineItems.map(item => {
                 if (item.row_type === 'section') {
                   return (
-                    <View key={item.id} style={{ flexDirection: 'row', paddingVertical: 9, borderBottomWidth: 0.5, borderBottomColor: theme.border }}>
+                    <View key={item.id} wrap={false} minPresenceAhead={30} style={{ flexDirection: 'row', paddingVertical: 9, borderBottomWidth: 0.5, borderBottomColor: theme.border }}>
                       <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1 }}>{(item.item_name || 'Section').toUpperCase()}</Text>
                     </View>
                   )
@@ -133,7 +133,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
                       {img ? <Image src={img} style={{ width: 42.5, height: 42.5, borderRadius: 2, objectFit: 'contain', marginRight: 8 }} /> : null}
                       <Text style={{ fontSize: 9, color: theme.text, flex: 1 }}>{cap(item.item_name)}</Text>
                     </View>
-                    <Text style={{ fontSize: 9, color: theme.muted, width: 44, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
+                    <Text style={{ fontSize: 9, color: theme.muted, width: 56, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                     <Text style={{ fontSize: 9, color: theme.text, width: 72, textAlign: 'right' }}>{formatZAR(c.sale_price)}</Text>
                     <Text style={{ fontSize: 9, color: theme.text, width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>{formatZAR(c.total_price)}</Text>
                   </View>
@@ -143,7 +143,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
           </View>
 
           {/* Totals — right-aligned, minimal */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 28 }}>
+          <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 28 }}>
             {/* Banking — plain text, no box */}
             {bankName || bankAccount ? (
               <View style={{ width: 200 }}>
@@ -194,14 +194,14 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
 
           {/* Terms — plain, no box */}
           {termsConditions ? (
-            <View style={{ marginTop: 28 }}>
+            <View wrap={false} style={{ marginTop: 28 }}>
               <Text style={{ fontSize: 7, color: theme.muted, letterSpacing: 1.5, marginBottom: 8 }}>TERMS &amp; CONDITIONS</Text>
               <Text style={{ fontSize: 7, color: theme.muted, lineHeight: 1.7 }}>{termsConditions}</Text>
             </View>
           ) : null}
 
           {(paymentTerms || leadTime) ? (
-            <View style={{ marginTop: 20, flexDirection: 'row', gap: 40 }}>
+            <View wrap={false} style={{ marginTop: 20, flexDirection: 'row', gap: 40 }}>
               {paymentTerms ? (
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 7, color: theme.muted, letterSpacing: 1.5, marginBottom: 6 }}>PAYMENT TERMS</Text>
@@ -219,7 +219,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
 
           {/* Acceptance — heading, wording and rules all come from studio settings */}
           {type === 'quote' && acceptance ? (
-            <View style={{ marginTop: 28 }}>
+            <View wrap={false} style={{ marginTop: 28 }}>
               {acceptance.heading ? (
                 <Text style={{ fontSize: 7, color: theme.muted, letterSpacing: 1.5, marginBottom: 8 }}>{acceptance.heading}</Text>
               ) : null}
