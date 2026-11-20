@@ -364,6 +364,34 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     if (project.status !== 'Cancelled') setProject(p => ({ ...p, status: newStatus }))
   }, [project.status])
 
+  // The date printed on the quote. It is stamped on the first download and never moves on its
+  // own, so it sits beside Download where people can see it and change it in one step.
+  const saveQuotedDate = useCallback(async (date: string) => {
+    if (!date || date < '2000-01-01' || date === project.quoted_date) return
+    const previous = project.quoted_date
+    setProject(p => ({ ...p, quoted_date: date }))
+    const { error } = await supabase.from('projects').update({ quoted_date: date }).eq('id', project.id)
+    if (error) {
+      setProject(p => ({ ...p, quoted_date: previous }))
+      toast.error('Could not save the quote date')
+      return
+    }
+    toast.success('Quote date saved')
+  }, [project.id, project.quoted_date, supabase])
+
+  // Typing a date fires a change per digit (the 2nd, then the 20th) — save once typing stops.
+  const [quotedDateDraft, setQuotedDateDraft] = useState<string | null>(null)
+  const quotedDateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleQuotedDateChange = useCallback((date: string) => {
+    setQuotedDateDraft(date)
+    if (quotedDateTimer.current) clearTimeout(quotedDateTimer.current)
+    quotedDateTimer.current = setTimeout(async () => {
+      await saveQuotedDate(date)
+      setQuotedDateDraft(null)
+    }, 800)
+  }, [saveQuotedDate])
+  useEffect(() => () => { if (quotedDateTimer.current) clearTimeout(quotedDateTimer.current) }, [])
+
   // Edited from both the header and the Deliveries panel, so it lives here.
   const saveInstallDeadline = useCallback(async (date: string | null) => {
     setProject(p => ({ ...p, install_deadline: date }))
@@ -949,6 +977,18 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 </div>
               )}
             </div>
+
+            {/* ── Quote date: printed on the quote PDF ── */}
+            <label className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#D8D3C8] bg-white text-xs text-[#8A877F] focus-within:border-[#9A7B4F]">
+              Quote date
+              <input
+                type="date"
+                value={quotedDateDraft ?? project.quoted_date ?? ''}
+                onChange={e => handleQuotedDateChange(e.target.value)}
+                title={project.quoted_date ? 'Printed on the quote PDF' : 'Set automatically to today on the first quote download'}
+                className="bg-transparent text-sm text-[#2C2C2A] outline-none cursor-pointer"
+              />
+            </label>
 
             {/* ── Send dropdown ── */}
             <div className="relative" ref={sendPoMenuRef}>

@@ -129,8 +129,18 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     setEditing(false)
   }
 
-  function cancel() {
+  // Reload from the project each time, so dates changed elsewhere (the quote date box) aren't overwritten
+  function resetForm() {
     setForm({ project_name: project.project_name, project_number: project.project_number, client_id: project.client_id ?? '', date: project.date, quoted_date: project.quoted_date ?? '', invoiced_date: project.invoiced_date ?? '' })
+  }
+
+  function startEditing() {
+    resetForm()
+    setEditing(true)
+  }
+
+  function cancel() {
+    resetForm()
     setEditing(false)
   }
 
@@ -302,7 +312,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
               {!editingClient && <><span>·</span><span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span></>}
 
               {!editingClient && (
-                <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                <button onClick={startEditing} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
                   <Pencil size={12} />
                 </button>
               )}
@@ -313,8 +323,8 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
         <div className="flex items-center gap-2 flex-shrink-0">
           {editing ? (
             <>
-              <button onClick={save} className="p-1.5 rounded bg-[#9A7B4F] text-white hover:bg-[#7d6340] transition-colors cursor-pointer"><Check size={14} /></button>
-              <button onClick={cancel} className="p-1.5 rounded bg-white border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"><X size={14} /></button>
+              <button onClick={save} className="flex items-center gap-1 px-3 py-1.5 rounded bg-[#9A7B4F] text-white text-sm font-medium hover:bg-[#7d6340] transition-colors cursor-pointer"><Check size={14} /> Save</button>
+              <button onClick={cancel} className="flex items-center gap-1 px-3 py-1.5 rounded bg-white border border-[#D8D3C8] text-[#8A877F] text-sm hover:text-[#2C2C2A] transition-colors cursor-pointer"><X size={14} /> Cancel</button>
             </>
           ) : (
             <>
